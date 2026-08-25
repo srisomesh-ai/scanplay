@@ -105,8 +105,8 @@
   /* uses */
   .uses{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
   @media(max-width:1000px){.uses{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:520px){.uses{grid-template-columns:1fr}}
-  .use{aspect-ratio:4/5;border-radius:18px;padding:26px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border:1px solid var(--line);transition:.4s;background:var(--bg2)}
+  @media(max-width:520px){.uses{grid-template-columns:1fr}.use{min-height:200px}}
+  .use{min-height:260px;border-radius:18px;padding:64px 26px 26px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border:1px solid var(--line);transition:.4s;background:var(--bg2)}
   .use::before{content:"";position:absolute;inset:0;background:var(--g);opacity:.55;transition:.4s}
   .use:hover::before{opacity:.85} .use:hover{transform:translateY(-6px)}
   .use h3{font-size:28px;position:relative;margin-bottom:6px}
@@ -164,12 +164,12 @@
   <div>
     <div class="eyebrow r">Augmented reality for print</div>
     <h1 class="r d1">Print that <em>plays.</em></h1>
-    <p class="r d2">Put one QR on any printed picture. When someone scans it and points their phone at the print, your video plays right on top of it — no app, no download.</p>
+    <p class="r d2">Upload a picture and a video, get a QR, print it. When someone scans and points their phone at the print, your video plays right on top of it — no app, no download.</p>
     <div class="cta r d3">
-      <a class="btn gold" href="#contact">Get a demo card</a>
+      <a class="btn gold" href="studio.html">Start creating</a>
       <a class="btn" href="#how">See how it works</a>
     </div>
-    <div class="small r d3">Works on any iPhone or Android · Opens in the camera or browser · Ready in a day</div>
+    <div class="small r d3">Works on any iPhone or Android · Opens in the browser · Your first QR in under 5 minutes</div>
   </div>
 
   <div class="demo r d2" aria-hidden="true">
@@ -200,12 +200,12 @@
     <div class="sec-head r">
       <div class="eyebrow">How it works</div>
       <h2>Three steps. <em>One</em> QR.</h2>
-      <p>You send us the picture and the video. We do the rest. The same QR keeps working even as you add more pictures later.</p>
+      <p>Everything happens in your ScanPlay studio, from your phone or laptop. The same QR keeps working as you add more pictures later.</p>
     </div>
     <div class="steps">
-      <div class="step r"><div class="n">01</div><h3>Send the print &amp; the video</h3><p>Any photo, artwork, invitation or label. Any video — a message, a walkthrough, a reel.</p></div>
-      <div class="step r d1"><div class="n">02</div><h3>We link them</h3><p>The picture is analysed for tracking points and paired with your video. You get a QR to print.</p></div>
-      <div class="step r d2"><div class="n">03</div><h3>Scan, point, play</h3><p>The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
+      <div class="step r"><div class="n">01</div><h3>Upload the picture &amp; video</h3><p>Any photo, artwork, invitation or label. Any video — a message, a walkthrough, a reel. Crop to the printed area.</p></div>
+      <div class="step r d1"><div class="n">02</div><h3>Link &amp; get your QR</h3><p>The studio analyses the picture, pairs it with the video and gives you a QR to download and print.</p></div>
+      <div class="step r d2"><div class="n">03</div><h3>Scan, point, play</h3><p>Anyone scans the QR, the camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
     </div>
   </div>
 </section>
@@ -236,7 +236,7 @@
         <li class="r"><i>01</i><div><b>No app to install</b><span>Opens in the phone's browser. Nothing for your customer to download or sign up for.</span></div></li>
         <li class="r d1"><i>02</i><div><b>One QR, unlimited pictures</b><span>Add a new page or product later — the printed QR never changes.</span></div></li>
         <li class="r d2"><i>03</i><div><b>Locks to the print</b><span>The video sits on the picture and moves with it. Tilt, move closer, it stays.</span></div></li>
-        <li class="r d3"><i>04</i><div><b>Yours to brand</b><span>Your logo, your colours, your domain if you want it.</span></div></li>
+        <li class="r d3"><i>04</i><div><b>Do it yourself, in minutes</b><span>No designer, no developer, no waiting. Upload, crop, link, print.</span></div></li>
       </ul>
     </div>
     <div class="stat r d2">
@@ -250,26 +250,26 @@
   <div class="wrap">
     <div class="sec-head r">
       <div class="eyebrow">Pricing</div>
-      <h2>Priced for the <em>print run,</em> not the software.</h2>
-      <p>Simple one-time setups for events and projects. Monthly only if you run a business that prints all the time.</p>
+      <h2>One studio. <em>Unlimited</em> scans.</h2>
+      <p>Pick a plan by how much you print. Every plan includes the studio, QR generation and the player. Scans are never counted.</p>
     </div>
     <div class="plans">
       <div class="plan r">
-        <span class="tag">Occasion</span><h3>Single print</h3>
-        <div class="price">₹4,999 <small>one-time</small></div>
-        <ul><li>1 picture + 1 video</li><li>QR to print, ready in 24 hours</li><li>Live for 12 months</li><li>Weddings, gifts, memorials</li></ul>
-        <a class="btn" href="#contact">Start</a>
+        <span class="tag">Starter</span><h3>Personal</h3>
+        <div class="price">₹999 <small>/ month</small></div>
+        <ul><li>1 account, 1 QR</li><li>Up to 5 pictures</li><li>Videos up to 60 MB</li><li>Weddings, gifts, memorials</li></ul>
+        <a class="btn" href="studio.html">Start</a>
       </div>
       <div class="plan hi r d1">
-        <span class="tag">Project</span><h3>Campaign</h3>
-        <div class="price">₹14,999 <small>one-time</small></div>
-        <ul><li>Up to 10 pictures, 1 QR</li><li>Brochures, menus, posters</li><li>Your logo on the player</li><li>Live for 12 months</li><li>Scan analytics</li></ul>
-        <a class="btn gold" href="#contact">Start</a>
+        <span class="tag">Most popular</span><h3>Business</h3>
+        <div class="price">₹2,999 <small>/ month</small></div>
+        <ul><li>10 accounts, 10 QRs</li><li>Up to 100 pictures</li><li>Videos up to 200 MB</li><li>Your logo on the player</li><li>Scan analytics</li></ul>
+        <a class="btn gold" href="studio.html">Start</a>
       </div>
       <div class="plan r d2">
-        <span class="tag">Business</span><h3>Studio</h3>
-        <div class="price">₹2,999 <small>/ month</small></div>
-        <ul><li>Your own studio login</li><li>Unlimited accounts &amp; pictures</li><li>For printers, agencies, builders</li><li>Custom domain available</li></ul>
+        <span class="tag">Agency</span><h3>Studio Pro</h3>
+        <div class="price">₹7,999 <small>/ month</small></div>
+        <ul><li>Unlimited accounts &amp; pictures</li><li>For printers, agencies, builders</li><li>Custom domain</li><li>Priority support on WhatsApp</li></ul>
         <a class="btn" href="#contact">Talk to us</a>
       </div>
     </div>
@@ -279,11 +279,11 @@
 <section class="final" id="contact">
   <div class="wrap">
     <div class="eyebrow r" style="justify-content:center">Get started</div>
-    <h2 class="r d1">See it on your <em>own</em> print.</h2>
-    <p class="r d2">Send one picture and one video on WhatsApp. We'll send back a working QR the same day.</p>
+    <h2 class="r d1">Make your first print <em>play.</em></h2>
+    <p class="r d2">Open the studio, upload one picture and one video, and scan your own QR. Questions? We're on WhatsApp.</p>
     <div class="cta r d3" style="justify-content:center">
-      <a class="btn gold" href="https://wa.me/917330984620?text=Hi%2C%20I%27d%20like%20a%20ScanPlay%20demo" target="_blank" rel="noopener">WhatsApp us</a>
-      <a class="btn" href="mailto:hello@scanplay.in">hello@scanplay.in</a>
+      <a class="btn gold" href="studio.html">Open the studio</a>
+      <a class="btn" href="https://wa.me/917330984620?text=Hi%2C%20I%20have%20a%20question%20about%20ScanPlay" target="_blank" rel="noopener">WhatsApp us</a>
     </div>
   </div>
 </section>
