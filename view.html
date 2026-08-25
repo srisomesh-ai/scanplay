@@ -20,6 +20,9 @@
   #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite}
   #hint.found i{background:#3ED598;animation:none}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #brand{position:fixed;top:18px;left:18px;z-index:6;text-decoration:none;color:#fff;font:600 12px Inter;background:rgba(16,20,24,.6);backdrop-filter:blur(8px);padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px}
+  #brand img{height:22px;border-radius:4px}
+  #brand.wm{background:rgba(255,77,109,.85)}
   .mindar-ui-overlay{display:none!important}
 </style>
 </head>
@@ -29,6 +32,7 @@
 <div class="ov hide" id="errOv"><h1>Can't start</h1><p id="errMsg"></p><button class="btn" onclick="location.reload()">Try again</button></div>
 
 <button id="snd" style="display:none">🔇 Tap for sound</button>
+<a id="brand" href="https://scanplay.in" target="_blank" rel="noopener" style="display:none"></a>
 <div id="hint" style="display:none"><i></i><span>Point at the picture</span></div>
 <div id="scene"></div>
 
@@ -42,7 +46,11 @@ async function init(){
   const r=await fetch(`api.php?action=get&c=${code}`).then(x=>x.json()).catch(()=>({ok:false,error:'Network error'}));
   if(!r.ok) return fail(r.error||'Account not found');
   if(!r.items.length) return fail('This account has no pictures yet.');
-  document.title=r.name; start(r);
+  document.title=r.name;
+  const b=$('#brand');
+  if(r.logo){ b.innerHTML=`<img src="${r.logo}" alt="">`; b.href='#'; b.onclick=e=>e.preventDefault(); b.style.display='flex'; }
+  else if(r.watermark){ b.textContent='Made with ScanPlay · Free trial'; b.classList.add('wm'); b.style.display='flex'; }
+  start(r);
 }
 
 // Size + texture mapping of the video plane relative to the target (width 1, height R)

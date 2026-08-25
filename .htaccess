@@ -15,3 +15,11 @@ AddType application/octet-stream .mind
 <FilesMatch "\.(html|js)$">
   Header set Cache-Control "no-cache, must-revalidate"
 </FilesMatch>
+
+# SQLite database must never be downloadable
+<Files "scanplay.db">
+  Require all denied
+</Files>
+<FilesMatch "scanplay\.db-(wal|shm)$">
+  Require all denied
+</FilesMatch>

@@ -1,0 +1,16 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ScanPlay Owner</title>
+<style>body{font-family:Inter,system-ui;background:#F7F8F6;color:#101418;margin:0;padding:20px}h1{font-size:18px}input,select,button{font:14px Inter;padding:9px 10px;border:1px solid #E1E5E2;border-radius:8px;background:#fff}button{background:#0F8F84;color:#fff;border:0;cursor:pointer}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:13px;margin-top:14px}th,td{padding:10px;border-bottom:1px solid #E1E5E2;text-align:left;vertical-align:top}th{background:#EFF8F7;font-size:12px}.b{color:#C9463D}.g{color:#0F8F84}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head><body>
+<h1>ScanPlay — owner panel</h1>
+<div class="row"><input type="password" id="p" placeholder="Owner password"><button onclick="load()">Load users</button><span id="n"></span></div>
+<table id="t"></table>
+<script>
+let P='';const $=s=>document.querySelector(s);
+async function api(a,f={}){const fd=new FormData();Object.entries(f).forEach(([k,v])=>fd.append(k,v));return (await fetch('api.php?action='+a,{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();}
+async function load(){P=$('#p').value;const r=await api('admin_users');if(!r.ok){alert(r.error);return;}$('#n').textContent=r.users.length+' users';
+const opts=Object.keys(r.plans).map(k=>`<option value="${k}">${r.plans[k].name}</option>`).join('');
+$('#t').innerHTML='<tr><th>User</th><th>Plan</th><th>Until</th><th>State</th><th>Accts / Photos</th><th>Set plan</th></tr>'+r.users.map(u=>`<tr><td><b>${u.name}</b><br>${u.email}<br>${u.phone||''}</td><td>${u.plan}</td><td>${new Date(u.plan_until*1000).toLocaleDateString('en-IN')}</td><td class="${u.state==='active'?'g':'b'}">${u.state}</td><td>${u.accs} / ${u.photos}</td>
+<td class="row"><select id="pl${u.id}">${opts}</select><input id="d${u.id}" type="number" value="30" style="width:70px"> days <button onclick="setp(${u.id})">Apply</button></td></tr>`).join('');}
+async function setp(id){const r=await api('admin_setplan',{id,plan:$('#pl'+id).value,days:$('#d'+id).value});if(r.ok)load();else alert(r.error);}
+</script></body></html>

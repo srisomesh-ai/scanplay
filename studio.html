@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
   :root{--ink:#101418;--paper:#F7F8F6;--card:#FFFFFF;--line:#E1E5E2;--mute:#6B7480;--teal:#0F8F84;--teal-d:#0B6E66;--amber:#F2A93B;--red:#C9463D}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -69,25 +70,54 @@
   .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:500 12px Inter;cursor:pointer}
   .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
   label.chip{display:inline-block}
-  #login{max-width:360px;margin:80px auto;padding:0 20px}
+  #login{max-width:380px;margin:60px auto;padding:0 20px}
+  .tabs{display:flex;gap:6px;background:var(--paper);border-radius:10px;padding:4px;margin-bottom:14px}
+  .tabs button{flex:1;border:0;background:transparent;padding:9px;border-radius:8px;font:600 13px Inter;cursor:pointer;color:var(--mute)}
+  .tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .planbar{max-width:1100px;margin:20px auto 0;padding:0 20px}
+  .planbar .in{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .planbar .in.warn{border-color:#F8E3B5;background:#FFF7E6}
+  .planbar .in.bad{border-color:#F3D3D0;background:#FFF1F0}
+  .planbar b{font-size:14px} .planbar span{font-size:13px;color:var(--mute)}
+  .meter{display:inline-block;width:110px;height:6px;background:var(--line);border-radius:6px;vertical-align:middle;margin:0 6px;overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--teal)}
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .pl{border:1.5px solid var(--line);border-radius:12px;padding:14px;text-align:left;cursor:pointer}
+  .pl.on{border-color:var(--teal);background:#EFF8F7}
+  .pl b{display:block;font-size:15px} .pl .pr{font-size:20px;font-family:Sora;margin:4px 0} .pl small{color:var(--mute);font-size:12px;display:block}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;margin-bottom:6px}
+  .seg button{border:0;background:transparent;padding:7px 14px;border-radius:999px;font:600 12px Inter;cursor:pointer;color:var(--mute)}
+  .seg button.on{background:var(--teal);color:#fff}
+  #upModal .box{max-width:720px;text-align:left}
+  .stat{display:flex;gap:2px;align-items:flex-end;height:60px;margin:10px 0}
+  .stat i{flex:1;background:var(--teal);opacity:.8;border-radius:2px 2px 0 0;min-height:2px}
+  .kpi{display:flex;gap:16px;font-size:13px;color:var(--mute);margin-bottom:4px} .kpi b{color:var(--ink);font-size:16px;font-family:Sora}
+  .logoRow{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .logoRow img{height:34px;border-radius:6px;background:#eee;padding:3px}
 </style>
 </head>
 <body>
 
 <header>
   <h1>Scan<span>Play</span> Studio</h1>
-  <button class="btn ghost" id="logoutBtn" style="display:none" onclick="logout()">Sign out</button>
+  <div style="display:flex;gap:8px"><button class="btn ghost" id="setBtn" style="display:none" onclick="openSettings()">Settings</button><button class="btn ghost" id="logoutBtn" style="display:none" onclick="logout()">Sign out</button></div>
 </header>
 
 <div id="login">
   <div class="card">
-    <h2>Sign in</h2>
-    <label class="field">Admin password</label>
-    <input type="password" id="pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <div class="tabs"><button class="on" id="tabIn" onclick="authTab('in')">Sign in</button><button id="tabUp" onclick="authTab('up')">Create account</button></div>
+    <div id="upFields" style="display:none">
+      <label class="field">Your name</label><input type="text" id="aName" placeholder="Name or business name">
+      <label class="field">WhatsApp number</label><input type="text" id="aPhone" placeholder="91XXXXXXXXXX" inputmode="numeric">
+    </div>
+    <label class="field">Email</label><input type="text" id="aEmail" placeholder="you@example.com" inputmode="email" autocomplete="username">
+    <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
     <div class="status err" id="loginErr"></div>
-    <button class="btn" style="width:100%;margin-top:12px" onclick="login()">Open studio</button>
+    <button class="btn" style="width:100%;margin-top:12px" id="authBtn" onclick="doAuth()">Sign in</button>
+    <div class="status" id="trialNote" style="display:none;margin-top:10px">Free trial: 3 photos, 1 QR, 7 days. No card needed.</div>
   </div>
 </div>
+<div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
 <main id="app" style="display:none">
   <section class="card">
@@ -114,6 +144,7 @@
     </div>
   </div>
   <div class="code" id="dCode"></div>
+  <div id="stats" style="display:none;margin-bottom:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
 
   <h2 style="font-size:14px">Add a picture + video</h2>
   <label class="field">Title</label>
@@ -144,7 +175,7 @@
   <div class="progress" id="prog"><i></i></div>
   <div class="status" id="st"></div>
   <button class="btn" style="width:100%;margin-top:14px" id="saveBtn" onclick="addItem()">Compile & add</button>
-  <div class="tip">Every time you add or remove a picture, all pictures in this account are re-analysed together so one QR recognises them all. Expect ~15–30 s per picture.</div>
+  <div class="tip">Every time you add or remove a picture, all pictures in this account are re-analysed together so one QR recognises them all. Expect ~15–30 s per picture. Your plan allows a fixed number of photos — see the bar at the top.</div>
 
   <h2 style="font-size:14px;margin-top:26px">Pictures in this account</h2>
   <div id="items"></div>
@@ -168,6 +199,29 @@
   </div>
 </div>
 
+<div class="modal" id="upModal" onclick="if(event.target===this)closeUp()">
+  <div class="box">
+    <h3>Choose a plan</h3>
+    <p id="upMsg">Every plan: unlimited scans, videos up to 200 MB, data kept while subscribed.</p>
+    <div class="seg"><button class="on" id="segM" onclick="setPeriod('month')">Monthly</button><button id="segY" onclick="setPeriod('year')">Yearly · 2 months free</button></div>
+    <div class="plans" id="planGrid"></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="closeUp()">Not now</button><button class="btn" id="payBtn" onclick="pay()">Pay with Razorpay</button></div>
+    <div class="status" id="payErr" style="margin-top:8px"></div>
+  </div>
+</div>
+<div class="modal" id="setModal" onclick="if(event.target===this)closeSettings()">
+  <div class="box" style="text-align:left">
+    <h3>Settings</h3>
+    <label class="field">Name</label><input type="text" id="sName">
+    <label class="field">WhatsApp number</label><input type="text" id="sPhone" inputmode="numeric">
+    <label class="field">New password (leave blank to keep)</label><input type="password" id="sPass">
+    <label class="field">Logo on the player <span id="logoLock" style="font-weight:500;color:var(--mute)"></span></label>
+    <div class="logoRow"><img id="sLogo" alt="" style="display:none"><input type="file" id="sLogoFile" accept="image/png,image/jpeg"><button class="btn ghost sm" id="sLogoDel" style="display:none" onclick="delLogo()">Remove</button></div>
+    <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" onclick="closeSettings()">Cancel</button><button class="btn" onclick="saveSettings()">Save</button></div>
+    <div class="status" id="setErr"></div>
+  </div>
+</div>
+
 <div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
   <div class="box">
     <h3 id="qrTitle"></h3>
@@ -188,22 +242,78 @@ window.MindCompiler = Compiler;
 </script>
 <script>
 const API='api.php';
-let PASS=sessionStorage.getItem('arpass')||'', ACCOUNTS=[], CUR=null;
+let TOKEN=localStorage.getItem('sp_token')||'', USER=null, ACCOUNTS=[], CUR=null, PERIOD='month', PICK='personal';
 let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null;
 const $=s=>document.querySelector(s);
 
-async function login(){ PASS=$('#pass').value; const r=await post({action:'login'}); if(!r.ok){$('#loginErr').textContent=r.error;return;} sessionStorage.setItem('arpass',PASS); boot(); }
-function logout(){ sessionStorage.removeItem('arpass'); location.reload(); }
-function boot(){ $('#login').style.display='none'; $('#app').style.display='grid'; $('#logoutBtn').style.display=''; loadAccounts(); }
+let authMode='in';
+function authTab(m){ authMode=m; document.getElementById('tabIn').classList.toggle('on',m==='in'); document.getElementById('tabUp').classList.toggle('on',m==='up');
+  $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#loginErr').textContent=''; }
+async function doAuth(){
+  const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); }
+  const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
+  TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot();
+}
+async function logout(){ await post({action:'logout'}).catch(()=>{}); localStorage.removeItem('sp_token'); location.reload(); }
+function boot(){ $('#login').style.display='none'; $('#app').style.display='grid'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts(); }
 async function post(fields,files){
   const fd=new FormData(); Object.entries(fields).forEach(([k,v])=>fd.append(k,v));
   if(files) Object.entries(files).forEach(([k,v])=>fd.append(k,v,v.name||k));
-  return (await fetch(API+'?action='+encodeURIComponent(fields.action),{method:'POST',body:fd,headers:{'X-Admin-Pass':PASS}})).json();
+  const r=await (await fetch(API+'?action='+encodeURIComponent(fields.action),{method:'POST',body:fd,headers:{'X-Token':TOKEN}})).json();
+  if(!r.ok&&r.auth){ localStorage.removeItem('sp_token'); location.reload(); }
+  if(!r.ok&&r.upgrade){ openUp(r.error); }
+  return r;
 }
+/* plan bar */
+function renderPlan(){
+  const u=USER, L=u.limits, el=$('#planIn'); const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
+  const pct=Math.min(100,Math.round(u.used.photos/L.photos*100));
+  let cls='', msg='';
+  if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
+  else if(u.state==='expired') { cls='bad'; msg='Plan expired and data removed.'; }
+  else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
+  el.className='in '+cls;
+  el.innerHTML=`<div><b>${u.planName}</b> <span>· ${msg||`${days} days left`}</span></div>
+    <div><span>Photos ${u.used.photos}/${L.photos}</span><span class="meter"><i style="width:${pct}%"></i></span><span>Accounts ${u.used.accounts}/${L.accounts||'∞'}</span></div>
+    <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
+}
+/* upgrade */
+const PLANS_UI=[['personal','Personal','5 photos · 1 QR'],['business','Business','15 photos · 3 QRs · logo · analytics'],['pro','Pro','30 photos · 10 QRs · sub-logins'],['agency','Agency','50 photos · unlimited QRs · custom domain']];
+function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
+function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
+function setPeriod(p){ PERIOD=p; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
+function renderPlans(){
+  const L=USER?USER.limits:null;
+  $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';renderPlans()"><b>${n}</b><div class="pr">₹${pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
+  $('#payBtn').textContent=`Pay ₹${PRICES[PICK][PERIOD].toLocaleString('en-IN')} with Razorpay`;
+}
+const PRICES={personal:{month:999,year:4999},business:{month:2999,year:24999},pro:{month:5999,year:49999},agency:{month:9999,year:84999}};
+async function pay(){
+  $('#payErr').textContent='';
+  const r=await post({action:'pay_create',plan:PICK,period:PERIOD}); if(!r.ok){ $('#payErr').textContent=r.error; return; }
+  const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
+    prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#0F8F84'},
+    handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
+      if(v.ok){ USER=v.user; renderPlan(); closeUp(); alert('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
+  rz.on('payment.failed',e=>{ $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
+}
+/* settings */
+function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';
+  const can=USER.limits.logo; $('#logoLock').textContent=can?'':'(Business plan and above)'; $('#sLogoFile').disabled=!can;
+  $('#sLogo').style.display=USER.logo?'':'none'; $('#sLogoDel').style.display=USER.logo?'':'none'; if(USER.logo) $('#sLogo').src=USER.logo;
+  $('#setErr').textContent=''; $('#setModal').classList.add('open'); }
+function closeSettings(){ $('#setModal').classList.remove('open'); }
+async function saveSettings(){
+  let r=await post({action:'profile',name:$('#sName').value,phone:$('#sPhone').value,newpass:$('#sPass').value}); if(!r.ok){ $('#setErr').textContent=r.error; return; } USER=r.user;
+  const f=$('#sLogoFile').files[0]; if(f){ r=await post({action:'logo'},{logo:f}); if(!r.ok){ $('#setErr').textContent=r.error; return; } USER=r.user; }
+  renderPlan(); closeSettings();
+}
+async function delLogo(){ const r=await post({action:'logo'}); if(r.ok){ USER=r.user; openSettings(); } }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 async function loadAccounts(keep){
-  const r=await post({action:'accounts'}); ACCOUNTS=r.accounts||[];
+  const r=await post({action:'accounts'}); ACCOUNTS=r.accounts||[]; if(r.user){ USER=r.user; renderPlan(); }
   $('#accList').innerHTML = ACCOUNTS.length ? ACCOUNTS.map(a=>`
     <div class="acc ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">
       <div><div class="n">${esc(a.name)}</div><div class="c">${a.code}</div></div>
@@ -222,6 +332,10 @@ function openAcc(code){
   const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
   $('#dName').textContent=CUR.name; $('#dCode').textContent='Player link: '+CUR.qrUrl;
   bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false;
+  if(USER.limits.analytics){ $('#stats').style.display=''; $('#kAll').textContent=CUR.scans; $('#k30').textContent=CUR.scans30;
+    post({action:'stats',code:CUR.code}).then(r=>{ if(!r.ok) return; const m=new Map(r.days.map(d=>[d.day,d.n])); const bars=[]; let mx=1;
+      for(let i=29;i>=0;i--){ const d=new Date(Date.now()-i*86400000).toISOString().slice(0,10); const n=m.get(d)||0; mx=Math.max(mx,n); bars.push(n); }
+      $('#statBars').innerHTML=bars.map(n=>`<i style="height:${Math.round(n/mx*100)}%" title="${n}"></i>`).join(''); }); }
 }
 async function deleteAcc(){
   if(!confirm(`Delete "${CUR.name}" and all its pictures? Its QR will stop working.`)) return;
@@ -333,7 +447,7 @@ function showQr(){
 function closeQr(){ $('#qrModal').classList.remove('open'); }
 function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.createElement('a'); a.download=CUR.name.replace(/\s+/g,'-')+'-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }
 
-if(PASS) post({action:'login'}).then(r=>{ if(r.ok) boot(); else logout(); });
+if(TOKEN) post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; boot(); } });
 </script>
 </body>
 </html>
