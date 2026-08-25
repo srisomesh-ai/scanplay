@@ -3,337 +3,304 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScanPlay Studio</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<title>ScanPlay — Print that plays</title>
+<meta name="description" content="ScanPlay turns any printed picture into a video. Scan one QR, point at the print, and it comes alive. Wedding cards, brochures, menus, packaging.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#101418;--paper:#F7F8F6;--card:#FFFFFF;--line:#E1E5E2;--mute:#6B7480;--teal:#0F8F84;--teal-d:#0B6E66;--amber:#F2A93B;--red:#C9463D}
+  :root{
+    --bg:#0B0C0E; --bg2:#121316; --ink:#F3EFE8; --ink2:#A7A39B; --line:rgba(243,239,232,.10);
+    --gold:#D8B46A; --gold2:#F1D9A0; --teal:#1FB8A6;
+    --serif:'Instrument Serif',Georgia,serif; --sans:Manrope,system-ui,sans-serif;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
-  h1,h2,h3{font-family:Sora,Inter,sans-serif;letter-spacing:-.02em}
-  header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--line);background:var(--card)}
-  header h1{font-size:18px} header h1 span{color:var(--teal)}
-  .btn{border:0;border-radius:10px;padding:11px 16px;font:600 14px Inter;cursor:pointer;background:var(--teal);color:#fff;transition:.15s}
-  .btn:hover{background:var(--teal-d)}
-  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  .btn.danger{background:transparent;color:var(--red);border:1px solid #F3D3D0}
-  .btn.sm{padding:7px 10px;font-size:12px}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  main{max-width:1100px;margin:0 auto;padding:28px 20px;display:grid;grid-template-columns:300px 1fr;gap:24px}
-  @media(max-width:820px){main{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
-  .card h2{font-size:16px;margin-bottom:14px}
-  label.field{display:block;font-size:13px;font-weight:600;color:var(--mute);margin:14px 0 6px}
-  input[type=text],input[type=password]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:14px Inter;background:#fff}
-  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;cursor:pointer;color:var(--mute);font-size:13px;position:relative;transition:.15s}
-  .drop:hover,.drop.on{border-color:var(--teal);background:#EFF8F7;color:var(--teal-d)}
-  .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
-  .drop img,.drop video{max-width:100%;max-height:160px;border-radius:8px;display:block;margin:0 auto 8px}
-  .hint{font-size:12px}
-  .progress{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:14px;display:none}
-  .progress i{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
-  .status{font-size:13px;color:var(--mute);margin-top:8px;min-height:18px}
-  .status.err{color:var(--red)}
-  .tip{background:#FFF7E6;border:1px solid #F8E3B5;border-radius:10px;padding:10px 12px;font-size:12px;color:#7A5410;margin-top:14px;line-height:1.5}
-  .acc{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-radius:10px;cursor:pointer;border:1px solid transparent}
-  .acc:hover{background:var(--paper)} .acc.on{background:#EFF8F7;border-color:var(--teal)}
-  .acc .n{font-weight:600;font-size:14px} .acc .c{font-size:11px;color:var(--mute)}
-  .acc .k{font-size:12px;color:var(--mute);background:var(--paper);border-radius:999px;padding:3px 9px}
-  .newacc{display:flex;gap:8px;margin-bottom:12px} .newacc input{flex:1}
-  .head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-  .head h2{margin:0} a{color:var(--teal)} .head .r{display:flex;gap:8px}
-  .code{font-size:12px;color:var(--mute);margin-bottom:18px;word-break:break-all}
-  .item{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
-  .item img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#eee}
-  .item .t{font-weight:600;font-size:14px} .item .u{font-size:12px;color:var(--mute)}
-  .empty{color:var(--mute);font-size:13px;text-align:center;padding:24px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
-  .modal{position:fixed;inset:0;background:rgba(16,20,24,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
-  .modal.open{display:flex}
-  .modal .box{background:#fff;border-radius:18px;padding:26px;max-width:380px;width:100%;text-align:center}
-  .modal .box h3{font-size:18px;margin-bottom:6px}
-  .modal .box p{font-size:13px;color:var(--mute);margin-bottom:16px}
-  #qr{display:flex;justify-content:center;margin:0 auto 14px} #qr img,#qr canvas{border-radius:8px}
-  .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
-  .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  #cropModal .box{max-width:560px;text-align:left}
-  #cropWrap{height:60vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none} #cropWrap > img{max-width:100%;display:block}
-  .cropper-point{width:14px!important;height:14px!important;opacity:.9!important}
-  .cropper-point.point-n,.cropper-point.point-s{margin-left:-7px!important} .cropper-point.point-e,.cropper-point.point-w{margin-top:-7px!important}
-  .cropper-line{background:#0F8F84!important} .cropper-point{background:#0F8F84!important}
-  .cropper-view-box{outline:2px solid #0F8F84!important}
-  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
-  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:500 12px Inter;cursor:pointer}
-  .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
-  label.chip{display:inline-block}
-  #login{max-width:360px;margin:80px auto;padding:0 20px}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+  h1,h2,h3,.serif{font-family:var(--serif);font-weight:400;letter-spacing:-.01em}
+  em{font-style:italic;color:var(--gold2)}
+  /* grain */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  /* nav */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:18px 0;transition:.3s;backdrop-filter:blur(0)}
+  nav.solid{background:rgba(11,12,14,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.02em}
+  .logo i{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:grid;place-items:center}
+  .logo i::after{content:"";width:0;height:0;border-left:9px solid #0B0C0E;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:2px}
+  .navlinks{display:flex;gap:28px;font-size:14px;color:var(--ink2)}
+  .navlinks a:hover{color:var(--ink)}
+  @media(max-width:720px){.navlinks{display:none}}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;font-weight:600;font-size:14px;border:1px solid var(--line);transition:.2s;cursor:pointer}
+  .btn:hover{border-color:rgba(243,239,232,.3)}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0B0C0E;border:0}
+  .btn.gold:hover{filter:brightness(1.08)}
+  /* hero */
+  .hero{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:40px;padding-top:110px;padding-bottom:60px;position:relative}
+  @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:100px;text-align:center}}
+  .hero::before{content:"";position:absolute;width:70vw;height:70vw;max-width:900px;max-height:900px;border-radius:50%;left:-20vw;top:-10vw;background:radial-gradient(closest-side,rgba(216,180,106,.16),transparent 70%);pointer-events:none}
+  .eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:28px;height:1px;background:var(--gold)}
+  @media(max-width:900px){.eyebrow{justify-content:center}}
+  .hero h1{font-size:clamp(46px,6.4vw,84px);line-height:1.02;margin-bottom:24px}
+  .hero p{font-size:18px;color:var(--ink2);max-width:520px;margin-bottom:34px}
+  @media(max-width:900px){.hero p{margin:0 auto 34px}}
+  .cta{display:flex;gap:12px;flex-wrap:wrap}
+  @media(max-width:900px){.cta{justify-content:center}}
+  .hero .small{margin-top:28px;font-size:13px;color:var(--ink2)}
+  /* demo */
+  .demo{position:relative;height:560px;display:grid;place-items:center}
+  @media(max-width:900px){.demo{height:480px}}
+  .demo .ring{position:absolute;width:520px;height:520px;border-radius:50%;border:1px solid var(--line);animation:spin 40s linear infinite}
+  .demo .ring::after{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .print{position:absolute;width:250px;height:330px;background:#F4EEE2;border-radius:6px;transform:rotate(-6deg) translate(-70px,20px);box-shadow:0 40px 80px rgba(0,0,0,.6);overflow:hidden}
+  .print::before{content:"";position:absolute;inset:16px;background:
+      linear-gradient(160deg,#E6B77A 0%,#C56B4F 45%,#4E3A5B 100%);border-radius:2px}
+  .print .caption{position:absolute;left:16px;right:16px;bottom:16px;height:44px;background:#F4EEE2;display:flex;flex-direction:column;justify-content:center;padding:0 10px;color:#3a3630}
+  .print .caption b{font-family:var(--serif);font-size:15px;font-weight:400}
+  .print .caption span{font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
+  .print .qr{position:absolute;right:22px;bottom:70px;width:34px;height:34px;background:
+      repeating-linear-gradient(0deg,#3a3630 0 3px,transparent 3px 6px),repeating-linear-gradient(90deg,#3a3630 0 3px,transparent 3px 6px);background-blend-mode:multiply;opacity:.85;border:3px solid #F4EEE2;outline:1px solid #3a3630}
+  .phone{position:absolute;width:230px;height:470px;border-radius:38px;background:#151618;border:1px solid rgba(243,239,232,.14);box-shadow:0 60px 100px rgba(0,0,0,.7),inset 0 0 0 6px #0B0C0E;transform:translate(90px,0) rotate(4deg);animation:float 6s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translate(90px,0) rotate(4deg)}50%{transform:translate(90px,-12px) rotate(4deg)}}
+  .phone .screen{position:absolute;inset:12px;border-radius:28px;overflow:hidden;background:#1c1d21}
+  .phone .cam{position:absolute;inset:0;background:linear-gradient(180deg,#2a2b30,#15161a)}
+  .phone .live{position:absolute;left:34px;top:120px;width:150px;height:200px;border-radius:4px;overflow:hidden;
+      background:linear-gradient(160deg,#E6B77A,#C56B4F 45%,#4E3A5B);transform:rotate(-6deg);box-shadow:0 0 0 2px rgba(31,184,166,.0)}
+  .phone .live::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);animation:shine 4s ease-in-out infinite}
+  @keyframes shine{0%,40%{transform:translateX(-120%)}60%,100%{transform:translateX(120%)}}
+  .phone .live::after{content:"";position:absolute;inset:0;border:2px solid var(--teal);border-radius:4px;opacity:0;animation:lock 4s ease-in-out infinite}
+  @keyframes lock{0%,35%{opacity:0;transform:scale(1.15)}45%,100%{opacity:1;transform:scale(1)}}
+  .phone .play{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(11,12,14,.65);display:grid;place-items:center;opacity:0;animation:pop 4s ease-in-out infinite}
+  .phone .play::after{content:"";border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
+  @keyframes pop{0%,45%{opacity:0;transform:scale(.6)}55%,80%{opacity:1;transform:scale(1)}100%{opacity:0}}
+  .phone .bars{position:absolute;left:34px;right:34px;bottom:34px;height:3px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden}
+  .phone .bars::after{content:"";display:block;height:100%;width:0;background:var(--teal);animation:bar 4s linear infinite}
+  @keyframes bar{0%,50%{width:0}100%{width:100%}}
+  .phone .scanline{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);top:0;animation:scan 4s ease-in-out infinite;opacity:.9}
+  @keyframes scan{0%{top:15%;opacity:0}10%{opacity:1}40%{top:75%;opacity:1}45%{opacity:0}100%{opacity:0}}
+  .phone .pill{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);padding:6px 12px;border-radius:999px;background:rgba(11,12,14,.7);font-size:10px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+  .phone .pill i{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+  /* marquee */
+  .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:18px 0;white-space:nowrap}
+  .marquee div{display:inline-block;animation:mq 30s linear infinite;font-family:var(--serif);font-size:22px;color:var(--ink2)}
+  .marquee span{margin:0 34px}
+  .marquee span::after{content:"✦";color:var(--gold);margin-left:34px;font-size:14px}
+  @keyframes mq{to{transform:translateX(-50%)}}
+  /* sections */
+  section{padding:120px 0}
+  @media(max-width:720px){section{padding:80px 0}}
+  .sec-head{max-width:640px;margin-bottom:64px}
+  .sec-head h2{font-size:clamp(36px,4.6vw,60px);line-height:1.05;margin:14px 0 18px}
+  .sec-head p{color:var(--ink2);font-size:17px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  @media(max-width:820px){.steps{grid-template-columns:1fr}}
+  .step{background:var(--bg2);padding:40px 34px;position:relative}
+  .step .n{font-family:var(--serif);font-size:56px;color:var(--gold);line-height:1;margin-bottom:26px}
+  .step h3{font-size:26px;margin-bottom:10px}
+  .step p{color:var(--ink2);font-size:15px}
+  /* uses */
+  .uses{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  @media(max-width:1000px){.uses{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.uses{grid-template-columns:1fr}}
+  .use{aspect-ratio:4/5;border-radius:18px;padding:26px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border:1px solid var(--line);transition:.4s;background:var(--bg2)}
+  .use::before{content:"";position:absolute;inset:0;background:var(--g);opacity:.55;transition:.4s}
+  .use:hover::before{opacity:.85} .use:hover{transform:translateY(-6px)}
+  .use h3{font-size:28px;position:relative;margin-bottom:6px}
+  .use p{font-size:13px;color:var(--ink2);position:relative}
+  .use .k{position:absolute;top:22px;left:26px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  /* why */
+  .why{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+  @media(max-width:820px){.why{grid-template-columns:1fr}}
+  .why ul{list-style:none;display:grid;gap:22px}
+  .why li{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
+  .why li i{width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);display:grid;place-items:center;font-size:13px;font-style:normal;flex-shrink:0}
+  .why li b{display:block;font-weight:600;margin-bottom:2px}
+  .why li span{color:var(--ink2);font-size:14px}
+  .stat{border:1px solid var(--line);border-radius:20px;padding:40px;background:var(--bg2);text-align:center}
+  .stat .big{font-family:var(--serif);font-size:96px;line-height:1;color:var(--gold2)}
+  .stat p{color:var(--ink2);margin-top:8px}
+  /* pricing */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  @media(max-width:900px){.plans{grid-template-columns:1fr}}
+  .plan{border:1px solid var(--line);border-radius:22px;padding:34px;background:var(--bg2);display:flex;flex-direction:column}
+  .plan.hi{border-color:rgba(216,180,106,.5);background:linear-gradient(180deg,rgba(216,180,106,.08),transparent)}
+  .plan .tag{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .plan h3{font-size:30px;margin:8px 0 4px}
+  .plan .price{font-family:var(--serif);font-size:44px;margin:14px 0 4px}
+  .plan .price small{font-family:var(--sans);font-size:14px;color:var(--ink2)}
+  .plan ul{list-style:none;margin:18px 0 28px;display:grid;gap:10px;color:var(--ink2);font-size:14px}
+  .plan li::before{content:"—";color:var(--gold);margin-right:10px}
+  .plan .btn{margin-top:auto;justify-content:center}
+  /* cta */
+  .final{text-align:center;padding:140px 0}
+  .final h2{font-size:clamp(40px,6vw,80px);line-height:1;margin-bottom:22px}
+  .final p{color:var(--ink2);font-size:18px;margin-bottom:36px}
+  footer{border-top:1px solid var(--line);padding:34px 0;font-size:13px;color:var(--ink2)}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  /* reveal */
+  .r{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+  .r.in{opacity:1;transform:none}
+  .r.d1{transition-delay:.1s}.r.d2{transition-delay:.2s}.r.d3{transition-delay:.3s}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.r{opacity:1;transform:none}}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Scan<span>Play</span> Studio</h1>
-  <button class="btn ghost" id="logoutBtn" style="display:none" onclick="logout()">Sign out</button>
-</header>
-
-<div id="login">
-  <div class="card">
-    <h2>Sign in</h2>
-    <label class="field">Admin password</label>
-    <input type="password" id="pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-    <div class="status err" id="loginErr"></div>
-    <button class="btn" style="width:100%;margin-top:12px" onclick="login()">Open studio</button>
+<nav id="nav">
+  <div class="wrap">
+    <a class="logo" href="#"><i></i>ScanPlay</a>
+    <div class="navlinks">
+      <a href="#how">How it works</a><a href="#uses">Use cases</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a>
+    </div>
+    <a class="btn" href="studio.html">Sign in</a>
   </div>
-</div>
+</nav>
 
-<main id="app" style="display:none">
-  <section class="card">
-    <h2>Accounts</h2>
-    <div class="newacc">
-      <input type="text" id="accName" placeholder="New account name" onkeydown="if(event.key==='Enter')createAcc()">
-      <button class="btn" onclick="createAcc()">Add</button>
+<header class="hero wrap">
+  <div>
+    <div class="eyebrow r">Augmented reality for print</div>
+    <h1 class="r d1">Print that <em>plays.</em></h1>
+    <p class="r d2">Put one QR on any printed picture. When someone scans it and points their phone at the print, your video plays right on top of it — no app, no download.</p>
+    <div class="cta r d3">
+      <a class="btn gold" href="#contact">Get a demo card</a>
+      <a class="btn" href="#how">See how it works</a>
     </div>
-    <div id="accList"><div class="empty">Loading…</div></div>
-  </section>
-
-  <section class="card" id="detail">
-    <div class="empty" style="padding:60px 0">Select an account, or create one.<br>Each account gets one QR that recognises all of its pictures.</div>
-  </section>
-</main>
-
-<template id="detailTpl">
-  <div class="head">
-    <h2 id="dName"></h2>
-    <div class="r">
-      <button class="btn" onclick="showQr()">Show QR</button>
-      <button class="btn ghost" onclick="window.open(CUR.qrUrl)">Test player</button>
-      <button class="btn danger" onclick="deleteAcc()">Delete</button>
-    </div>
+    <div class="small r d3">Works on any iPhone or Android · Opens in the camera or browser · Ready in a day</div>
   </div>
-  <div class="code" id="dCode"></div>
 
-  <h2 style="font-size:14px">Add a picture + video</h2>
-  <label class="field">Title</label>
-  <input type="text" id="title" placeholder="e.g. Front page, Product box, Page 3">
-  <div class="grid2">
-    <div>
-      <label class="field">Target image (printed picture)</label>
-      <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*">
-        <div id="imgPrev">Tap to choose an image<br><span class="hint">You can crop it next</span></div></div>
+  <div class="demo r d2" aria-hidden="true">
+    <div class="ring"></div>
+    <div class="print">
+      <div class="qr"></div>
+      <div class="caption"><b>Ananya &amp; Vikram</b><span>Scan to watch</span></div>
     </div>
-    <div>
-      <label class="field">Video to play on it
-        <span style="float:right;font-weight:500"><a href="#" id="vidMode" onclick="toggleVidMode(event)">Use a URL instead</a></span></label>
-      <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*">
-        <div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
-      <div id="urlBox" style="display:none">
-        <input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()">
-        <div class="status" id="urlSt">Direct MP4 link only — YouTube / Drive links won't work</div>
+    <div class="phone">
+      <div class="screen">
+        <div class="cam"></div>
+        <div class="scanline"></div>
+        <div class="live"><div class="play"></div></div>
+        <div class="pill"><i></i>Playing</div>
+        <div class="bars"></div>
       </div>
     </div>
   </div>
-  <label class="field">How the video sits on the picture</label>
-  <div class="chips" style="margin:0">
-    <label class="chip on"><input type="radio" name="fit" value="fill" checked hidden> Fill edge to edge</label>
-    <label class="chip"><input type="radio" name="fit" value="fit" hidden> Fit inside (no crop)</label>
-    <label class="chip"><input type="radio" name="fit" value="stretch" hidden> Stretch</label>
-  </div>
-  <div class="progress" id="prog"><i></i></div>
-  <div class="status" id="st"></div>
-  <button class="btn" style="width:100%;margin-top:14px" id="saveBtn" onclick="addItem()">Compile & add</button>
-  <div class="tip">Every time you add or remove a picture, all pictures in this account are re-analysed together so one QR recognises them all. Expect ~15–30 s per picture.</div>
+</header>
 
-  <h2 style="font-size:14px;margin-top:26px">Pictures in this account</h2>
-  <div id="items"></div>
-</template>
+<div class="marquee"><div>
+  <span>Wedding invitations</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
+  <span>Wedding invitations</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
+</div></div>
 
-<div class="modal" id="cropModal">
-  <div class="box">
-    <h3>Crop target image</h3>
-    <p>Crop to exactly the printed area.</p>
-    <div id="cropWrap"><img id="cropImg" alt=""></div>
-    <div class="chips" id="chips">
-      <button class="chip on" data-r="0">Free</button><button class="chip" data-r="1">1:1</button>
-      <button class="chip" data-r="0.75">4:3</button><button class="chip" data-r="1.3333">3:4</button>
-      <button class="chip" data-r="0.5625">16:9</button><button class="chip" data-r="1.7778">9:16</button>
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head r">
+      <div class="eyebrow">How it works</div>
+      <h2>Three steps. <em>One</em> QR.</h2>
+      <p>You send us the picture and the video. We do the rest. The same QR keeps working even as you add more pictures later.</p>
     </div>
-    <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="rotateCrop()">Rotate</button>
-      <button class="btn ghost" onclick="cancelCrop()">Cancel</button>
-      <button class="btn" onclick="applyCrop()">Use crop</button>
+    <div class="steps">
+      <div class="step r"><div class="n">01</div><h3>Send the print &amp; the video</h3><p>Any photo, artwork, invitation or label. Any video — a message, a walkthrough, a reel.</p></div>
+      <div class="step r d1"><div class="n">02</div><h3>We link them</h3><p>The picture is analysed for tracking points and paired with your video. You get a QR to print.</p></div>
+      <div class="step r d2"><div class="n">03</div><h3>Scan, point, play</h3><p>The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
     </div>
   </div>
-</div>
+</section>
 
-<div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
-  <div class="box">
-    <h3 id="qrTitle"></h3>
-    <p>One QR for this whole account. Print it once — it recognises every picture added here, now or later.</p>
-    <div id="qr"></div>
-    <div class="link" id="qrLink"></div>
-    <div class="row">
-      <button class="btn" onclick="downloadQr()">Download QR</button>
-      <button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
-      <button class="btn ghost" onclick="closeQr()">Close</button>
+<section id="uses" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head r">
+      <div class="eyebrow">Where it belongs</div>
+      <h2>Anything you already <em>print.</em></h2>
+    </div>
+    <div class="uses">
+      <a class="use r" style="--g:linear-gradient(160deg,#5b2a3f,#1c0f18)"><span class="k">Weddings</span><h3>Invitations</h3><p>The couple's message plays on the card. Guests keep it.</p></a>
+      <a class="use r d1" style="--g:linear-gradient(160deg,#2b3d5b,#0f1420)"><span class="k">Real estate</span><h3>Brochures</h3><p>A walkthrough on every flat photo. Hoardings too.</p></a>
+      <a class="use r d2" style="--g:linear-gradient(160deg,#5b4a2a,#1f1a0f)"><span class="k">Hospitality</span><h3>Menus</h3><p>Show the dish being made. Sells the special.</p></a>
+      <a class="use r d3" style="--g:linear-gradient(160deg,#2a5b4a,#0f201a)"><span class="k">Brands</span><h3>Packaging</h3><p>Founder's story or how-to on the pack itself.</p></a>
     </div>
   </div>
-</div>
+</section>
 
-<script type="module">
-import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
-window.MindCompiler = Compiler;
-</script>
+<section style="background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap why">
+    <div>
+      <div class="sec-head r" style="margin-bottom:40px">
+        <div class="eyebrow">Why ScanPlay</div>
+        <h2>Built to be <em>used,</em> not just shown.</h2>
+      </div>
+      <ul>
+        <li class="r"><i>01</i><div><b>No app to install</b><span>Opens in the phone's browser. Nothing for your customer to download or sign up for.</span></div></li>
+        <li class="r d1"><i>02</i><div><b>One QR, unlimited pictures</b><span>Add a new page or product later — the printed QR never changes.</span></div></li>
+        <li class="r d2"><i>03</i><div><b>Locks to the print</b><span>The video sits on the picture and moves with it. Tilt, move closer, it stays.</span></div></li>
+        <li class="r d3"><i>04</i><div><b>Yours to brand</b><span>Your logo, your colours, your domain if you want it.</span></div></li>
+      </ul>
+    </div>
+    <div class="stat r d2">
+      <div class="big">3s</div>
+      <p>From scan to playing video on a typical 4G connection.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="sec-head r">
+      <div class="eyebrow">Pricing</div>
+      <h2>Priced for the <em>print run,</em> not the software.</h2>
+      <p>Simple one-time setups for events and projects. Monthly only if you run a business that prints all the time.</p>
+    </div>
+    <div class="plans">
+      <div class="plan r">
+        <span class="tag">Occasion</span><h3>Single print</h3>
+        <div class="price">₹4,999 <small>one-time</small></div>
+        <ul><li>1 picture + 1 video</li><li>QR to print, ready in 24 hours</li><li>Live for 12 months</li><li>Weddings, gifts, memorials</li></ul>
+        <a class="btn" href="#contact">Start</a>
+      </div>
+      <div class="plan hi r d1">
+        <span class="tag">Project</span><h3>Campaign</h3>
+        <div class="price">₹14,999 <small>one-time</small></div>
+        <ul><li>Up to 10 pictures, 1 QR</li><li>Brochures, menus, posters</li><li>Your logo on the player</li><li>Live for 12 months</li><li>Scan analytics</li></ul>
+        <a class="btn gold" href="#contact">Start</a>
+      </div>
+      <div class="plan r d2">
+        <span class="tag">Business</span><h3>Studio</h3>
+        <div class="price">₹2,999 <small>/ month</small></div>
+        <ul><li>Your own studio login</li><li>Unlimited accounts &amp; pictures</li><li>For printers, agencies, builders</li><li>Custom domain available</li></ul>
+        <a class="btn" href="#contact">Talk to us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="contact">
+  <div class="wrap">
+    <div class="eyebrow r" style="justify-content:center">Get started</div>
+    <h2 class="r d1">See it on your <em>own</em> print.</h2>
+    <p class="r d2">Send one picture and one video on WhatsApp. We'll send back a working QR the same day.</p>
+    <div class="cta r d3" style="justify-content:center">
+      <a class="btn gold" href="https://wa.me/917330984620?text=Hi%2C%20I%27d%20like%20a%20ScanPlay%20demo" target="_blank" rel="noopener">WhatsApp us</a>
+      <a class="btn" href="mailto:hello@scanplay.in">hello@scanplay.in</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="yr"></span> ScanPlay · Visakhapatnam, India</span>
+    <span>Print that plays.</span>
+  </div>
+</footer>
+
 <script>
-const API='api.php';
-let PASS=sessionStorage.getItem('arpass')||'', ACCOUNTS=[], CUR=null;
-let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null;
-const $=s=>document.querySelector(s);
-
-async function login(){ PASS=$('#pass').value; const r=await post({action:'login'}); if(!r.ok){$('#loginErr').textContent=r.error;return;} sessionStorage.setItem('arpass',PASS); boot(); }
-function logout(){ sessionStorage.removeItem('arpass'); location.reload(); }
-function boot(){ $('#login').style.display='none'; $('#app').style.display='grid'; $('#logoutBtn').style.display=''; loadAccounts(); }
-async function post(fields,files){
-  const fd=new FormData(); Object.entries(fields).forEach(([k,v])=>fd.append(k,v));
-  if(files) Object.entries(files).forEach(([k,v])=>fd.append(k,v,v.name||k));
-  return (await fetch(API+'?action='+encodeURIComponent(fields.action),{method:'POST',body:fd,headers:{'X-Admin-Pass':PASS}})).json();
-}
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-async function loadAccounts(keep){
-  const r=await post({action:'accounts'}); ACCOUNTS=r.accounts||[];
-  $('#accList').innerHTML = ACCOUNTS.length ? ACCOUNTS.map(a=>`
-    <div class="acc ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">
-      <div><div class="n">${esc(a.name)}</div><div class="c">${a.code}</div></div>
-      <span class="k">${a.items.length} pic${a.items.length===1?'':'s'}</span>
-    </div>`).join('') : '<div class="empty">No accounts yet</div>';
-  if(keep&&CUR) openAcc(CUR.code);
-}
-async function createAcc(){
-  const name=$('#accName').value.trim(); if(!name) return;
-  const r=await post({action:'account_create',name}); if(!r.ok){alert(r.error);return;}
-  $('#accName').value=''; await loadAccounts(); openAcc(r.code);
-}
-function openAcc(code){
-  CUR=ACCOUNTS.find(a=>a.code===code); if(!CUR) return;
-  document.querySelectorAll('.acc').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
-  const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
-  $('#dName').textContent=CUR.name; $('#dCode').textContent='Player link: '+CUR.qrUrl;
-  bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false;
-}
-async function deleteAcc(){
-  if(!confirm(`Delete "${CUR.name}" and all its pictures? Its QR will stop working.`)) return;
-  await post({action:'account_delete',code:CUR.code}); CUR=null;
-  $('#detail').innerHTML='<div class="empty" style="padding:60px 0">Select an account.</div>'; loadAccounts();
-}
-function renderItems(){
-  const sh=r=>r>1.05?'portrait':r<0.95?'landscape':'square';
-  $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
-    <div class="item">
-      <img src="${it.thumb}" alt="">
-      <div><div class="t">${esc(it.title)}</div><div class="u">picture ${sh(it.ratio)} · video ${sh(it.vratio)} · ${it.fit||'fill'}</div></div>
-      <button class="btn danger sm" onclick="removeItem('${it.id}')">Remove</button>
-    </div>`).join('') : '<div class="empty">No pictures yet. Add one above.</div>';
-}
-
-function bindPickers(){
-  document.querySelectorAll('input[name=fit]').forEach(r=>r.onchange=()=>document.querySelectorAll('input[name=fit]').forEach(x=>x.parentElement.classList.toggle('on',x.checked)));
-  $('#imgFile').onchange=e=>{
-    const f=e.target.files[0]; if(!f) return;
-    const im=$('#cropImg'); if(cropper){cropper.destroy();cropper=null;}
-    im.src=URL.createObjectURL(f); $('#cropModal').classList.add('open');
-    im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'move',autoCropArea:0.9,background:false,responsive:true,zoomable:true,zoomOnWheel:true,zoomOnTouch:false,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
-    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.r==='0'));
-  };
-  $('#vidFile').onchange=e=>{
-    vidFile=e.target.files[0]; if(!vidFile) return;
-    const url=URL.createObjectURL(vidFile);
-    const v=document.createElement('video'); v.onloadedmetadata=()=>{vidRatio=v.videoHeight/v.videoWidth;}; v.src=url;
-    $('#vidPrev').innerHTML=`<video src="${url}" muted playsinline></video><span class="hint">${esc(vidFile.name)} · ${(vidFile.size/1048576).toFixed(1)} MB</span>`;
-    $('#dropVid').classList.add('on');
-  };
-}
-function toggleVidMode(e){
-  e.preventDefault(); urlMode=!urlMode;
-  $('#dropVid').style.display=urlMode?'none':''; $('#urlBox').style.display=urlMode?'':'none';
-  $('#vidMode').textContent=urlMode?'Upload a file instead':'Use a URL instead';
-}
-let urlTimer;
-function checkUrl(){
-  clearTimeout(urlTimer); vidUrl=$('#vidUrl').value.trim(); vidRatio=1;
-  const st=$('#urlSt'); st.className='status'; st.textContent='Direct MP4 link only — YouTube / Drive links won\'t work';
-  if(!/^https?:\/\//i.test(vidUrl)) return;
-  urlTimer=setTimeout(()=>{
-    st.textContent='Checking…';
-    const v=document.createElement('video'); v.preload='metadata';
-    v.onloadedmetadata=()=>{ vidRatio=v.videoHeight/v.videoWidth; st.textContent=`OK · ${v.videoWidth}×${v.videoHeight} · ${Math.round(v.duration)}s`; };
-    v.onerror=()=>{ st.textContent='Could not read that video in the browser — the server will still try to download it'; };
-    v.src=vidUrl;
-  },500);
-}
-$('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) return;
-  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on');
-  const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
-function rotateCrop(){ cropper&&cropper.rotate(90); }
-function cancelCrop(){ $('#cropModal').classList.remove('open'); $('#imgFile').value=''; }
-function applyCrop(){
-  const c=cropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'});
-  c.toBlob(b=>{ imgFile=new File([b],'target.jpg',{type:'image/jpeg'}); imgRatio=c.height/c.width;
-    $('#imgPrev').innerHTML=`<img src="${URL.createObjectURL(b)}"><span class="hint">${c.width}×${c.height} · tap to change</span>`;
-    $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); },'image/jpeg',0.92);
-}
-
-function setProg(p,msg,err){ const pr=$('#prog'); if(!pr) return; pr.style.display='block'; pr.firstElementChild.style.width=p+'%'; const s=$('#st'); s.textContent=msg; s.className='status'+(err?' err':''); }
-const loadImg=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not load a stored picture')); i.src=src; });
-async function compileAll(images, from, to){
-  if(!window.MindCompiler) throw new Error('Compiler still loading — try again in a moment');
-  const compiler=new window.MindCompiler();
-  await compiler.compileImageTargets(images, p=>setProg(from+Math.round(p/100*(to-from)), `Analysing ${images.length} picture${images.length>1?'s':''}… ${Math.round(p)}%`));
-  return new File([await compiler.exportData()],'targets.mind');
-}
-
-async function addItem(){
-  if(!imgFile){setProg(0,'Choose a target image first',true);return;}
-  if(urlMode){ if(!/^https?:\/\//i.test(vidUrl)){setProg(0,'Enter a valid video URL',true);return;} }
-  else { if(!vidFile){setProg(0,'Choose a video first',true);return;}
-         if(vidFile.size>200*1048576){setProg(0,'Video must be under 200 MB',true);return;} }
-  const title=$('#title').value.trim()||'Untitled', btn=$('#saveBtn'); btn.disabled=true;
-  try{
-    setProg(2,'Loading existing pictures…');
-    const existing=await Promise.all(CUR.items.map(it=>loadImg(it.thumb+'?v='+Date.now())));
-    const mind=await compileAll([...existing, await loadImg(URL.createObjectURL(imgFile))], 5, 85);
-    setProg(87, urlMode?'Server is downloading the video…':'Uploading…');
-    const fields={action:'item_add',code:CUR.code,title,ratio:imgRatio.toFixed(4),vratio:vidRatio.toFixed(4),fit:(document.querySelector('input[name=fit]:checked')||{}).value||'fill'};
-    const files={target:imgFile,mind};
-    if(urlMode) fields.video_url=vidUrl; else files.video=vidFile;
-    const r=await post(fields,files);
-    if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true);
-  }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
-}
-async function removeItem(id){
-  if(!confirm('Remove this picture from the account?')) return;
-  const btn=$('#saveBtn'); btn.disabled=true;
-  try{
-    const rest=CUR.items.filter(it=>it.id!==id); let files;
-    if(rest.length){ setProg(5,'Re-analysing remaining pictures…'); const imgs=await Promise.all(rest.map(it=>loadImg(it.thumb+'?v='+Date.now()))); files={mind:await compileAll(imgs,10,90)}; }
-    setProg(92,'Saving…');
-    const r=await post({action:'item_delete',code:CUR.code,id},files); if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true);
-  }catch(e){ setProg(0,'Could not remove: '+e.message,true); btn.disabled=false; }
-}
-
-function showQr(){
-  $('#qrTitle').textContent=CUR.name; $('#qrLink').textContent=CUR.qrUrl;
-  const q=$('#qr'); q.innerHTML=''; new QRCode(q,{text:CUR.qrUrl,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
-  $('#qrModal').classList.add('open');
-}
-function closeQr(){ $('#qrModal').classList.remove('open'); }
-function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.createElement('a'); a.download=CUR.name.replace(/\s+/g,'-')+'-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }
-
-if(PASS) post({action:'login'}).then(r=>{ if(r.ok) boot(); else logout(); });
+  document.getElementById('yr').textContent=new Date().getFullYear();
+  const nav=document.getElementById('nav');
+  addEventListener('scroll',()=>nav.classList.toggle('solid',scrollY>40),{passive:true});
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }),{threshold:.12});
+  document.querySelectorAll('.r').forEach(el=>io.observe(el));
 </script>
 </body>
 </html>
