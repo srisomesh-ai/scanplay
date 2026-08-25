@@ -1,0 +1,12 @@
+# Allow large video uploads (Hostinger honours these in most plans)
+php_value upload_max_filesize 256M
+php_value post_max_size 300M
+php_value max_execution_time 600
+
+# Serve .mind files as binary
+AddType application/octet-stream .mind
+
+# Protect the JSON index from direct download
+<Files "accounts.json">
+  Require all denied
+</Files>

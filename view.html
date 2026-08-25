@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ScanPlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#000;font-family:Inter,system-ui,sans-serif;color:#fff;overflow:hidden}
+  #scene{position:fixed;inset:0}
+  .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;background:#000;z-index:5;transition:opacity .3s}
+  .ov.hide{opacity:0;pointer-events:none}
+  .ov h1{font:600 22px Sora;letter-spacing:-.02em;margin:0 0 8px}
+  .ov p{color:#A9B1BA;font-size:14px;margin:0 0 22px;line-height:1.5;max-width:300px}
+  .btn{background:#0F8F84;color:#fff;border:0;border-radius:999px;padding:14px 28px;font:500 15px Inter;cursor:pointer}
+  #snd{position:fixed;top:18px;right:18px;z-index:6;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);color:#fff;border:0;border-radius:999px;padding:9px 14px;font:500 13px Inter}
+  #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(16,20,24,.72);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:4;white-space:nowrap}
+  #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite}
+  #hint.found i{background:#3ED598;animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .mindar-ui-overlay{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="ov" id="intro"><h1>Starting camera…</h1><p>Allow camera access when asked.</p></div>
+<div class="ov hide" id="errOv"><h1>Can't start</h1><p id="errMsg"></p><button class="btn" onclick="location.reload()">Try again</button></div>
+
+<button id="snd" style="display:none">🔇 Tap for sound</button>
+<div id="hint" style="display:none"><i></i><span>Point at the picture</span></div>
+<div id="scene"></div>
+
+<script>
+const code=(new URLSearchParams(location.search).get('c')||'').replace(/[^a-z0-9]/g,'');
+const $=s=>document.querySelector(s);
+function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
+
+async function init(){
+  if(!code) return fail('This link is missing an account code.');
+  const r=await fetch(`api.php?action=get&c=${code}`).then(x=>x.json()).catch(()=>({ok:false,error:'Network error'}));
+  if(!r.ok) return fail(r.error||'Account not found');
+  if(!r.items.length) return fail('This account has no pictures yet.');
+  document.title=r.name; start(r);
+}
+
+// Size + texture mapping of the video plane relative to the target (width 1, height R)
+function fit(R,VR,mode){
+  if(mode==='fit')     return VR>R ? {w:R/VR,h:R,rep:'1 1',off:'0 0'} : {w:1,h:VR,rep:'1 1',off:'0 0'};
+  if(mode==='stretch') return {w:1,h:R,rep:'1 1',off:'0 0'};
+  // fill: plane = target, crop the video texture to cover
+  if(VR>R){ const k=R/VR; return {w:1,h:R,rep:`1 ${k.toFixed(4)}`,off:`0 ${((1-k)/2).toFixed(4)}`}; }
+  const k=VR/R;          return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
+}
+
+function start(acc){
+  const assets=acc.items.map((it,i)=>`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
+  const targets=acc.items.map((it,i)=>{ const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fill'); return `
+      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}">
+        <a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video>
+      </a-entity>`; }).join('');
+
+  $('#scene').innerHTML=`
+    <a-scene mindar-image="imageTargetSrc: ${acc.mind}?v=${Date.now()}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.01; missTolerance: 10; warmupTolerance: 3; maxTrack: 1"
+             color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
+      <a-assets>${assets}</a-assets>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      ${targets}
+    </a-scene>`;
+
+  const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd');
+  const vids=acc.items.map((_,i)=>$('#v'+i));
+  vids.forEach(v=>v.muted=true);
+  snd.style.display='block';
+  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>v.muted=false); snd.style.display='none'; },{once:true});
+
+  document.querySelectorAll('[mindar-image-target]').forEach(t=>{
+    const i=+t.dataset.i;
+    t.addEventListener('targetFound',()=>{ hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(j!==i) v.pause(); }); vids[i].play().catch(()=>{}); });
+    t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a picture'; vids[i].pause(); });
+  });
+  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
+  scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
+}
+init();
+</script>
+</body>
+</html>
