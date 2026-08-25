@@ -221,6 +221,14 @@ footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .r{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .r.in{opacity:1;transform:none}.r.d1{transition-delay:.1s}.r.d2{transition-delay:.2s}.r.d3{transition-delay:.3s}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.r{opacity:1;transform:none}}
+.langsel{appearance:none;-webkit-appearance:none;border:2px solid var(--line);border-radius:12px;padding:9px 30px 9px 12px;font:600 13px 'Plus Jakarta Sans',system-ui;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234B4661' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--ink);cursor:pointer}
+html[lang=te] body{font-family:'Noto Sans Telugu','Plus Jakarta Sans',system-ui,sans-serif}
+html[lang=ta] body{font-family:'Noto Sans Tamil','Plus Jakarta Sans',system-ui,sans-serif}
+html[lang=hi] body{font-family:'Noto Sans Devanagari','Plus Jakarta Sans',system-ui,sans-serif}
+html[lang=kn] body{font-family:'Noto Sans Kannada','Plus Jakarta Sans',system-ui,sans-serif}
+html[lang=ml] body{font-family:'Noto Sans Malayalam','Plus Jakarta Sans',system-ui,sans-serif}
+html:not([lang=en]) h1{letter-spacing:-.02em;line-height:1.08}
+html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2{letter-spacing:-.01em;line-height:1.15}
 /* whatsapp float */
 .wa{position:fixed;right:18px;bottom:18px;z-index:60;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 10px 30px rgba(37,211,102,.45)}
 .wa svg{width:30px;height:30px;fill:#fff}
@@ -230,17 +238,17 @@ footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 
 <nav id="nav"><div class="w">
   <a class="logo" href="#"><i></i>ScanPlay</a>
-  <div class="links"><a href="#how">How it works</a><a href="#uses">Use cases</a><a href="#partners">For printers</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
-  <a class="btn w" href="studio.html" style="padding:10px 18px">Sign in</a>
+  <div class="links"><a href="#how" data-i18n="nav_how">How it works</a><a href="#uses" data-i18n="nav_uses">Use cases</a><a href="#partners" data-i18n="nav_partners">For printers</a><a href="#pricing" data-i18n="nav_pricing">Pricing</a><a href="#faq" data-i18n="nav_faq">FAQ</a></div>
+  <div style="display:flex;gap:8px;align-items:center"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn w" href="studio.html" style="padding:10px 18px" data-i18n="signin">Sign in</a></div>
 </div></nav>
 
 <header class="hero w">
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
-  <span class="pill r"><i></i> AR video on any printed picture · No app</span>
-  <h1 class="r d1">Make your prints<br><span class="grad">come alive.</span></h1>
-  <p class="r d2">Upload a picture and a video, get a QR, print it. When someone scans and points their phone at the print, your video plays right on it.</p>
-  <div class="cta r d3"><a class="btn g" href="studio.html">Start creating →</a><a class="btn s" href="#how">See how it works</a></div>
-  <div class="trust r d3">Works on iPhone &amp; Android · Opens in the browser · First QR in under 5 minutes</div>
+  <span class="pill r"><i></i> <span data-i18n="pill">AR video on any printed picture · No app</span></span>
+  <h1 class="r d1"><span data-i18n="h1a">Make your prints</span><br><span class="grad" data-i18n="h1b">come alive.</span></h1>
+  <p class="r d2" data-i18n="hero_p">Upload a picture and a video, get a QR, print it. When someone scans and points their phone at the print, your video plays right on it.</p>
+  <div class="cta r d3"><a class="btn g" href="studio.html" data-i18n="cta_start">Start creating →</a><a class="btn s" href="#how" data-i18n="cta_how">See how it works</a></div>
+  <div class="trust r d3" data-i18n="trust">Works on iPhone &amp; Android · Opens in the browser · First QR in under 5 minutes</div>
 
   <div class="stage r d2" aria-hidden="true">
     <div class="card"><div class="stamp">SCAN<br>TO<br>PLAY</div><div class="pic"></div><div class="t">Ananya &amp; Vikram</div><div class="d">14 December · Vizag</div><div class="qr"></div></div>
@@ -248,73 +256,70 @@ footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   </div>
 </header>
 
-<div class="tick"><div>
-  <span>Wedding invitations</span><span>Photo frames</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
-  <span>Wedding invitations</span><span>Photo frames</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
-</div></div>
+<div class="tick"><div id="tick"></div></div>
 
 <section id="how"><div class="w">
-  <div class="h r"><div class="k">How it works</div><h2>Three steps. One QR.</h2><p>Everything happens in your ScanPlay studio, from your phone or laptop. Add more pictures later — the printed QR never changes.</p></div>
+  <div class="h r"><div class="k" data-i18n="k_how">How it works</div><h2 data-i18n="how_h">Three steps. One QR.</h2><p data-i18n="how_p">Everything happens in your ScanPlay studio, from your phone or laptop. Add more pictures later — the printed QR never changes.</p></div>
   <div class="steps">
-    <div class="s r"><b class="grad">01</b><h3>Upload &amp; crop</h3><p>Any photo, artwork, invitation or label. Any MP4. Crop to exactly the printed area.</p></div>
-    <div class="s r d1"><b class="grad">02</b><h3>Get your QR</h3><p>The studio links picture and video and gives you a QR to download and print anywhere.</p></div>
-    <div class="s r d2"><b class="grad">03</b><h3>Scan, point, play</h3><p>The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
+    <div class="s r"><b class="grad">01</b><h3 data-i18n="s1h">Upload &amp; crop</h3><p data-i18n="s1p">Any photo, artwork, invitation or label. Any MP4. Crop to exactly the printed area.</p></div>
+    <div class="s r d1"><b class="grad">02</b><h3 data-i18n="s2h">Get your QR</h3><p data-i18n="s2p">The studio links picture and video and gives you a QR to download and print anywhere.</p></div>
+    <div class="s r d2"><b class="grad">03</b><h3 data-i18n="s3h">Scan, point, play</h3><p data-i18n="s3p">The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
   </div>
 </div></section>
 
 <section id="uses" style="padding-top:0"><div class="w">
-  <div class="h r"><div class="k">Use cases</div><h2>Anything you already print.</h2></div>
+  <div class="h r"><div class="k" data-i18n="k_uses">Use cases</div><h2 data-i18n="uses_h">Anything you already print.</h2></div>
   <div class="uses">
-    <a class="u r" style="--g:linear-gradient(160deg,#FF4D6D,#7C3AED)"><span class="k">WEDDINGS</span><h3>Invitations</h3><p>The couple's message plays on the card. Guests keep it.</p></a>
-    <a class="u r d1" style="--g:linear-gradient(160deg,#7C3AED,#22D3EE)"><span class="k">REAL ESTATE</span><h3>Brochures</h3><p>A walkthrough on every flat photo. Hoardings too.</p></a>
-    <a class="u r d2" style="--g:linear-gradient(160deg,#FF9A3D,#FF4D6D)"><span class="k">HOSPITALITY</span><h3>Menus</h3><p>Show the dish being made. Sells the special.</p></a>
-    <a class="u r d3" style="--g:linear-gradient(160deg,#22D3EE,#7C3AED)"><span class="k">BRANDS</span><h3>Packaging</h3><p>Founder's story or how-to on the pack itself.</p></a>
+    <a class="u r" style="--g:linear-gradient(160deg,#FF4D6D,#7C3AED)"><span class="k" data-i18n="u1k">WEDDINGS</span><h3 data-i18n="u1h">Invitations</h3><p data-i18n="u1p">The couple's message plays on the card. Guests keep it.</p></a>
+    <a class="u r d1" style="--g:linear-gradient(160deg,#7C3AED,#22D3EE)"><span class="k" data-i18n="u2k">REAL ESTATE</span><h3 data-i18n="u2h">Brochures</h3><p data-i18n="u2p">A walkthrough on every flat photo. Hoardings too.</p></a>
+    <a class="u r d2" style="--g:linear-gradient(160deg,#FF9A3D,#FF4D6D)"><span class="k" data-i18n="u3k">HOSPITALITY</span><h3 data-i18n="u3h">Menus</h3><p data-i18n="u3p">Show the dish being made. Sells the special.</p></a>
+    <a class="u r d3" style="--g:linear-gradient(160deg,#22D3EE,#7C3AED)"><span class="k" data-i18n="u4k">BRANDS</span><h3 data-i18n="u4h">Packaging</h3><p data-i18n="u4p">Founder's story or how-to on the pack itself.</p></a>
   </div>
 </div></section>
 
 <section id="partners" style="padding-top:0"><div class="w">
   <div class="pt r">
     <div>
-      <div class="k" style="font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--c)">FOR PRINTERS &amp; PHOTOGRAPHERS</div>
-      <h2 style="margin-top:8px">Sell prints that play. Keep the margin.</h2>
-      <p>Add ScanPlay to every wedding card, album and frame you sell. Your customers get the magic; you get a new line item on every order.</p>
-      <a class="btn g" href="https://wa.me/917330984620?text=Hi%2C%20I%27m%20a%20printer%2Fphotographer%20interested%20in%20ScanPlay%20partner%20plan" target="_blank" rel="noopener">Become a partner</a>
+      <div class="k" style="font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--c)"><span data-i18n="pt_k">FOR PRINTERS &amp; PHOTOGRAPHERS</span></div>
+      <h2 style="margin-top:8px" data-i18n="pt_h">Sell prints that play. Keep the margin.</h2>
+      <p data-i18n="pt_p">Add ScanPlay to every wedding card, album and frame you sell. Your customers get the magic; you get a new line item on every order.</p>
+      <a class="btn g" href="https://wa.me/917330984620?text=Hi%2C%20I%27m%20a%20printer%2Fphotographer%20interested%20in%20ScanPlay%20partner%20plan" target="_blank" rel="noopener" data-i18n="pt_btn">Become a partner</a>
     </div>
     <ul>
-      <li>One studio login, separate account and QR for each of your customers</li>
-      <li>Your logo on the player — customers see your brand, not ours</li>
-      <li>Charge what you like per card; typical partners add ₹3,000–8,000 per wedding</li>
-      <li>Demo card kit and WhatsApp support in English, Telugu and Hindi</li>
+      <li data-i18n="pt1">One studio login, separate account and QR for each of your customers</li>
+      <li data-i18n="pt2">Your logo on the player — customers see your brand, not ours</li>
+      <li data-i18n="pt3">Charge what you like per card; typical partners add ₹3,000–8,000 per wedding</li>
+      <li data-i18n="pt4">Demo card kit and WhatsApp support in English, Telugu and Hindi</li>
     </ul>
   </div>
 </div></section>
 
 <section id="pricing" style="padding-top:0"><div class="w">
-  <div class="h r"><div class="k">Pricing</div><h2>One studio. Unlimited scans.</h2><p>Pick a plan by how much you print. Every plan includes the studio, QR generation and the player.</p></div>
+  <div class="h r"><div class="k" data-i18n="k_pricing">Pricing</div><h2 data-i18n="pr_h">One studio. Unlimited scans.</h2><p data-i18n="pr_p">Pick a plan by how much you print. Every plan includes the studio, QR generation and the player.</p></div>
   <div class="pr">
-    <div class="p r"><span class="tag">Starter</span><h3>Personal</h3><div class="n">₹999<small>/month</small></div><div class="for">Weddings, gifts, memorials</div><ul><li>1 account, 1 QR</li><li>Up to 5 pictures</li><li>Videos up to 60 MB</li><li>Unlimited scans</li></ul><a class="btn w" href="studio.html">Start</a></div>
-    <div class="p hi r d1"><span class="tag">Most popular</span><h3>Business</h3><div class="n">₹2,999<small>/month</small></div><div class="for">Shops, builders, restaurants</div><ul><li>10 accounts, 10 QRs</li><li>Up to 100 pictures</li><li>Videos up to 200 MB</li><li>Your logo on the player</li><li>Scan analytics</li></ul><a class="btn g" href="studio.html">Start</a></div>
-    <div class="p r d2"><span class="tag">Partner</span><h3>Studio Pro</h3><div class="n">₹7,999<small>/month</small></div><div class="for">Printers, photographers, agencies</div><ul><li>Unlimited accounts &amp; pictures</li><li>Customer sub-logins</li><li>Custom domain</li><li>Priority WhatsApp support</li></ul><a class="btn w" href="#partners">Talk to us</a></div>
+    <div class="p r"><span class="tag" data-i18n="p1t">Starter</span><h3 data-i18n="p1h">Personal</h3><div class="n">₹999<small data-i18n="month">/month</small></div><div class="for" data-i18n="p1f">Weddings, gifts, memorials</div><ul><li data-i18n="p1a">1 account, 1 QR</li><li data-i18n="p1b">Up to 5 pictures</li><li data-i18n="p1c">Videos up to 60 MB</li><li data-i18n="p1d">Unlimited scans</li></ul><a class="btn w" href="studio.html" data-i18n="start">Start</a></div>
+    <div class="p hi r d1"><span class="tag" data-i18n="p2t">Most popular</span><h3 data-i18n="p2h">Business</h3><div class="n">₹2,999<small data-i18n="month">/month</small></div><div class="for" data-i18n="p2f">Shops, builders, restaurants</div><ul><li data-i18n="p2a">10 accounts, 10 QRs</li><li data-i18n="p2b">Up to 100 pictures</li><li data-i18n="p2c">Videos up to 200 MB</li><li data-i18n="p2d">Your logo on the player</li><li data-i18n="p2e">Scan analytics</li></ul><a class="btn g" href="studio.html" data-i18n="start">Start</a></div>
+    <div class="p r d2"><span class="tag" data-i18n="p3t">Partner</span><h3 data-i18n="p3h">Studio Pro</h3><div class="n">₹7,999<small data-i18n="month">/month</small></div><div class="for" data-i18n="p3f">Printers, photographers, agencies</div><ul><li data-i18n="p3a">Unlimited accounts &amp; pictures</li><li data-i18n="p3b">Customer sub-logins</li><li data-i18n="p3c">Custom domain</li><li data-i18n="p3d">Priority WhatsApp support</li></ul><a class="btn w" href="#partners" data-i18n="talk">Talk to us</a></div>
   </div>
-  <div class="note">Prices in INR, GST extra. Pay yearly and get 2 months free. Cancel any time.</div>
+  <div class="note" data-i18n="note">Prices in INR, GST extra. Pay yearly and get 2 months free. Cancel any time.</div>
 </div></section>
 
 <section id="faq" style="padding-top:0"><div class="w">
-  <div class="h r"><div class="k">FAQ</div><h2>Questions people ask.</h2></div>
+  <div class="h r"><div class="k" data-i18n="k_faq">FAQ</div><h2 data-i18n="faq_h">Questions people ask.</h2></div>
   <div class="faq r">
-    <details><summary>Do guests need to install an app?</summary><p>No. Scanning the QR opens the player in the phone's browser. It works on iPhone and Android.</p></details>
-    <details><summary>How is this different from a QR that just opens a video?</summary><p>With ScanPlay the video plays on top of the printed picture and moves with it — the picture itself comes alive. A normal QR only opens a video page.</p></details>
-    <details><summary>What kind of pictures work best?</summary><p>Photos and artwork with detail and contrast: portraits, posters, packaging art. Plain logos, solid colours or very glossy prints track less reliably. The studio warns you if a picture is weak.</p></details>
-    <details><summary>Can I add more pictures later without reprinting the QR?</summary><p>Yes. One QR per account recognises every picture in that account. Add or replace pictures any time; the printed QR never changes.</p></details>
-    <details><summary>How big should the print be?</summary><p>Anything from a 4×6 photo to a hoarding. The phone just needs to see the whole picture clearly.</p></details>
-    <details><summary>Does the video have sound?</summary><p>Yes. Phones start videos muted until the user taps the screen once; a "tap for sound" chip makes that obvious.</p></details>
+    <details><summary data-i18n="q1">Do guests need to install an app?</summary><p data-i18n="a1">No. Scanning the QR opens the player in the phone's browser. It works on iPhone and Android.</p></details>
+    <details><summary data-i18n="q2">How is this different from a QR that just opens a video?</summary><p data-i18n="a2">With ScanPlay the video plays on top of the printed picture and moves with it — the picture itself comes alive. A normal QR only opens a video page.</p></details>
+    <details><summary data-i18n="q3">What kind of pictures work best?</summary><p data-i18n="a3">Photos and artwork with detail and contrast: portraits, posters, packaging art. Plain logos, solid colours or very glossy prints track less reliably. The studio warns you if a picture is weak.</p></details>
+    <details><summary data-i18n="q4">Can I add more pictures later without reprinting the QR?</summary><p data-i18n="a4">Yes. One QR per account recognises every picture in that account. Add or replace pictures any time; the printed QR never changes.</p></details>
+    <details><summary data-i18n="q5">How big should the print be?</summary><p data-i18n="a5">Anything from a 4×6 photo to a hoarding. The phone just needs to see the whole picture clearly.</p></details>
+    <details><summary data-i18n="q6">Does the video have sound?</summary><p data-i18n="a6">Yes. Phones start videos muted until the user taps the screen once; a "tap for sound" chip makes that obvious.</p></details>
   </div>
 </div></section>
 
 <div class="fin r" id="contact">
-  <h2>Make your first print play.</h2>
-  <p>Open the studio, upload one picture and one video, and scan your own QR. Questions? We're on WhatsApp.</p>
-  <div class="cta"><a class="btn" href="studio.html">Open the studio →</a></div>
+  <h2 data-i18n="fin_h">Make your first print play.</h2>
+  <p data-i18n="fin_p">Open the studio, upload one picture and one video, and scan your own QR. Questions? We're on WhatsApp.</p>
+  <div class="cta"><a class="btn" href="studio.html" data-i18n="fin_btn">Open the studio →</a></div>
 </div>
 
 <footer><div class="w">
@@ -324,11 +329,37 @@ footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 
 <a class="wa" href="https://wa.me/917330984620?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20ScanPlay" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg></a>
 
+<script src="i18n.js"></script>
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
 const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('on',scrollY>10),{passive:true});
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
 document.querySelectorAll('.r').forEach(el=>io.observe(el));
+
+/* ---------- language ---------- */
+const D=window.SP_I18N, SUP=Object.keys(D), FONTS={te:'Noto+Sans+Telugu',ta:'Noto+Sans+Tamil',hi:'Noto+Sans+Devanagari',kn:'Noto+Sans+Kannada',ml:'Noto+Sans+Malayalam'};
+const sel=document.getElementById('lang');
+SUP.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=D[c].name;sel.appendChild(o);});
+function apply(code){
+  const t=D[code]||D.en; document.documentElement.lang=code;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n; if(t[k]!=null) el.innerHTML=t[k];});
+  document.getElementById('tick').innerHTML=[...t.tick,...t.tick].map(x=>`<span>${x}</span>`).join('');
+  sel.value=code;
+  if(FONTS[code]&&!document.getElementById('f-'+code)){const l=document.createElement('link');l.id='f-'+code;l.rel='stylesheet';l.href=`https://fonts.googleapis.com/css2?family=${FONTS[code]}:wght@500;700;800&display=swap`;document.head.appendChild(l);}
+}
+sel.onchange=()=>{localStorage.setItem('sp_lang',sel.value);apply(sel.value);history.replaceState(null,'',location.pathname+'?lang='+sel.value+location.hash);};
+(async()=>{
+  const q=new URLSearchParams(location.search).get('lang');
+  if(q&&D[q]){localStorage.setItem('sp_lang',q);return apply(q);}          // 1. URL override (testing / sharing)
+  const saved=localStorage.getItem('sp_lang'); if(saved&&D[saved]) return apply(saved);   // 2. remembered choice
+  apply('en');                                                               // default while detecting
+  const nav=(navigator.languages||[navigator.language]).map(l=>l.slice(0,2)).find(l=>D[l]);
+  if(nav&&nav!=='en') return apply(nav);                                     // 3. phone language
+  try{                                                                       // 4. IP region (state)
+    const r=await fetch('https://ipapi.co/json/',{cache:'no-store'}).then(x=>x.json());
+    if(r&&r.country_code==='IN'){const l=window.SP_REGION_LANG[r.region]; if(l) apply(l);}
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
