@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /studio.html
+Disallow: /api.php
+Disallow: /data/
+Sitemap: https://scanplay.in/sitemap.xml

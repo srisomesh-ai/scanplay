@@ -1,306 +1,334 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScanPlay — Print that plays</title>
-<meta name="description" content="ScanPlay turns any printed picture into a video. Scan one QR, point at the print, and it comes alive. Wedding cards, brochures, menus, packaging.">
+<title>ScanPlay — AR Video on Printed Photos, Wedding Cards & Brochures | India</title>
+<meta name="description" content="ScanPlay makes printed pictures play video. Upload a photo and a video, get one QR, print it. Guests scan, point their phone at the print, and it comes alive — no app. Wedding invitations, photo frames, brochures, menus, packaging. Plans from ₹999/month.">
+<meta name="keywords" content="AR wedding invitation, augmented reality wedding card, video on printed photo, AR photo frame, living photo India, QR code video invitation, AR brochure, AR menu, AR packaging, augmented reality print India, wedding video invitation Visakhapatnam, wedding card printer AR, photo comes alive app, WebAR India, ScanPlay">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="ScanPlay">
+<meta name="geo.region" content="IN-AP">
+<meta name="geo.placename" content="Visakhapatnam">
+<link rel="canonical" href="https://scanplay.in/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%237C3AED'/%3E%3Cstop offset='1' stop-color='%23FF4D6D'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M25 18l22 14-22 14z' fill='%23fff'/%3E%3C/svg%3E">
+
+<!-- Open Graph (Facebook, WhatsApp, LinkedIn, Instagram link previews) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ScanPlay">
+<meta property="og:locale" content="en_IN">
+<meta property="og:url" content="https://scanplay.in/">
+<meta property="og:title" content="ScanPlay — Make your prints come alive">
+<meta property="og:description" content="Upload a picture and a video, get a QR, print it. Scan → point → it plays. No app. Wedding cards, photo frames, brochures, menus, packaging. From ₹999/month.">
+<meta property="og:image" content="https://scanplay.in/og-image.png">
+<meta property="og:image:secure_url" content="https://scanplay.in/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ScanPlay — AR video on printed pictures">
+<!-- Facebook: add your App ID / Page once created -->
+<!-- <meta property="fb:app_id" content="YOUR_FB_APP_ID"> -->
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@srisomesh">
+<meta name="twitter:creator" content="@srisomesh">
+<meta name="twitter:title" content="ScanPlay — Make your prints come alive">
+<meta name="twitter:description" content="AR video on any printed picture. Upload, get a QR, print. Scan, point, it plays. No app. From ₹999/month.">
+<meta name="twitter:image" content="https://scanplay.in/og-image.png">
+
+<!-- Theme -->
+<meta name="theme-color" content="#7C3AED">
+<meta name="apple-mobile-web-app-title" content="ScanPlay">
+
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://scanplay.in/#org",
+      "name": "ScanPlay",
+      "url": "https://scanplay.in/",
+      "logo": "https://scanplay.in/og-image.png",
+      "email": "hello@scanplay.in",
+      "telephone": "+917330984620",
+      "address": {"@type": "PostalAddress", "addressLocality": "Visakhapatnam", "addressRegion": "Andhra Pradesh", "addressCountry": "IN"},
+      "sameAs": ["https://www.instagram.com/srisomesh", "https://www.facebook.com/srisomesh", "https://www.youtube.com/@srisomesh"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://scanplay.in/#site",
+      "url": "https://scanplay.in/",
+      "name": "ScanPlay",
+      "publisher": {"@id": "https://scanplay.in/#org"},
+      "inLanguage": "en-IN"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "ScanPlay",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://scanplay.in/",
+      "description": "Web-based augmented reality that plays a video on top of any printed picture after scanning a QR code. No app required.",
+      "offers": [
+        {"@type": "Offer", "name": "Personal", "price": "999", "priceCurrency": "INR", "url": "https://scanplay.in/#pricing"},
+        {"@type": "Offer", "name": "Business", "price": "2999", "priceCurrency": "INR", "url": "https://scanplay.in/#pricing"},
+        {"@type": "Offer", "name": "Studio Pro", "price": "7999", "priceCurrency": "INR", "url": "https://scanplay.in/#pricing"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type": "Question", "name": "Do guests need to install an app?", "acceptedAnswer": {"@type": "Answer", "text": "No. Scanning the QR opens the player in the phone's browser. It works on iPhone and Android."}},
+        {"@type": "Question", "name": "How is this different from a QR code that opens a video?", "acceptedAnswer": {"@type": "Answer", "text": "With ScanPlay the video plays on top of the printed picture itself and moves with it, like the picture has come alive. A normal QR just opens a video page."}},
+        {"@type": "Question", "name": "What kind of pictures work best?", "acceptedAnswer": {"@type": "Answer", "text": "Photos and artwork with detail and contrast — portraits, posters, packaging art. Plain logos, solid colours or very glossy prints track less reliably."}},
+        {"@type": "Question", "name": "Can I add more pictures later without reprinting the QR?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. One QR per account recognises every picture in that account. Add or replace pictures any time; the printed QR never changes."}},
+        {"@type": "Question", "name": "How big should the print be?", "acceptedAnswer": {"@type": "Answer", "text": "Anything from a 4x6 photo to a hoarding. The phone just needs to see the whole picture clearly in the camera."}}
+      ]
+    }
+  ]
+}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0B0C0E; --bg2:#121316; --ink:#F3EFE8; --ink2:#A7A39B; --line:rgba(243,239,232,.10);
-    --gold:#D8B46A; --gold2:#F1D9A0; --teal:#1FB8A6;
-    --serif:'Instrument Serif',Georgia,serif; --sans:Manrope,system-ui,sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-  a{color:inherit;text-decoration:none}
-  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
-  h1,h2,h3,.serif{font-family:var(--serif);font-weight:400;letter-spacing:-.01em}
-  em{font-style:italic;color:var(--gold2)}
-  /* grain */
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.05;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-  /* nav */
-  nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:18px 0;transition:.3s;backdrop-filter:blur(0)}
-  nav.solid{background:rgba(11,12,14,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-  nav .wrap{display:flex;align-items:center;justify-content:space-between}
-  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.02em}
-  .logo i{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:grid;place-items:center}
-  .logo i::after{content:"";width:0;height:0;border-left:9px solid #0B0C0E;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:2px}
-  .navlinks{display:flex;gap:28px;font-size:14px;color:var(--ink2)}
-  .navlinks a:hover{color:var(--ink)}
-  @media(max-width:720px){.navlinks{display:none}}
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;font-weight:600;font-size:14px;border:1px solid var(--line);transition:.2s;cursor:pointer}
-  .btn:hover{border-color:rgba(243,239,232,.3)}
-  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0B0C0E;border:0}
-  .btn.gold:hover{filter:brightness(1.08)}
-  /* hero */
-  .hero{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:40px;padding-top:110px;padding-bottom:60px;position:relative}
-  @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:100px;text-align:center}}
-  .hero::before{content:"";position:absolute;width:70vw;height:70vw;max-width:900px;max-height:900px;border-radius:50%;left:-20vw;top:-10vw;background:radial-gradient(closest-side,rgba(216,180,106,.16),transparent 70%);pointer-events:none}
-  .eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;display:flex;align-items:center;gap:10px}
-  .eyebrow::before{content:"";width:28px;height:1px;background:var(--gold)}
-  @media(max-width:900px){.eyebrow{justify-content:center}}
-  .hero h1{font-size:clamp(46px,6.4vw,84px);line-height:1.02;margin-bottom:24px}
-  .hero p{font-size:18px;color:var(--ink2);max-width:520px;margin-bottom:34px}
-  @media(max-width:900px){.hero p{margin:0 auto 34px}}
-  .cta{display:flex;gap:12px;flex-wrap:wrap}
-  @media(max-width:900px){.cta{justify-content:center}}
-  .hero .small{margin-top:28px;font-size:13px;color:var(--ink2)}
-  /* demo */
-  .demo{position:relative;height:560px;display:grid;place-items:center}
-  @media(max-width:900px){.demo{height:480px}}
-  .demo .ring{position:absolute;width:520px;height:520px;border-radius:50%;border:1px solid var(--line);animation:spin 40s linear infinite}
-  .demo .ring::after{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;border-radius:50%;background:var(--gold)}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .print{position:absolute;width:250px;height:330px;background:#F4EEE2;border-radius:6px;transform:rotate(-6deg) translate(-70px,20px);box-shadow:0 40px 80px rgba(0,0,0,.6);overflow:hidden}
-  .print::before{content:"";position:absolute;inset:16px;background:
-      linear-gradient(160deg,#E6B77A 0%,#C56B4F 45%,#4E3A5B 100%);border-radius:2px}
-  .print .caption{position:absolute;left:16px;right:16px;bottom:16px;height:44px;background:#F4EEE2;display:flex;flex-direction:column;justify-content:center;padding:0 10px;color:#3a3630}
-  .print .caption b{font-family:var(--serif);font-size:15px;font-weight:400}
-  .print .caption span{font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
-  .print .qr{position:absolute;right:22px;bottom:70px;width:34px;height:34px;background:
-      repeating-linear-gradient(0deg,#3a3630 0 3px,transparent 3px 6px),repeating-linear-gradient(90deg,#3a3630 0 3px,transparent 3px 6px);background-blend-mode:multiply;opacity:.85;border:3px solid #F4EEE2;outline:1px solid #3a3630}
-  .phone{position:absolute;width:230px;height:470px;border-radius:38px;background:#151618;border:1px solid rgba(243,239,232,.14);box-shadow:0 60px 100px rgba(0,0,0,.7),inset 0 0 0 6px #0B0C0E;transform:translate(90px,0) rotate(4deg);animation:float 6s ease-in-out infinite}
-  @keyframes float{0%,100%{transform:translate(90px,0) rotate(4deg)}50%{transform:translate(90px,-12px) rotate(4deg)}}
-  .phone .screen{position:absolute;inset:12px;border-radius:28px;overflow:hidden;background:#1c1d21}
-  .phone .cam{position:absolute;inset:0;background:linear-gradient(180deg,#2a2b30,#15161a)}
-  .phone .live{position:absolute;left:34px;top:120px;width:150px;height:200px;border-radius:4px;overflow:hidden;
-      background:linear-gradient(160deg,#E6B77A,#C56B4F 45%,#4E3A5B);transform:rotate(-6deg);box-shadow:0 0 0 2px rgba(31,184,166,.0)}
-  .phone .live::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);animation:shine 4s ease-in-out infinite}
-  @keyframes shine{0%,40%{transform:translateX(-120%)}60%,100%{transform:translateX(120%)}}
-  .phone .live::after{content:"";position:absolute;inset:0;border:2px solid var(--teal);border-radius:4px;opacity:0;animation:lock 4s ease-in-out infinite}
-  @keyframes lock{0%,35%{opacity:0;transform:scale(1.15)}45%,100%{opacity:1;transform:scale(1)}}
-  .phone .play{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(11,12,14,.65);display:grid;place-items:center;opacity:0;animation:pop 4s ease-in-out infinite}
-  .phone .play::after{content:"";border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
-  @keyframes pop{0%,45%{opacity:0;transform:scale(.6)}55%,80%{opacity:1;transform:scale(1)}100%{opacity:0}}
-  .phone .bars{position:absolute;left:34px;right:34px;bottom:34px;height:3px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden}
-  .phone .bars::after{content:"";display:block;height:100%;width:0;background:var(--teal);animation:bar 4s linear infinite}
-  @keyframes bar{0%,50%{width:0}100%{width:100%}}
-  .phone .scanline{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent);top:0;animation:scan 4s ease-in-out infinite;opacity:.9}
-  @keyframes scan{0%{top:15%;opacity:0}10%{opacity:1}40%{top:75%;opacity:1}45%{opacity:0}100%{opacity:0}}
-  .phone .pill{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);padding:6px 12px;border-radius:999px;background:rgba(11,12,14,.7);font-size:10px;white-space:nowrap;display:flex;gap:6px;align-items:center}
-  .phone .pill i{width:6px;height:6px;border-radius:50%;background:var(--teal)}
-  /* marquee */
-  .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:18px 0;white-space:nowrap}
-  .marquee div{display:inline-block;animation:mq 30s linear infinite;font-family:var(--serif);font-size:22px;color:var(--ink2)}
-  .marquee span{margin:0 34px}
-  .marquee span::after{content:"✦";color:var(--gold);margin-left:34px;font-size:14px}
-  @keyframes mq{to{transform:translateX(-50%)}}
-  /* sections */
-  section{padding:120px 0}
-  @media(max-width:720px){section{padding:80px 0}}
-  .sec-head{max-width:640px;margin-bottom:64px}
-  .sec-head h2{font-size:clamp(36px,4.6vw,60px);line-height:1.05;margin:14px 0 18px}
-  .sec-head p{color:var(--ink2);font-size:17px}
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden}
-  @media(max-width:820px){.steps{grid-template-columns:1fr}}
-  .step{background:var(--bg2);padding:40px 34px;position:relative}
-  .step .n{font-family:var(--serif);font-size:56px;color:var(--gold);line-height:1;margin-bottom:26px}
-  .step h3{font-size:26px;margin-bottom:10px}
-  .step p{color:var(--ink2);font-size:15px}
-  /* uses */
-  .uses{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-  @media(max-width:1000px){.uses{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:520px){.uses{grid-template-columns:1fr}.use{min-height:200px}}
-  .use{min-height:260px;border-radius:18px;padding:64px 26px 26px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border:1px solid var(--line);transition:.4s;background:var(--bg2)}
-  .use::before{content:"";position:absolute;inset:0;background:var(--g);opacity:.55;transition:.4s}
-  .use:hover::before{opacity:.85} .use:hover{transform:translateY(-6px)}
-  .use h3{font-size:28px;position:relative;margin-bottom:6px}
-  .use p{font-size:13px;color:var(--ink2);position:relative}
-  .use .k{position:absolute;top:22px;left:26px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
-  /* why */
-  .why{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
-  @media(max-width:820px){.why{grid-template-columns:1fr}}
-  .why ul{list-style:none;display:grid;gap:22px}
-  .why li{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
-  .why li i{width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);color:var(--gold);display:grid;place-items:center;font-size:13px;font-style:normal;flex-shrink:0}
-  .why li b{display:block;font-weight:600;margin-bottom:2px}
-  .why li span{color:var(--ink2);font-size:14px}
-  .stat{border:1px solid var(--line);border-radius:20px;padding:40px;background:var(--bg2);text-align:center}
-  .stat .big{font-family:var(--serif);font-size:96px;line-height:1;color:var(--gold2)}
-  .stat p{color:var(--ink2);margin-top:8px}
-  /* pricing */
-  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
-  @media(max-width:900px){.plans{grid-template-columns:1fr}}
-  .plan{border:1px solid var(--line);border-radius:22px;padding:34px;background:var(--bg2);display:flex;flex-direction:column}
-  .plan.hi{border-color:rgba(216,180,106,.5);background:linear-gradient(180deg,rgba(216,180,106,.08),transparent)}
-  .plan .tag{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
-  .plan h3{font-size:30px;margin:8px 0 4px}
-  .plan .price{font-family:var(--serif);font-size:44px;margin:14px 0 4px}
-  .plan .price small{font-family:var(--sans);font-size:14px;color:var(--ink2)}
-  .plan ul{list-style:none;margin:18px 0 28px;display:grid;gap:10px;color:var(--ink2);font-size:14px}
-  .plan li::before{content:"—";color:var(--gold);margin-right:10px}
-  .plan .btn{margin-top:auto;justify-content:center}
-  /* cta */
-  .final{text-align:center;padding:140px 0}
-  .final h2{font-size:clamp(40px,6vw,80px);line-height:1;margin-bottom:22px}
-  .final p{color:var(--ink2);font-size:18px;margin-bottom:36px}
-  footer{border-top:1px solid var(--line);padding:34px 0;font-size:13px;color:var(--ink2)}
-  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
-  /* reveal */
-  .r{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
-  .r.in{opacity:1;transform:none}
-  .r.d1{transition-delay:.1s}.r.d2{transition-delay:.2s}.r.d3{transition-delay:.3s}
-  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.r{opacity:1;transform:none}}
+:root{--a:#FF4D6D;--b:#7C3AED;--c:#22D3EE;--ink:#0F0A1F;--mute:#4B4661;--soft:#F6F3FF;--line:#ECE8F8}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:#fff;overflow-x:hidden;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+.w{max-width:1120px;margin:auto;padding:0 22px}
+.grad{background:linear-gradient(90deg,var(--b),var(--a),#FF9A3D);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{padding:13px 22px;border-radius:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:15px;transition:.2s;border:0;cursor:pointer;color:#fff;background:var(--ink)}
+.btn:hover{transform:translateY(-1px)}
+.btn.g{background:linear-gradient(135deg,var(--b),var(--a));box-shadow:0 12px 30px rgba(124,58,237,.35)}
+.btn.s{background:var(--soft);color:var(--ink)}
+.btn.w{background:#fff;color:var(--ink);border:2px solid var(--line)}
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:.3s}
+nav.on{border-color:var(--line)}
+nav .w{display:flex;justify-content:space-between;align-items:center;height:70px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:21px;letter-spacing:-.03em}
+.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--b),var(--a));display:grid;place-items:center}
+.logo i::after{content:"";border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
+.links{display:flex;gap:26px;font-weight:600;font-size:14px;color:var(--mute)}
+.links a:hover{color:var(--ink)}
+@media(max-width:760px){.links{display:none}}
+/* hero */
+.hero{position:relative;padding:70px 0 30px;text-align:center}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;z-index:-1;animation:mv 12s ease-in-out infinite alternate}
+.b1{width:460px;height:460px;background:var(--b);top:-160px;left:-160px}
+.b2{width:400px;height:400px;background:var(--a);right:-140px;top:40px;animation-delay:-4s}
+.b3{width:340px;height:340px;background:var(--c);left:38%;bottom:-140px;animation-delay:-8s}
+@keyframes mv{to{transform:translate(50px,30px) scale(1.15)}}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--soft);color:var(--b);font-weight:700;font-size:13px;margin-bottom:20px}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--a);animation:bl 1.4s infinite}
+@keyframes bl{50%{opacity:.25}}
+h1{font-size:clamp(44px,8vw,92px);line-height:.98;letter-spacing:-.045em;font-weight:800}
+.hero p{font-size:19px;color:var(--mute);max-width:600px;margin:22px auto 30px;font-weight:500}
+.cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.trust{margin-top:22px;font-size:13px;color:var(--mute);font-weight:600}
+/* demo */
+.stage{margin:60px auto 0;position:relative;height:470px;max-width:560px}
+@media(max-width:520px){.stage{height:430px;transform:scale(.88);transform-origin:top center;margin-top:40px}}
+.card{position:absolute;left:50%;top:30px;width:220px;height:290px;margin-left:-180px;border-radius:16px;background:#fff;box-shadow:0 30px 60px rgba(15,10,31,.18);padding:12px;transform:rotate(-8deg)}
+.card .pic{height:205px;border-radius:10px;background:linear-gradient(140deg,#FFB86C,#FF4D6D 50%,#7C3AED);position:relative;overflow:hidden}
+.card .pic::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.35),transparent 45%)}
+.card .t{margin-top:10px;font-size:12px;font-weight:700}
+.card .d{font-size:10px;color:var(--mute);font-weight:600}
+.card .qr{position:absolute;right:16px;bottom:14px;width:30px;height:30px;background:repeating-linear-gradient(0deg,#111 0 3px,#fff 3px 6px),repeating-linear-gradient(90deg,#111 0 3px,#fff 3px 6px);background-blend-mode:multiply}
+.stamp{position:absolute;left:-26px;top:-26px;width:84px;height:84px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-weight:800;font-size:11px;text-align:center;line-height:1.1;animation:rot 9s linear infinite;box-shadow:0 10px 24px rgba(255,77,109,.4)}
+@keyframes rot{to{transform:rotate(360deg)}}
+.ph{position:absolute;left:50%;top:0;width:220px;height:450px;margin-left:-30px;border-radius:38px;background:var(--ink);padding:10px;box-shadow:0 40px 80px rgba(15,10,31,.35);animation:fl 5s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-12px)}}
+.sc{height:100%;border-radius:30px;background:#1a1530;position:relative;overflow:hidden}
+.cn{position:absolute;width:24px;height:24px;border:3px solid var(--c);opacity:.9}
+.c1{left:14px;top:60px;border-right:0;border-bottom:0}.c2{right:14px;top:60px;border-left:0;border-bottom:0}.c3{left:14px;bottom:80px;border-right:0;border-top:0}.c4{right:14px;bottom:80px;border-left:0;border-top:0}
+.live{position:absolute;left:28px;top:95px;width:150px;height:200px;border-radius:10px;background:linear-gradient(140deg,#FFB86C,#FF4D6D 50%,#7C3AED);transform:rotate(-8deg);animation:lk 4.5s infinite}
+@keyframes lk{0%,30%{box-shadow:0 0 0 0 rgba(34,211,238,0);filter:grayscale(1) brightness(.6)}45%,100%{box-shadow:0 0 0 3px var(--c),0 0 30px var(--c);filter:none}}
+.live::before{content:"";position:absolute;inset:0;border-radius:10px;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);transform:translateX(-120%);animation:sh 4.5s infinite}
+@keyframes sh{0%,45%{transform:translateX(-120%)}70%,100%{transform:translateX(120%)}}
+.live::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:38px;opacity:0;animation:pp 4.5s infinite}
+@keyframes pp{45%,72%{opacity:1}82%,100%{opacity:0}}
+.scan{position:absolute;left:0;right:0;height:2px;background:var(--c);box-shadow:0 0 12px var(--c);animation:scn 4.5s infinite}
+@keyframes scn{0%{top:14%;opacity:0}8%{opacity:1}38%{top:78%;opacity:1}44%,100%{opacity:0}}
+.tag{position:absolute;left:50%;transform:translateX(-50%);bottom:26px;background:var(--c);color:var(--ink);font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;opacity:0;animation:pp 4.5s infinite;white-space:nowrap}
+/* ticker */
+.tick{margin:60px 0 0;overflow:hidden;white-space:nowrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0}
+.tick div{display:inline-block;animation:tk 28s linear infinite;font-weight:700;color:var(--mute);font-size:15px}
+.tick span{margin:0 26px}.tick span::after{content:"✦";margin-left:26px;color:var(--a)}
+@keyframes tk{to{transform:translateX(-50%)}}
+/* sections */
+section{padding:96px 0}
+@media(max-width:700px){section{padding:64px 0}}
+.h{max-width:640px;margin:0 auto 48px;text-align:center}
+.h .k{font-size:13px;font-weight:800;color:var(--b);letter-spacing:.14em;text-transform:uppercase}
+.h h2{font-size:clamp(32px,5vw,54px);letter-spacing:-.04em;line-height:1.05;margin:10px 0 12px;font-weight:800}
+.h p{color:var(--mute);font-size:17px;font-weight:500}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.s{padding:28px;border-radius:24px;background:var(--soft);position:relative;overflow:hidden}
+.s b{display:block;font-size:40px;letter-spacing:-.04em;line-height:1}
+.s h3{margin:12px 0 6px;font-size:20px;letter-spacing:-.02em}
+.s p{color:var(--mute);font-size:14.5px;font-weight:500}
+/* uses */
+.uses{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.uses{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.uses{grid-template-columns:1fr}}
+.u{border-radius:22px;padding:24px;min-height:230px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;position:relative;overflow:hidden;background:var(--g);transition:.3s}
+.u:hover{transform:translateY(-5px)}
+.u .k{position:absolute;top:20px;left:24px;font-size:11px;font-weight:800;letter-spacing:.14em;opacity:.85}
+.u h3{font-size:24px;letter-spacing:-.02em}.u p{font-size:13.5px;opacity:.9;font-weight:500;margin-top:4px}
+/* partners */
+.pt{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;background:var(--ink);color:#fff;border-radius:30px;padding:48px}
+@media(max-width:820px){.pt{grid-template-columns:1fr;padding:34px 26px}}
+.pt h2{font-size:clamp(30px,4.5vw,46px);letter-spacing:-.04em;line-height:1.05;font-weight:800}
+.pt p{color:#C9C3DB;margin:14px 0 22px;font-weight:500}
+.pt ul{list-style:none;display:grid;gap:12px}
+.pt li{display:flex;gap:12px;align-items:flex-start;font-weight:600;font-size:15px}
+.pt li::before{content:"✓";color:var(--c);font-weight:800}
+/* pricing */
+.pr{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:820px){.pr{grid-template-columns:1fr}}
+.p{border:2px solid var(--line);border-radius:24px;padding:28px;display:flex;flex-direction:column;background:#fff}
+.p.hi{border-color:transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,var(--b),var(--a)) border-box;box-shadow:0 20px 50px rgba(124,58,237,.15)}
+.p .tag{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--b);text-transform:uppercase}
+.p h3{font-size:22px;letter-spacing:-.02em;margin-top:4px}
+.p .n{font-size:42px;font-weight:800;letter-spacing:-.04em;margin:10px 0 2px}.p .n small{font-size:14px;color:var(--mute);font-weight:600}
+.p .for{font-size:13px;color:var(--mute);font-weight:600;margin-bottom:14px}
+.p ul{list-style:none;display:grid;gap:8px;margin-bottom:22px}
+.p li{font-size:14.5px;color:var(--mute);font-weight:500}.p li::before{content:"✓ ";color:var(--b);font-weight:800}
+.p .btn{margin-top:auto;justify-content:center}
+.note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
+/* faq */
+.faq{max-width:760px;margin:auto}
+details{border-bottom:1px solid var(--line);padding:18px 0}
+summary{cursor:pointer;font-weight:700;font-size:17px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::after{content:"+";font-size:24px;color:var(--b);font-weight:500}
+details[open] summary::after{content:"–"}
+details p{color:var(--mute);margin-top:10px;font-weight:500}
+/* final */
+.fin{text-align:center;padding:100px 22px;background:linear-gradient(135deg,var(--b),var(--a));color:#fff;border-radius:34px;margin:0 22px 40px;position:relative;overflow:hidden}
+.fin h2{font-size:clamp(34px,6vw,64px);letter-spacing:-.045em;line-height:1;font-weight:800}
+.fin p{opacity:.92;margin:16px auto 28px;max-width:520px;font-weight:500;font-size:17px}
+.fin .btn{background:#fff;color:var(--ink)}
+footer{padding:30px 0 40px;font-size:13px;color:var(--mute);font-weight:600}
+footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+/* reveal */
+.r{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.r.in{opacity:1;transform:none}.r.d1{transition-delay:.1s}.r.d2{transition-delay:.2s}.r.d3{transition-delay:.3s}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.r{opacity:1;transform:none}}
+/* whatsapp float */
+.wa{position:fixed;right:18px;bottom:18px;z-index:60;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 10px 30px rgba(37,211,102,.45)}
+.wa svg{width:30px;height:30px;fill:#fff}
 </style>
 </head>
 <body>
 
-<nav id="nav">
-  <div class="wrap">
-    <a class="logo" href="#"><i></i>ScanPlay</a>
-    <div class="navlinks">
-      <a href="#how">How it works</a><a href="#uses">Use cases</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a>
-    </div>
-    <a class="btn" href="studio.html">Sign in</a>
-  </div>
-</nav>
+<nav id="nav"><div class="w">
+  <a class="logo" href="#"><i></i>ScanPlay</a>
+  <div class="links"><a href="#how">How it works</a><a href="#uses">Use cases</a><a href="#partners">For printers</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+  <a class="btn w" href="studio.html" style="padding:10px 18px">Sign in</a>
+</div></nav>
 
-<header class="hero wrap">
-  <div>
-    <div class="eyebrow r">Augmented reality for print</div>
-    <h1 class="r d1">Print that <em>plays.</em></h1>
-    <p class="r d2">Upload a picture and a video, get a QR, print it. When someone scans and points their phone at the print, your video plays right on top of it — no app, no download.</p>
-    <div class="cta r d3">
-      <a class="btn gold" href="studio.html">Start creating</a>
-      <a class="btn" href="#how">See how it works</a>
-    </div>
-    <div class="small r d3">Works on any iPhone or Android · Opens in the browser · Your first QR in under 5 minutes</div>
-  </div>
+<header class="hero w">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <span class="pill r"><i></i> AR video on any printed picture · No app</span>
+  <h1 class="r d1">Make your prints<br><span class="grad">come alive.</span></h1>
+  <p class="r d2">Upload a picture and a video, get a QR, print it. When someone scans and points their phone at the print, your video plays right on it.</p>
+  <div class="cta r d3"><a class="btn g" href="studio.html">Start creating →</a><a class="btn s" href="#how">See how it works</a></div>
+  <div class="trust r d3">Works on iPhone &amp; Android · Opens in the browser · First QR in under 5 minutes</div>
 
-  <div class="demo r d2" aria-hidden="true">
-    <div class="ring"></div>
-    <div class="print">
-      <div class="qr"></div>
-      <div class="caption"><b>Ananya &amp; Vikram</b><span>Scan to watch</span></div>
-    </div>
-    <div class="phone">
-      <div class="screen">
-        <div class="cam"></div>
-        <div class="scanline"></div>
-        <div class="live"><div class="play"></div></div>
-        <div class="pill"><i></i>Playing</div>
-        <div class="bars"></div>
-      </div>
-    </div>
+  <div class="stage r d2" aria-hidden="true">
+    <div class="card"><div class="stamp">SCAN<br>TO<br>PLAY</div><div class="pic"></div><div class="t">Ananya &amp; Vikram</div><div class="d">14 December · Vizag</div><div class="qr"></div></div>
+    <div class="ph"><div class="sc"><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div><div class="live"></div><div class="scan"></div><div class="tag">● LOCKED · PLAYING</div></div></div>
   </div>
 </header>
 
-<div class="marquee"><div>
-  <span>Wedding invitations</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
-  <span>Wedding invitations</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
+<div class="tick"><div>
+  <span>Wedding invitations</span><span>Photo frames</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
+  <span>Wedding invitations</span><span>Photo frames</span><span>Real-estate brochures</span><span>Restaurant menus</span><span>Product packaging</span><span>Event posters</span><span>Business cards</span><span>Yearbooks</span><span>Memorial portraits</span>
 </div></div>
 
-<section id="how">
-  <div class="wrap">
-    <div class="sec-head r">
-      <div class="eyebrow">How it works</div>
-      <h2>Three steps. <em>One</em> QR.</h2>
-      <p>Everything happens in your ScanPlay studio, from your phone or laptop. The same QR keeps working as you add more pictures later.</p>
-    </div>
-    <div class="steps">
-      <div class="step r"><div class="n">01</div><h3>Upload the picture &amp; video</h3><p>Any photo, artwork, invitation or label. Any video — a message, a walkthrough, a reel. Crop to the printed area.</p></div>
-      <div class="step r d1"><div class="n">02</div><h3>Link &amp; get your QR</h3><p>The studio analyses the picture, pairs it with the video and gives you a QR to download and print.</p></div>
-      <div class="step r d2"><div class="n">03</div><h3>Scan, point, play</h3><p>Anyone scans the QR, the camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
-    </div>
+<section id="how"><div class="w">
+  <div class="h r"><div class="k">How it works</div><h2>Three steps. One QR.</h2><p>Everything happens in your ScanPlay studio, from your phone or laptop. Add more pictures later — the printed QR never changes.</p></div>
+  <div class="steps">
+    <div class="s r"><b class="grad">01</b><h3>Upload &amp; crop</h3><p>Any photo, artwork, invitation or label. Any MP4. Crop to exactly the printed area.</p></div>
+    <div class="s r d1"><b class="grad">02</b><h3>Get your QR</h3><p>The studio links picture and video and gives you a QR to download and print anywhere.</p></div>
+    <div class="s r d2"><b class="grad">03</b><h3>Scan, point, play</h3><p>The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
   </div>
-</section>
+</div></section>
 
-<section id="uses" style="padding-top:0">
-  <div class="wrap">
-    <div class="sec-head r">
-      <div class="eyebrow">Where it belongs</div>
-      <h2>Anything you already <em>print.</em></h2>
-    </div>
-    <div class="uses">
-      <a class="use r" style="--g:linear-gradient(160deg,#5b2a3f,#1c0f18)"><span class="k">Weddings</span><h3>Invitations</h3><p>The couple's message plays on the card. Guests keep it.</p></a>
-      <a class="use r d1" style="--g:linear-gradient(160deg,#2b3d5b,#0f1420)"><span class="k">Real estate</span><h3>Brochures</h3><p>A walkthrough on every flat photo. Hoardings too.</p></a>
-      <a class="use r d2" style="--g:linear-gradient(160deg,#5b4a2a,#1f1a0f)"><span class="k">Hospitality</span><h3>Menus</h3><p>Show the dish being made. Sells the special.</p></a>
-      <a class="use r d3" style="--g:linear-gradient(160deg,#2a5b4a,#0f201a)"><span class="k">Brands</span><h3>Packaging</h3><p>Founder's story or how-to on the pack itself.</p></a>
-    </div>
+<section id="uses" style="padding-top:0"><div class="w">
+  <div class="h r"><div class="k">Use cases</div><h2>Anything you already print.</h2></div>
+  <div class="uses">
+    <a class="u r" style="--g:linear-gradient(160deg,#FF4D6D,#7C3AED)"><span class="k">WEDDINGS</span><h3>Invitations</h3><p>The couple's message plays on the card. Guests keep it.</p></a>
+    <a class="u r d1" style="--g:linear-gradient(160deg,#7C3AED,#22D3EE)"><span class="k">REAL ESTATE</span><h3>Brochures</h3><p>A walkthrough on every flat photo. Hoardings too.</p></a>
+    <a class="u r d2" style="--g:linear-gradient(160deg,#FF9A3D,#FF4D6D)"><span class="k">HOSPITALITY</span><h3>Menus</h3><p>Show the dish being made. Sells the special.</p></a>
+    <a class="u r d3" style="--g:linear-gradient(160deg,#22D3EE,#7C3AED)"><span class="k">BRANDS</span><h3>Packaging</h3><p>Founder's story or how-to on the pack itself.</p></a>
   </div>
-</section>
+</div></section>
 
-<section style="background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-  <div class="wrap why">
+<section id="partners" style="padding-top:0"><div class="w">
+  <div class="pt r">
     <div>
-      <div class="sec-head r" style="margin-bottom:40px">
-        <div class="eyebrow">Why ScanPlay</div>
-        <h2>Built to be <em>used,</em> not just shown.</h2>
-      </div>
-      <ul>
-        <li class="r"><i>01</i><div><b>No app to install</b><span>Opens in the phone's browser. Nothing for your customer to download or sign up for.</span></div></li>
-        <li class="r d1"><i>02</i><div><b>One QR, unlimited pictures</b><span>Add a new page or product later — the printed QR never changes.</span></div></li>
-        <li class="r d2"><i>03</i><div><b>Locks to the print</b><span>The video sits on the picture and moves with it. Tilt, move closer, it stays.</span></div></li>
-        <li class="r d3"><i>04</i><div><b>Do it yourself, in minutes</b><span>No designer, no developer, no waiting. Upload, crop, link, print.</span></div></li>
-      </ul>
+      <div class="k" style="font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--c)">FOR PRINTERS &amp; PHOTOGRAPHERS</div>
+      <h2 style="margin-top:8px">Sell prints that play. Keep the margin.</h2>
+      <p>Add ScanPlay to every wedding card, album and frame you sell. Your customers get the magic; you get a new line item on every order.</p>
+      <a class="btn g" href="https://wa.me/917330984620?text=Hi%2C%20I%27m%20a%20printer%2Fphotographer%20interested%20in%20ScanPlay%20partner%20plan" target="_blank" rel="noopener">Become a partner</a>
     </div>
-    <div class="stat r d2">
-      <div class="big">3s</div>
-      <p>From scan to playing video on a typical 4G connection.</p>
-    </div>
+    <ul>
+      <li>One studio login, separate account and QR for each of your customers</li>
+      <li>Your logo on the player — customers see your brand, not ours</li>
+      <li>Charge what you like per card; typical partners add ₹3,000–8,000 per wedding</li>
+      <li>Demo card kit and WhatsApp support in English, Telugu and Hindi</li>
+    </ul>
   </div>
-</section>
+</div></section>
 
-<section id="pricing">
-  <div class="wrap">
-    <div class="sec-head r">
-      <div class="eyebrow">Pricing</div>
-      <h2>One studio. <em>Unlimited</em> scans.</h2>
-      <p>Pick a plan by how much you print. Every plan includes the studio, QR generation and the player. Scans are never counted.</p>
-    </div>
-    <div class="plans">
-      <div class="plan r">
-        <span class="tag">Starter</span><h3>Personal</h3>
-        <div class="price">₹999 <small>/ month</small></div>
-        <ul><li>1 account, 1 QR</li><li>Up to 5 pictures</li><li>Videos up to 60 MB</li><li>Weddings, gifts, memorials</li></ul>
-        <a class="btn" href="studio.html">Start</a>
-      </div>
-      <div class="plan hi r d1">
-        <span class="tag">Most popular</span><h3>Business</h3>
-        <div class="price">₹2,999 <small>/ month</small></div>
-        <ul><li>10 accounts, 10 QRs</li><li>Up to 100 pictures</li><li>Videos up to 200 MB</li><li>Your logo on the player</li><li>Scan analytics</li></ul>
-        <a class="btn gold" href="studio.html">Start</a>
-      </div>
-      <div class="plan r d2">
-        <span class="tag">Agency</span><h3>Studio Pro</h3>
-        <div class="price">₹7,999 <small>/ month</small></div>
-        <ul><li>Unlimited accounts &amp; pictures</li><li>For printers, agencies, builders</li><li>Custom domain</li><li>Priority support on WhatsApp</li></ul>
-        <a class="btn" href="#contact">Talk to us</a>
-      </div>
-    </div>
+<section id="pricing" style="padding-top:0"><div class="w">
+  <div class="h r"><div class="k">Pricing</div><h2>One studio. Unlimited scans.</h2><p>Pick a plan by how much you print. Every plan includes the studio, QR generation and the player.</p></div>
+  <div class="pr">
+    <div class="p r"><span class="tag">Starter</span><h3>Personal</h3><div class="n">₹999<small>/month</small></div><div class="for">Weddings, gifts, memorials</div><ul><li>1 account, 1 QR</li><li>Up to 5 pictures</li><li>Videos up to 60 MB</li><li>Unlimited scans</li></ul><a class="btn w" href="studio.html">Start</a></div>
+    <div class="p hi r d1"><span class="tag">Most popular</span><h3>Business</h3><div class="n">₹2,999<small>/month</small></div><div class="for">Shops, builders, restaurants</div><ul><li>10 accounts, 10 QRs</li><li>Up to 100 pictures</li><li>Videos up to 200 MB</li><li>Your logo on the player</li><li>Scan analytics</li></ul><a class="btn g" href="studio.html">Start</a></div>
+    <div class="p r d2"><span class="tag">Partner</span><h3>Studio Pro</h3><div class="n">₹7,999<small>/month</small></div><div class="for">Printers, photographers, agencies</div><ul><li>Unlimited accounts &amp; pictures</li><li>Customer sub-logins</li><li>Custom domain</li><li>Priority WhatsApp support</li></ul><a class="btn w" href="#partners">Talk to us</a></div>
   </div>
-</section>
+  <div class="note">Prices in INR, GST extra. Pay yearly and get 2 months free. Cancel any time.</div>
+</div></section>
 
-<section class="final" id="contact">
-  <div class="wrap">
-    <div class="eyebrow r" style="justify-content:center">Get started</div>
-    <h2 class="r d1">Make your first print <em>play.</em></h2>
-    <p class="r d2">Open the studio, upload one picture and one video, and scan your own QR. Questions? We're on WhatsApp.</p>
-    <div class="cta r d3" style="justify-content:center">
-      <a class="btn gold" href="studio.html">Open the studio</a>
-      <a class="btn" href="https://wa.me/917330984620?text=Hi%2C%20I%20have%20a%20question%20about%20ScanPlay" target="_blank" rel="noopener">WhatsApp us</a>
-    </div>
+<section id="faq" style="padding-top:0"><div class="w">
+  <div class="h r"><div class="k">FAQ</div><h2>Questions people ask.</h2></div>
+  <div class="faq r">
+    <details><summary>Do guests need to install an app?</summary><p>No. Scanning the QR opens the player in the phone's browser. It works on iPhone and Android.</p></details>
+    <details><summary>How is this different from a QR that just opens a video?</summary><p>With ScanPlay the video plays on top of the printed picture and moves with it — the picture itself comes alive. A normal QR only opens a video page.</p></details>
+    <details><summary>What kind of pictures work best?</summary><p>Photos and artwork with detail and contrast: portraits, posters, packaging art. Plain logos, solid colours or very glossy prints track less reliably. The studio warns you if a picture is weak.</p></details>
+    <details><summary>Can I add more pictures later without reprinting the QR?</summary><p>Yes. One QR per account recognises every picture in that account. Add or replace pictures any time; the printed QR never changes.</p></details>
+    <details><summary>How big should the print be?</summary><p>Anything from a 4×6 photo to a hoarding. The phone just needs to see the whole picture clearly.</p></details>
+    <details><summary>Does the video have sound?</summary><p>Yes. Phones start videos muted until the user taps the screen once; a "tap for sound" chip makes that obvious.</p></details>
   </div>
-</section>
+</div></section>
 
-<footer>
-  <div class="wrap">
-    <span>© <span id="yr"></span> ScanPlay · Visakhapatnam, India</span>
-    <span>Print that plays.</span>
-  </div>
-</footer>
+<div class="fin r" id="contact">
+  <h2>Make your first print play.</h2>
+  <p>Open the studio, upload one picture and one video, and scan your own QR. Questions? We're on WhatsApp.</p>
+  <div class="cta"><a class="btn" href="studio.html">Open the studio →</a></div>
+</div>
+
+<footer><div class="w">
+  <span>© <span id="yr"></span> ScanPlay · Visakhapatnam, India</span>
+  <span><a href="https://wa.me/917330984620" target="_blank" rel="noopener">WhatsApp</a> · <a href="mailto:hello@scanplay.in">hello@scanplay.in</a> · <a href="https://www.instagram.com/srisomesh" target="_blank" rel="noopener">Instagram</a></span>
+</div></footer>
+
+<a class="wa" href="https://wa.me/917330984620?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20ScanPlay" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg></a>
 
 <script>
-  document.getElementById('yr').textContent=new Date().getFullYear();
-  const nav=document.getElementById('nav');
-  addEventListener('scroll',()=>nav.classList.toggle('solid',scrollY>40),{passive:true});
-  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }),{threshold:.12});
-  document.querySelectorAll('.r').forEach(el=>io.observe(el));
+document.getElementById('yr').textContent=new Date().getFullYear();
+const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('on',scrollY>10),{passive:true});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+document.querySelectorAll('.r').forEach(el=>io.observe(el));
 </script>
 </body>
 </html>
