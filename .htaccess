@@ -10,3 +10,8 @@ AddType application/octet-stream .mind
 <Files "accounts.json">
   Require all denied
 </Files>
+
+# Landing assets: short cache so text/translation updates show quickly
+<FilesMatch "\.(html|js)$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
