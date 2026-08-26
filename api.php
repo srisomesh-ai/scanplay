@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 /* ---------------- CONFIG ---------------- */
 define('OWNER_PASS',   'arAdmin@2026');                 // owner/admin panel password — change
 define('CRON_KEY',     'sp-cron-7c1e9a');               // for ?action=cron&key=
-define('RZP_KEY_ID',   'rzp_test_XXXXXXXXXXXX');        // Razorpay key id
-define('RZP_KEY_SECRET','XXXXXXXXXXXXXXXXXXXXXXXX');    // Razorpay key secret
+define('RZP_KEY_ID',   'rzp_test_Svq7brYQvxA6kz');        // Razorpay key id (TEST — swap for live)
+define('RZP_KEY_SECRET','vHNYS7qh04Fyklra0YbzB6Iy');    // Razorpay key secret (TEST)
 define('DATA_DIR', __DIR__ . '/data');
 define('MAX_VIDEO_MB', 200);
 define('GRACE_DAYS', 30);
