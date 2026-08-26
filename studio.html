@@ -19,7 +19,7 @@
   body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(60vw 60vw at -10% -10%,rgba(124,58,237,.12),transparent 60%),radial-gradient(50vw 50vw at 110% 10%,rgba(255,77,109,.10),transparent 60%),radial-gradient(40vw 40vw at 50% 120%,rgba(34,211,238,.10),transparent 60%)}
   h1,h2,h3{font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-.03em;font-weight:800}
   header{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:20}
-  header h1{font-size:18px;white-space:nowrap;display:flex;align-items:center;gap:8px} header h1 .wm{letter-spacing:-.03em} header h1 .wm b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent} header h1 em{font-style:normal;font-weight:600;color:var(--mute);font-size:15px}
+  header h1{font-size:18px;white-space:nowrap;display:flex;align-items:center;gap:8px} header h1 a{cursor:pointer} header h1 .wm{letter-spacing:-.03em} header h1 .wm b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent} header h1 em{font-style:normal;font-weight:600;color:var(--mute);font-size:15px}
   header h1::before{content:"";width:28px;height:28px;display:inline-block;background:url(/assets/brand/scanplay-logo.svg) center/contain no-repeat}
   .btn{border:0;border-radius:12px;padding:11px 16px;font:700 14px 'Plus Jakarta Sans';cursor:pointer;background:var(--grad);color:#fff;transition:.15s;box-shadow:0 8px 20px rgba(124,58,237,.25)}
   .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
@@ -140,7 +140,7 @@
 <body>
 
 <header>
-  <h1><span class="wm">Scan<b>Play</b></span> <em>Studio</em></h1>
+  <h1><a href="/" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:8px"><span class="wm">Scan<b>Play</b></span> <em>Studio</em></a></h1>
   <div style="display:flex;gap:6px"><button class="btn ghost sm" id="setBtn" style="display:none" onclick="openSettings()">Settings</button><button class="btn ghost sm" id="logoutBtn" style="display:none;white-space:nowrap" onclick="logout()">Sign out</button></div>
 </header>
 
