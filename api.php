@@ -39,7 +39,7 @@ catch (Exception $e) { echo json_encode(['ok'=>false,'error'=>'Database unavaila
 $db->exec("PRAGMA journal_mode=WAL");
 $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, pass TEXT, name TEXT, phone TEXT,
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
-foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
+foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
@@ -98,7 +98,7 @@ function planState($u) {
   return 'expired';
 }
 function userInfo($u) {
-  $p = PLANS[$u['plan']] ?? PLANS['free'];
+  $p = PLANS[$u['plan']] ?? PLANS['free']; $p['photos'] += (int)($u['extra_photos'] ?? 0); if ($p['accounts']) $p['accounts'] += (int)($u['extra_accounts'] ?? 0);
   $photos = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
   $accs   = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
   return ['id'=>(int)$u['id'],'email'=>$u['email'],'name'=>$u['name'],'phone'=>$u['phone'],'plan'=>$u['plan'],'planName'=>$p['name'],
@@ -214,7 +214,7 @@ switch ($action) {
   case 'account_create': {
     $u = auth(); requireWritable($u);
     $name = trim(strip_tags($_POST['name'] ?? '')); if ($name==='') out(false, ['error'=>'Account name is required']);
-    $lim = PLANS[$u['plan']]['accounts']; $have = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
+    $lim = PLANS[$u['plan']]['accounts'] ? PLANS[$u['plan']]['accounts'] + (int)$u['extra_accounts'] : 0; $have = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
     if ($lim && $have >= $lim) out(false, ['error'=>"Your plan allows $lim account".($lim>1?'s':'').". Upgrade for more.", 'upgrade'=>true]);
     $code = substr(bin2hex(random_bytes(4)),0,8);
     q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $u['id'], $name, now()]);
@@ -256,7 +256,7 @@ switch ($action) {
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
-    $lim = PLANS[$u['plan']]['photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
+    $lim = PLANS[$u['plan']]['photos'] + (int)$u['extra_photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
     if ($have >= $lim) out(false, ['error'=>"Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
@@ -362,14 +362,50 @@ switch ($action) {
   /* ---------- owner admin ---------- */
   case 'admin_users': {
     ownerAuth();
-    $list = rows("SELECT u.*, (SELECT COUNT(*) FROM accounts a WHERE a.user_id=u.id) accs, (SELECT COUNT(*) FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=u.id) photos FROM users u WHERE deleted=0 ORDER BY created DESC");
-    foreach ($list as &$x) { unset($x['pass'],$x['token']); $x['state']=planState($x); }
-    out(true, ['users'=>$list, 'plans'=>PLANS]);
+    $list = rows("SELECT u.*, (SELECT COUNT(*) FROM accounts a WHERE a.user_id=u.id) accs, (SELECT COUNT(*) FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=u.id) photos,
+      (SELECT SUM(s.n) FROM scans s JOIN accounts a ON a.code=s.code WHERE a.user_id=u.id) scans, (SELECT SUM(amount) FROM payments p WHERE p.user_id=u.id AND p.status='paid') paid FROM users u WHERE deleted=0 ORDER BY created DESC");
+    foreach ($list as &$x) { unset($x['pass'],$x['token'],$x['code']); $x['state']=planState($x); }
+    $tot = ['users'=>count($list), 'active'=>count(array_filter($list, fn($x)=>$x['state']==='active')), 'paid'=>count(array_filter($list, fn($x)=>$x['plan']!=='free')),
+      'revenue'=>(int)(row("SELECT SUM(amount) s FROM payments WHERE status='paid'")['s'] ?? 0)/100, 'scans30'=>(int)(row("SELECT SUM(n) s FROM scans WHERE day>=?", [date('Y-m-d', now()-30*86400)])['s'] ?? 0)];
+    out(true, ['users'=>$list, 'plans'=>PLANS, 'totals'=>$tot]);
+  }
+  case 'admin_user': {
+    ownerAuth(); $id=(int)($_POST['id']??0);
+    $u = row("SELECT * FROM users WHERE id=?", [$id]); if (!$u) out(false, ['error'=>'No such user']); unset($u['pass'],$u['token'],$u['code']);
+    $accs = array_map('pubAccount', rows("SELECT * FROM accounts WHERE user_id=? ORDER BY created", [$id]));
+    $pays = rows("SELECT order_id,payment_id,plan,period,amount,status,created FROM payments WHERE user_id=? ORDER BY created DESC", [$id]);
+    out(true, ['user'=>$u, 'accounts'=>$accs, 'payments'=>$pays, 'info'=>userInfo(row("SELECT * FROM users WHERE id=?", [$id]))]);
   }
   case 'admin_setplan': {
     ownerAuth(); $id=(int)($_POST['id']??0); $plan=$_POST['plan']??''; $days=(int)($_POST['days']??30);
     if (!isset(PLANS[$plan])) out(false, ['error'=>'Bad plan']);
     q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$plan, now()+$days*86400, $id]); out(true);
+  }
+  case 'admin_extend': { ownerAuth(); $id=(int)($_POST['id']??0); $days=(int)($_POST['days']??30); $u=row("SELECT plan_until FROM users WHERE id=?",[$id]); $base=max((int)$u['plan_until'], now()); q("UPDATE users SET plan_until=? WHERE id=?", [$base+$days*86400, $id]); out(true); }
+  case 'admin_credit': {
+    ownerAuth(); $id=(int)($_POST['id']??0);
+    if (isset($_POST['photos'])) q("UPDATE users SET extra_photos=? WHERE id=?", [max(0,(int)$_POST['photos']), $id]);
+    if (isset($_POST['accounts'])) q("UPDATE users SET extra_accounts=? WHERE id=?", [max(0,(int)$_POST['accounts']), $id]);
+    if (isset($_POST['note'])) q("UPDATE users SET note=? WHERE id=?", [trim(strip_tags($_POST['note'])), $id]);
+    out(true);
+  }
+  case 'admin_verify': { ownerAuth(); q("UPDATE users SET verified=1 WHERE id=?", [(int)($_POST['id']??0)]); out(true); }
+  case 'admin_setpass': { ownerAuth(); $p=$_POST['pass']??''; if (strlen($p)<6) out(false,['error'=>'Min 6 chars']); q("UPDATE users SET pass=?, token=NULL WHERE id=?", [password_hash($p,PASSWORD_DEFAULT), (int)($_POST['id']??0)]); out(true); }
+  case 'admin_item_delete': {
+    ownerAuth(); $code=clean($_POST['code']??''); $id=clean($_POST['id']??'');
+    q("DELETE FROM items WHERE id=? AND code=?", [$id,$code]); rrmdir(DATA_DIR."/$code/$id");
+    if (!row("SELECT id FROM items WHERE code=?", [$code])) @unlink(DATA_DIR."/$code/targets.mind");
+    out(true, ['note'=>'Removed. The owner must open the studio once so remaining photos are recompiled.']);
+  }
+  case 'admin_account_delete': {
+    ownerAuth(); $code=clean($_POST['code']??'');
+    q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]); rrmdir(DATA_DIR."/$code"); out(true);
+  }
+  case 'admin_user_delete': {
+    ownerAuth(); $id=(int)($_POST['id']??0);
+    foreach (rows("SELECT code FROM accounts WHERE user_id=?", [$id]) as $acc) { q("DELETE FROM items WHERE code=?", [$acc['code']]); q("DELETE FROM scans WHERE code=?", [$acc['code']]); rrmdir(DATA_DIR."/{$acc['code']}"); }
+    q("DELETE FROM accounts WHERE user_id=?", [$id]); rrmdir(DATA_DIR."/users/$id");
+    q("UPDATE users SET deleted=1, token=NULL, email=email||'.deleted.'||id WHERE id=?", [$id]); out(true);
   }
 
   /* ---------- cron: delete data after grace ---------- */

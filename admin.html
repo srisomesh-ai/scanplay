@@ -1,16 +1,74 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ScanPlay Owner</title>
-<style>body{font-family:Inter,system-ui;background:#F7F8F6;color:#101418;margin:0;padding:20px}h1{font-size:18px}input,select,button{font:14px Inter;padding:9px 10px;border:1px solid #E1E5E2;border-radius:8px;background:#fff}button{background:#0F8F84;color:#fff;border:0;cursor:pointer}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:13px;margin-top:14px}th,td{padding:10px;border-bottom:1px solid #E1E5E2;text-align:left;vertical-align:top}th{background:#EFF8F7;font-size:12px}.b{color:#C9463D}.g{color:#0F8F84}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}</style></head><body>
-<h1>ScanPlay — owner panel</h1>
-<div class="row"><input type="password" id="p" placeholder="Owner password"><button onclick="load()">Load users</button><span id="n"></span></div>
-<table id="t"></table>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ScanPlay Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F0A1F;--paper:#F6F3FF;--line:#ECE8F8;--mute:#4B4661;--b:#7C3AED;--a:#FF4D6D;--red:#E4462B;--grad:linear-gradient(135deg,#7C3AED,#FF4D6D)}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Plus Jakarta Sans',system-ui;background:#fff;color:var(--ink);padding:0 0 40px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:5}
+header h1{font-size:18px} header h1 b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.w{max-width:1200px;margin:auto;padding:16px 20px}
+input,select{font:500 14px 'Plus Jakarta Sans';padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.btn{font:700 13px 'Plus Jakarta Sans';padding:9px 14px;border:0;border-radius:10px;background:var(--grad);color:#fff;cursor:pointer}
+.btn.g{background:#fff;color:var(--ink);border:1.5px solid var(--line)} .btn.d{background:#fff;color:var(--red);border:1.5px solid #FAD9D3}
+.btn.s{padding:6px 10px;font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.kpi{background:var(--paper);border-radius:14px;padding:14px} .kpi b{font-size:24px;display:block} .kpi span{font-size:12px;color:var(--mute)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}.tag.a{background:#E8F9EE;color:#15803D}.tag.g{background:#FFF4E5;color:#B45309}.tag.x{background:#FEE2E2;color:#B91C1C}.tag.p{background:var(--paper);color:var(--b)}
+.modal{position:fixed;inset:0;background:rgba(15,10,31,.5);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;z-index:9}.modal.open{display:flex}
+.box{background:#fff;border-radius:20px;padding:22px;max-width:860px;width:100%}
+.box h2{font-size:18px;margin-bottom:4px} .box h3{font-size:14px;margin:18px 0 8px}
+.card{border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+.field{display:block;font-size:12px;font-weight:700;color:var(--mute);margin:10px 0 4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.item{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.item img{width:48px;height:48px;object-fit:cover;border-radius:8px}
+.st{font-size:12px;color:var(--mute);margin-top:6px;min-height:16px}.st.err{color:var(--red)}
+#login{max-width:360px;margin:80px auto;padding:20px}
+</style></head><body>
+<header><h1><b>ScanPlay</b> Admin</h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
+
+<div id="login"><div class="card"><label class="field">Owner password</label><input type="password" id="p" style="width:100%" onkeydown="if(event.key==='Enter')load()"><button class="btn" style="width:100%;margin-top:12px" onclick="load()">Open admin</button><div class="st err" id="lerr"></div></div></div>
+
+<div class="w" id="app" style="display:none">
+  <div class="kpis" id="kpis"></div>
+  <div class="row"><input id="q" placeholder="Search name, email, phone" style="flex:1;min-width:200px" oninput="render()"><select id="f" onchange="render()"><option value="">All plans</option><option value="free">Free</option><option value="personal">Personal</option><option value="business">Business</option><option value="pro">Pro</option><option value="agency">Agency</option></select><select id="s" onchange="render()"><option value="">Any state</option><option value="active">Active</option><option value="grace">Grace</option><option value="expired">Expired</option></select><button class="btn g" onclick="load()">Refresh</button></div>
+  <table><thead><tr><th>User</th><th>Plan</th><th>Until</th><th>Usage</th><th>Scans</th><th>Paid</th><th>Joined</th></tr></thead><tbody id="tb"></tbody></table>
+</div>
+
+<div class="modal" id="m" onclick="if(event.target===this)close()"><div class="box" id="mb"></div></div>
+
 <script>
-let P='';const $=s=>document.querySelector(s);
+let P=sessionStorage.getItem('sp_admin')||'', DATA=null; const $=s=>document.querySelector(s);
 async function api(a,f={}){const fd=new FormData();Object.entries(f).forEach(([k,v])=>fd.append(k,v));return (await fetch('api.php?action='+a,{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();}
-async function load(){P=$('#p').value;const r=await api('admin_users');if(!r.ok){alert(r.error);return;}$('#n').textContent=r.users.length+' users';
-const opts=Object.keys(r.plans).map(k=>`<option value="${k}">${r.plans[k].name}</option>`).join('');
-$('#t').innerHTML='<tr><th>User</th><th>Plan</th><th>Until</th><th>State</th><th>Accts / Photos</th><th>Set plan</th></tr>'+r.users.map(u=>`<tr><td><b>${u.name}</b><br>${u.email}<br>${u.phone||''}</td><td>${u.plan}</td><td>${new Date(u.plan_until*1000).toLocaleDateString('en-IN')}</td><td class="${u.state==='active'?'g':'b'}">${u.state}</td><td>${u.accs} / ${u.photos}</td>
-<td class="row"><select id="pl${u.id}">${opts}</select><input id="d${u.id}" type="number" value="30" style="width:70px"> days <button onclick="setp(${u.id})">Apply</button></td></tr>`).join('');}
-async function setp(id){const r=await api('admin_setplan',{id,plan:$('#pl'+id).value,days:$('#d'+id).value});if(r.ok)load();else alert(r.error);}
+const d=t=>new Date(t*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
+async function load(){ if(!P) P=$('#p').value; const r=await api('admin_users'); if(!r.ok){ $('#lerr').textContent=r.error; P=''; return; } sessionStorage.setItem('sp_admin',P);
+  DATA=r; $('#login').style.display='none'; $('#app').style.display=''; $('#out').style.display='';
+  const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${t.active}</b><span>Active plans</span></div><div class="kpi"><b>${t.paid}</b><span>Paying users</span></div><div class="kpi"><b>${inr(t.revenue)}</b><span>Revenue (Razorpay)</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div>`;
+  render(); }
+function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value, s=$('#s').value;
+  $('#tb').innerHTML=DATA.users.filter(u=>(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().includes(q))&&(!f||u.plan===f)&&(!s||u.state===s)).map(u=>`<tr class="u" onclick="open(${u.id})">
+    <td><b>${u.name||''}</b><br><span style="color:var(--mute)">${u.email}${u.phone?' · '+u.phone:''}</span>${u.verified?'':' <span class="tag x">unverified</span>'}${u.note?'<br><span style="font-size:11px;color:var(--b)">📝 '+u.note+'</span>':''}</td>
+    <td><span class="tag p">${u.plan}</span>${u.extra_photos>0?'<br><span style="font-size:11px">+'+u.extra_photos+' photos</span>':''}</td><td>${d(u.plan_until)}<br><span class="tag ${u.state==='active'?'a':u.state==='grace'?'g':'x'}">${u.state}</span></td>
+    <td>${u.accs} proj · ${u.photos} photos</td><td>${u.scans||0}</td><td>${u.paid?inr(u.paid/100):'—'}</td><td>${d(u.created)}</td></tr>`).join(''); }
+async function open(id){ const r=await api('admin_user',{id}); if(!r.ok) return alert(r.error); const u=r.user, i=r.info, L=i.limits, opts=Object.keys(DATA.plans).map(k=>`<option value="${k}" ${u.plan===k?'selected':''}>${DATA.plans[k].name}</option>`).join('');
+  $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><div><h2>${u.name}</h2><div style="color:var(--mute);font-size:13px">${u.email} · ${u.phone||'no phone'} · joined ${d(u.created)}${u.google_id?' · Google':''}</div></div><button class="btn g s" onclick="close()">Close</button></div>
+  <div class="grid">
+    <div class="card"><h3 style="margin-top:0">Plan</h3><div class="st">Now: <b>${i.planName}</b> · ${i.state} · until ${d(u.plan_until)}</div>
+      <label class="field">Set plan</label><div class="row"><select id="pl">${opts}</select><input id="pd" type="number" value="30" style="width:80px"> days <button class="btn s" onclick="act('admin_setplan',{id:${id},plan:$('#pl').value,days:$('#pd').value})">Apply</button></div>
+      <label class="field">Extend current plan</label><div class="row"><input id="ed" type="number" value="30" style="width:80px"> days <button class="btn g s" onclick="act('admin_extend',{id:${id},days:$('#ed').value})">Extend</button></div></div>
+    <div class="card"><h3 style="margin-top:0">Credits (on top of plan)</h3><div class="st">Plan gives ${DATA.plans[u.plan].photos} photos / ${DATA.plans[u.plan].accounts||'∞'} projects. Used ${i.used.photos} / ${i.used.accounts}.</div>
+      <label class="field">Extra photos</label><div class="row"><input id="xp" type="number" value="${u.extra_photos||0}" style="width:90px"><label class="field" style="margin:0 0 0 8px">Extra projects</label><input id="xa" type="number" value="${u.extra_accounts||0}" style="width:90px"></div>
+      <label class="field">Admin note</label><input id="nt" value="${(u.note||'').replace(/"/g,'&quot;')}" style="width:100%" placeholder="e.g. paid cash 15 Aug">
+      <div class="row" style="margin-top:8px"><button class="btn s" onclick="act('admin_credit',{id:${id},photos:$('#xp').value,accounts:$('#xa').value,note:$('#nt').value})">Save credits</button></div></div>
+    <div class="card"><h3 style="margin-top:0">Account</h3><div class="row">${u.verified?'':`<button class="btn g s" onclick="act('admin_verify',{id:${id}})">Mark verified</button>`}<button class="btn g s" onclick="const p=prompt('New password (min 6)');if(p)act('admin_setpass',{id:${id},pass:p})">Set password</button><button class="btn d s" onclick="if(confirm('Delete this user and ALL their projects, photos and videos? Cannot be undone.'))act('admin_user_delete',{id:${id}},true)">Delete user</button></div>
+      <h3>Payments</h3>${r.payments.length?r.payments.map(p=>`<div class="st">${d(p.created)} · ${p.plan} ${p.period} · ${inr(p.amount/100)} · <b>${p.status}</b>${p.payment_id?' · '+p.payment_id:''}</div>`).join(''):'<div class="st">None</div>'}</div>
+  </div>
+  <h3>Projects &amp; photos</h3>${r.accounts.length?r.accounts.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${a.name}</b> <span style="color:var(--mute);font-size:12px">${a.code} · ${a.scans} scans</span><br><a href="${a.qrUrl}" target="_blank" style="font-size:12px;color:var(--b)">${a.qrUrl}</a></div><button class="btn d s" onclick="if(confirm('Delete project ${a.name}?'))act('admin_account_delete',{code:'${a.code}'},false,${id})">Delete project</button></div>
+    ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${it.title}</b><div style="font-size:12px;color:var(--mute)">${it.id} · fit: ${it.fit||'fit'} · <a href="data/${a.code}/${it.id}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${a.code}',id:'${it.id}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
+  <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }
+async function act(a,f,closeAfter,reopen){ const r=await api(a,f); if(!r.ok) return alert(r.error); if(r.note) alert(r.note); await load(); if(closeAfter) close(); else open(reopen||f.id); }
+function close(){ $('#m').classList.remove('open'); }
+if(P) load();
 </script></body></html>
