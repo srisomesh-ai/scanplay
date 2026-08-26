@@ -219,21 +219,48 @@ switch ($action) {
     rrmdir(DATA_DIR."/$code"); out(true);
   }
 
+  /* ---------- chunked video upload (background, resumable) ---------- */
+  case 'up_start': {
+    $u = auth(); requireWritable($u);
+    $size = (int)($_POST['size'] ?? 0); if ($size <= 0 || $size > MAX_VIDEO_MB*1048576) out(false, ['error'=>'Video must be under '.MAX_VIDEO_MB.' MB']);
+    $id = 'u'.$u['id'].'_'.bin2hex(random_bytes(6)); $dir = DATA_DIR.'/tmp'; if (!is_dir($dir)) mkdir($dir, 0755, true);
+    file_put_contents("$dir/$id.part", ''); file_put_contents("$dir/$id.json", json_encode(['user'=>$u['id'],'size'=>$size,'t'=>now()]));
+    // sweep temp files older than 1 day
+    foreach (glob("$dir/*.part") as $f) if (filemtime($f) < now()-86400) { @unlink($f); @unlink(substr($f,0,-5).'.json'); }
+    out(true, ['id'=>$id]);
+  }
+  case 'up_chunk': {
+    $u = auth(); $id = preg_replace('/[^a-z0-9_]/','',$_POST['id'] ?? ''); $off = (int)($_POST['offset'] ?? -1);
+    $meta = @json_decode(file_get_contents(DATA_DIR."/tmp/$id.json"), true);
+    if (!$meta || $meta['user'] != $u['id'] || empty($_FILES['chunk'])) out(false, ['error'=>'Bad upload chunk']);
+    $f = DATA_DIR."/tmp/$id.part"; $have = filesize($f);
+    if ($off !== $have) out(true, ['received'=>$have]);              // client resyncs to what we have
+    file_put_contents($f, file_get_contents($_FILES['chunk']['tmp_name']), FILE_APPEND);
+    out(true, ['received'=>filesize($f)]);
+  }
+  case 'up_status': {
+    $u = auth(); $id = preg_replace('/[^a-z0-9_]/','',$_POST['id'] ?? ''); $f = DATA_DIR."/tmp/$id.part";
+    out(true, ['received'=>file_exists($f)?filesize($f):0]);
+  }
+
   /* ---------- items ---------- */
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
     $lim = PLANS[$u['plan']]['photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
     if ($have >= $lim) out(false, ['error'=>"Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
-    $videoUrl = trim($_POST['video_url'] ?? '');
-    if (empty($_FILES['mind']) || empty($_FILES['target']) || (empty($_FILES['video']) && $videoUrl===''))
+    $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
+    $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
+    if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
+    if (empty($_FILES['mind']) || empty($_FILES['target']) || (empty($_FILES['video']) && $videoUrl==='' && !$upId))
       out(false, ['error'=>'Photo, a video (file or URL) and compiled file are all required']);
     if (!empty($_FILES['video']) && $_FILES['video']['size'] > MAX_VIDEO_MB*1048576) out(false, ['error'=>"Video must be under ".MAX_VIDEO_MB." MB"]);
     if ($videoUrl!=='' && !preg_match('#^https?://#i', $videoUrl)) out(false, ['error'=>'Video URL must start with http:// or https://']);
 
     $id = substr(bin2hex(random_bytes(5)),0,8); $dir = DATA_DIR."/$code/$id"; mkdir($dir, 0755, true);
     move_uploaded_file($_FILES['target']['tmp_name'], "$dir/target.jpg");
-    if (!empty($_FILES['video'])) move_uploaded_file($_FILES['video']['tmp_name'], "$dir/video.mp4");
+    if ($upId) { rename($upFile, "$dir/video.mp4"); @unlink(DATA_DIR."/tmp/$upId.json"); }
+    elseif (!empty($_FILES['video'])) move_uploaded_file($_FILES['video']['tmp_name'], "$dir/video.mp4");
     else {
       set_time_limit(600); $fp=fopen("$dir/video.mp4",'w'); $ch=curl_init($videoUrl);
       curl_setopt_array($ch,[CURLOPT_FILE=>$fp,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>5,CURLOPT_TIMEOUT=>560,CURLOPT_USERAGENT=>'Mozilla/5.0 ScanPlay/1.0',CURLOPT_MAXFILESIZE=>MAX_VIDEO_MB*1048576]);
