@@ -633,5 +633,6 @@ function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.
 initGoogle();
 if(TOKEN) post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; boot(); } });
 </script>
+<div style="text-align:center;font-size:12px;color:var(--mute);padding:26px 16px 30px">Made with <span style="color:#FF4D6D">♥</span> in India · © ScanPlay LLP. All rights reserved.</div>
 </body>
 </html>
