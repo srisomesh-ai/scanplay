@@ -28,7 +28,7 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 .st{font-size:12px;color:var(--mute);margin-top:6px;min-height:16px}.st.err{color:var(--red)}
 #login{max-width:360px;margin:80px auto;padding:20px}
 </style></head><body>
-<header><h1><a href="/" style="text-decoration:none;color:inherit"><b>ScanPlay</b> Admin</a></h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
+<header><h1><a href="/" style="text-decoration:none;color:inherit"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:6px">Scan<b>Play</b> <span style="color:var(--mute);font-weight:600;font-size:15px">Admin</span></a></h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
 
 <div id="login"><div class="card"><label class="field">Owner password</label><input type="password" id="p" style="width:100%" onkeydown="if(event.key==='Enter')load()"><button class="btn" style="width:100%;margin-top:12px" onclick="load()">Open admin</button><div class="st err" id="lerr"></div></div></div>
 

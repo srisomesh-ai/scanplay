@@ -112,7 +112,7 @@ a{text-decoration:none;color:inherit}
 nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:.3s}
 nav.on{border-color:var(--line)}
 nav .w{display:flex;justify-content:space-between;align-items:center;height:70px}
-.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:21px;letter-spacing:-.03em}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:21px;letter-spacing:-.03em;color:var(--ink)} .logo b{font-weight:800}
 .logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--b),var(--a));display:grid;place-items:center}
 .logo i::after{content:"";border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
 .links{display:flex;gap:22px;font-weight:600;font-size:14px;color:var(--mute);margin:0 16px}
@@ -245,7 +245,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <body>
 
 <nav id="nav"><div class="w">
-  <a class="logo" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:30px;height:30px">ScanPlay</a>
+  <a class="logo" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:30px;height:30px">Scan<b class="grad" style="font-weight:800">Play</b></a>
   <div class="links"><a href="#how" data-i18n="nav_how">How it works</a><a href="#uses" data-i18n="nav_uses">Use cases</a><a href="#partners" data-i18n="nav_partners">For printers</a><a href="#pricing" data-i18n="nav_pricing">Pricing</a><a href="#faq" data-i18n="nav_faq">FAQ</a></div>
   <div style="display:flex;gap:8px;align-items:center"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn w" href="studio.html" style="padding:10px 18px" data-i18n="signin">Sign in</a></div>
 </div></nav>
