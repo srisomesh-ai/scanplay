@@ -287,8 +287,16 @@ switch ($action) {
     }
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created) VALUES (?,?,?,?,?,?,?)",
-      [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fill', now()]);
+      [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now()]);
     out(true, ['id'=>$id]);
+  }
+  case 'item_update': {
+    $u = auth(); $code = clean($_POST['code'] ?? ''); $id = clean($_POST['id'] ?? '');
+    if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Project not found']);
+    $fit = in_array($_POST['fit']??'',['fill','fit','stretch']) ? $_POST['fit'] : null; $title = isset($_POST['title']) ? trim(strip_tags($_POST['title'])) : null;
+    if ($fit) q("UPDATE items SET fit=? WHERE id=? AND code=?", [$fit, $id, $code]);
+    if ($title !== null && $title !== '') q("UPDATE items SET title=? WHERE id=? AND code=?", [$title, $id, $code]);
+    out(true);
   }
   case 'item_delete': {
     $u = auth(); $code = clean($_POST['code'] ?? ''); $id = clean($_POST['id'] ?? '');

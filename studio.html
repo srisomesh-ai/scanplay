@@ -235,14 +235,20 @@
     <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*"><div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
     <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Google Drive or Dropbox share link, or a direct .mp4 link. YouTube / Instagram links do not work.</div></div>
     <div class="tiny" style="margin-top:8px"><a href="#" id="vidMode" onclick="toggleVidMode(event)" style="color:var(--b);font-weight:600">Use a video link instead</a></div>
+    <div id="fitBox" style="display:none;margin-top:12px">
+      <label class="field" style="margin-top:0">How should the video sit on the photo?</label>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center">
+        <div class="chips" style="margin:0;flex-direction:column;align-items:stretch">
+          <label class="chip on"><input type="radio" name="fit" value="fit" checked hidden> Whole video visible <small style="opacity:.8">(nothing cropped)</small></label>
+          <label class="chip"><input type="radio" name="fit" value="fill" hidden> Cover the whole photo <small style="opacity:.8">(edges cropped)</small></label>
+          <label class="chip"><input type="radio" name="fit" value="stretch" hidden> Stretch to photo</label>
+        </div>
+        <div id="fitPrev" title="Preview: photo (grey) and where the video (purple) will play" style="width:96px;height:96px;display:grid;place-items:center"></div>
+      </div>
+      <div class="status" id="fitNote" style="margin-top:6px"></div>
+    </div>
     <details class="adv"><summary>Options</summary>
       <label class="field">Name for this photo</label><input type="text" id="title" placeholder="e.g. Front page">
-      <label class="field">How the video sits on the photo</label>
-      <div class="chips" style="margin:0">
-        <label class="chip on"><input type="radio" name="fit" value="fill" checked hidden> Fill edge to edge</label>
-        <label class="chip"><input type="radio" name="fit" value="fit" hidden> Fit inside</label>
-        <label class="chip"><input type="radio" name="fit" value="stretch" hidden> Stretch</label>
-      </div>
     </details>
     <div class="progress" id="prog"><i></i></div><div class="status" id="st"></div>
     <button class="btn" style="width:100%;margin-top:12px" id="saveBtn" onclick="addItem()">Save photo + video</button>
@@ -460,7 +466,21 @@ async function deleteAcc(){
   await post({action:'account_delete',code:CUR.code}); CUR=null;
   $('#detail').innerHTML='<div class="empty" style="padding:60px 0">Select an account.</div>'; loadAccounts();
 }
-function updSteps(){
+function fitPreview(){
+  const box=$('#fitPrev'); if(!box) return; const R=imgRatio, VR=vidRatio, mode=(document.querySelector('input[name=fit]:checked')||{}).value||'fit';
+  const show=imgFile&&(vidFile||(urlMode&&vidUrl)); $('#fitBox').style.display=show?'':'none'; if(!show) return;
+  const S=88; let pw,ph; if(R>=1){ph=S;pw=S/R;}else{pw=S;ph=S*R;}
+  let vw,vh,clip='';
+  if(mode==='fit'){ if(VR>R){vh=ph;vw=ph/VR;}else{vw=pw;vh=pw*VR;} }
+  else if(mode==='stretch'){vw=pw;vh=ph;}
+  else { if(VR>R){vw=pw;vh=pw*VR;}else{vh=ph;vw=ph/VR;} clip='overflow:hidden'; }
+  box.innerHTML=`<div style="position:relative;width:${pw}px;height:${ph}px;background:#E5E1F2;border-radius:4px;${clip}"><div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:${vw}px;height:${vh}px;background:linear-gradient(135deg,#7C3AED,#FF4D6D);border-radius:3px;opacity:.9"></div></div>`;
+  const same=Math.abs(R-VR)<0.03;
+  $('#fitNote').textContent= same ? 'Photo and video have the same shape — it will fill the photo exactly.' :
+    mode==='fit' ? 'Video shape differs from the photo: it plays at its own ratio with the photo showing around it.' :
+    mode==='fill' ? 'Video shape differs from the photo: the edges of the video will be cropped to cover it.' : 'The video will be squeezed to the photo shape.';
+}
+function updSteps(){ fitPreview();
   const has=CUR&&CUR.items.length>0;
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
@@ -472,13 +492,14 @@ function renderItems(){
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
     <div class="item">
       <img src="${it.thumb}" alt="">
-      <div><div class="t">${esc(it.title)}</div><div class="u">picture ${sh(it.ratio)} · video ${sh(it.vratio)} · ${it.fit||'fill'}</div></div>
+      <div><div class="t">${esc(it.title)}</div><div class="u">photo ${sh(it.ratio)} · video ${sh(it.vratio)}</div>
+        <div class="chips" style="margin:6px 0 0"><button class="chip ${(it.fit||'fit')==='fit'?'on':''}" onclick="setFit('${it.id}','fit')">Whole video</button><button class="chip ${it.fit==='fill'?'on':''}" onclick="setFit('${it.id}','fill')">Cover photo</button><button class="chip ${it.fit==='stretch'?'on':''}" onclick="setFit('${it.id}','stretch')">Stretch</button></div></div>
       <button class="btn danger sm" onclick="removeItem('${it.id}')">Remove</button>
     </div>`).join('') : '<div class="empty">No pictures yet. Add one above.</div>';
 }
 
 function bindPickers(){
-  document.querySelectorAll('input[name=fit]').forEach(r=>r.onchange=()=>document.querySelectorAll('input[name=fit]').forEach(x=>x.parentElement.classList.toggle('on',x.checked)));
+  document.querySelectorAll('input[name=fit]').forEach(r=>r.onchange=()=>{ document.querySelectorAll('input[name=fit]').forEach(x=>x.parentElement.classList.toggle('on',x.checked)); fitPreview(); });
   $('#imgFile').onchange=e=>{
     const f=e.target.files[0]; if(!f) return;
     const im=$('#cropImg'); if(cropper){cropper.destroy();cropper=null;}
@@ -489,7 +510,7 @@ function bindPickers(){
   $('#vidFile').onchange=e=>{
     vidFile=e.target.files[0]; if(!vidFile) return;
     const url=URL.createObjectURL(vidFile);
-    const v=document.createElement('video'); v.onloadedmetadata=()=>{vidRatio=v.videoHeight/v.videoWidth;}; v.src=url;
+    const v=document.createElement('video'); v.onloadedmetadata=()=>{vidRatio=v.videoHeight/v.videoWidth; fitPreview();}; v.src=url;
     $('#vidPrev').innerHTML=`<video src="${url}" muted playsinline></video><span class="hint" id="vidHint">${esc(vidFile.name)} · ${(vidFile.size/1048576).toFixed(1)} MB</span><div class="progress" id="vprog" style="display:block;margin-top:8px"><i></i></div>`;
     $('#dropVid').classList.add('on'); updSteps();
     if(vidFile.size>60*1048576) $('#vidHint').innerHTML+=' · <span style="color:var(--amber)">Large — 720p and under 30 s uploads much faster</span>';
@@ -511,7 +532,7 @@ function checkUrl(){
   urlTimer=setTimeout(()=>{
     st.textContent='Checking…';
     const v=document.createElement('video'); v.preload='metadata';
-    v.onloadedmetadata=()=>{ vidRatio=v.videoHeight/v.videoWidth; st.textContent=`OK · ${v.videoWidth}×${v.videoHeight} · ${Math.round(v.duration)}s`; };
+    v.onloadedmetadata=()=>{ vidRatio=v.videoHeight/v.videoWidth; st.textContent=`OK · ${v.videoWidth}×${v.videoHeight} · ${Math.round(v.duration)}s`; fitPreview(); };
     v.onerror=()=>{ st.textContent='Could not read that video in the browser — the server will still try to download it'; };
     v.src=vidUrl;
   },500);
@@ -569,7 +590,7 @@ async function addItem(){
     setProg(2,'Loading existing pictures…');
     const existing=await Promise.all(CUR.items.map(it=>loadImg(it.thumb+'?v='+Date.now())));
     const mind=await compileAll([...existing, await loadImg(URL.createObjectURL(imgFile))], 5, 85);
-    const fields={action:'item_add',code:CUR.code,title,ratio:imgRatio.toFixed(4),vratio:vidRatio.toFixed(4),fit:(document.querySelector('input[name=fit]:checked')||{}).value||'fill'};
+    const fields={action:'item_add',code:CUR.code,title,ratio:imgRatio.toFixed(4),vratio:vidRatio.toFixed(4),fit:(document.querySelector('input[name=fit]:checked')||{}).value||'fit'};
     const files={target:imgFile,mind};
     if(urlMode) { fields.video_url=vidUrl; setProg(87,'Server is downloading the video…'); }
     else if(UP&&UP.file===vidFile){ setProg(86,'Waiting for video upload to finish…'); const iv=setInterval(()=>{ const h=$('#vidHint'); if(h) setProg(86,'Video: '+h.textContent.split('· ').pop()); },500); try{ fields.video_id=await UP.promise; } finally{ clearInterval(iv); } setProg(95,'Saving…'); }
@@ -579,6 +600,7 @@ async function addItem(){
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
 }
+async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else alert(r.error); }
 async function removeItem(id){
   if(!confirm('Remove this picture from the account?')) return;
   const btn=$('#saveBtn'); btn.disabled=true;

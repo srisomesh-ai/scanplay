@@ -64,7 +64,7 @@ function fit(R,VR,mode){
 
 function start(acc){
   const assets=acc.items.map((it,i)=>`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
-  const targets=acc.items.map((it,i)=>{ const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fill'); return `
+  const targets=acc.items.map((it,i)=>{ const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fit'); return `
       <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}">
         <a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video>
       </a-entity>`; }).join('');
