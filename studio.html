@@ -414,7 +414,7 @@ function renderPlans(){
   $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; const dis=PROMO&&PROMO.plan===k&&PROMO.period===PERIOD; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';PROMO=null;$('#promoSt').textContent='';renderPlans()"><b>${n}</b><div class="pr">${dis?`<s style="opacity:.5;font-size:14px">₹${pr.toLocaleString('en-IN')}</s> ₹${PROMO.total.toLocaleString('en-IN')}`:'₹'+pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
   const tot=finalPrice(); $('#payBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} with Razorpay`; $('#upiBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} by UPI`;
 }
-const PRICES={personal:{month:999,year:4999},business:{month:2999,year:24999},pro:{month:5999,year:49999},agency:{month:9999,year:84999}};
+const PRICES={personal:{month:499,year:4990},business:{month:1999,year:19990},pro:{month:2999,year:29990},agency:{month:5999,year:59990}};
 /* Razorpay payment-page links per plan — paste when ready; empty = use in-studio Razorpay checkout */
 const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{month:'',year:''},agency:{month:'',year:''}};
 const UPI_ID='scanplay@ybl';

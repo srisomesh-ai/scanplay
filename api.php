@@ -31,10 +31,10 @@ define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [
   'free'     => ['name'=>'Free trial','photos'=>3, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,    'year'=>0,     'watermark'=>true],
-  'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>999,  'year'=>4999,  'watermark'=>false],
-  'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>3, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>2999, 'year'=>24999, 'watermark'=>false],
-  'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>10,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>5999, 'year'=>49999, 'watermark'=>false],
-  'agency'   => ['name'=>'Agency',    'photos'=>50,'accounts'=>0, 'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>true, 'month'=>9999, 'year'=>84999, 'watermark'=>false],
+  'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,  'year'=>4990,  'watermark'=>false],
+  'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>3, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>1999, 'year'=>19990, 'watermark'=>false],
+  'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>10,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>2999, 'year'=>29990, 'watermark'=>false],
+  'agency'   => ['name'=>'Agency',    'photos'=>50,'accounts'=>0, 'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>true, 'month'=>5999, 'year'=>59990, 'watermark'=>false],
 ];
 
 /* ---------------- DB ---------------- */
