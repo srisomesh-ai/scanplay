@@ -85,8 +85,9 @@
   .subnav button.on{background:var(--grad);color:#fff;border-color:transparent}
   #dash{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1.2fr .8fr;gap:20px}
   @media(max-width:820px){#dash{grid-template-columns:1fr}}
-  .big{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px}
-  @media(max-width:700px){.big{grid-template-columns:1fr}}
+  .big{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
+  @media(max-width:900px){.big{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.big{grid-template-columns:1fr}}
   .bs{background:var(--paper);border-radius:20px;padding:22px 18px;text-align:center;position:relative}
   .bs .ic{width:72px;height:72px;border-radius:22px;background:#fff;display:grid;place-items:center;margin:0 auto 12px;font-size:36px;box-shadow:0 8px 20px rgba(124,58,237,.12)}
   .bs .n{display:none;position:absolute;top:12px;left:12px;width:26px;height:26px;border-radius:50%;background:var(--grad);color:#fff;font:800 13px 'Plus Jakarta Sans';display:grid;place-items:center}
@@ -175,11 +176,12 @@
 <div id="dash" style="display:none">
   <section class="card">
     <h2 id="hello">Welcome</h2>
-    <p class="status" style="margin:2px 0 14px">Make a printed photo play a video. Three steps:</p>
+    <p class="status" style="margin:2px 0 14px">Make a photo play a video. Four easy steps:</p>
     <div class="big">
-      <div class="bs" id="g1"><span class="n"></span><div class="ic">📷</div><h3>1. Add a photo + video</h3><p>The photo you will print, and the video it should play.</p></div>
-      <div class="bs" id="g2"><span class="n"></span><div class="ic">🖨️</div><h3>2. Print the QR</h3><p>Put the QR next to the photo — on the card, poster or box.</p></div>
-      <div class="bs" id="g3"><span class="n"></span><div class="ic">📱</div><h3>3. Scan &amp; watch</h3><p>Scan the QR, point the phone at the photo. It plays!</p></div>
+      <div class="bs" id="g1"><span class="n"></span><div class="ic">🖼️</div><h3>1. Upload the photo</h3><p>The picture people will point their phone at.</p></div>
+      <div class="bs" id="g2"><span class="n"></span><div class="ic">🎬</div><h3>2. Upload the video</h3><p>The video that should play on that photo.</p></div>
+      <div class="bs" id="g3"><span class="n"></span><div class="ic">🔳</div><h3>3. Generate the QR</h3><p>Print it, stick it, or share it — your choice.</p></div>
+      <div class="bs" id="g4"><span class="n"></span><div class="ic">📱</div><h3>4. Scan &amp; enjoy</h3><p>Scan the QR, point at the photo, watch the video play.</p></div>
     </div>
     <div class="bigcta"><button class="btn" id="bigBtn" onclick="startFlow()">＋ Make my first AR photo</button></div>
   </section>
@@ -365,7 +367,7 @@ async function startFlow(){
 function renderDash(){
   const u=USER; $('#hello').textContent='Welcome, '+(u.name||'').split(' ')[0];
   const photos=ACCOUNTS.reduce((n,a)=>n+a.items.length,0);
-  $('#g1').classList.toggle('done',photos>0); $('#g2').classList.toggle('done',photos>0); $('#g3').classList.toggle('done',photos>0);
+  ['g1','g2','g3','g4'].forEach(g=>$('#'+g).classList.toggle('done',photos>0));
   $('#bigBtn').textContent=photos>0?'＋ Add another photo':'＋ Make my first AR photo';
   const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
   $('#dashPlan').innerHTML=`<div style="font:800 18px 'Plus Jakarta Sans'">${u.planName}</div><div class="status" style="margin:2px 0 10px">${u.state==='active'?days+' days left':u.state==='grace'?'Ended — data deleted after grace period':'Expired'}</div>
