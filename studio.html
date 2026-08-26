@@ -54,6 +54,16 @@
   .item img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#eee}
   .item .t{font-weight:600;font-size:14px} .item .u{font-size:12px;color:var(--mute)}
   .empty{color:var(--mute);font-size:13px;text-align:center;padding:24px}
+  .stepc{border:1.5px solid var(--line);border-radius:18px;padding:16px;margin-top:12px;position:relative}
+  .stepc.ok{border-color:#22C55E;background:#F3FCF6}
+  .stepc.off{opacity:.5;pointer-events:none}
+  .stepc .sh{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .stepc .sh i{width:28px;height:28px;border-radius:50%;background:var(--grad);color:#fff;font:800 13px 'Plus Jakarta Sans';display:grid;place-items:center;font-style:normal;flex-shrink:0}
+  .stepc.ok .sh i{background:#22C55E} .stepc.ok .sh i::before{content:"✓"} .stepc.ok .sh i span{display:none}
+  .stepc .sh b{font-size:15px} .stepc .sh small{color:var(--mute);font-size:12px;margin-left:auto;text-align:right;max-width:40%}
+  details.adv{margin-top:10px} details.adv summary{cursor:pointer;font-size:13px;color:var(--mute);font-weight:600}
+  .qrbig{width:100%;padding:16px;font-size:16px;border-radius:16px;margin-top:8px}
+  .tiny{font-size:12px;color:var(--mute)} .tiny button{background:none;border:0;color:var(--red);font:600 12px 'Plus Jakarta Sans';cursor:pointer;padding:0}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:520px){.grid2{grid-template-columns:1fr}}
   .modal{position:fixed;inset:0;background:rgba(16,20,24,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
@@ -79,7 +89,7 @@
   .gbtn{display:flex;justify-content:center;margin:0} .gbtn:not(:empty){margin:12px 0 4px}
   .or{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12px;margin:12px 0} .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
   .link{color:var(--teal);font-size:13px;font-weight:600;cursor:pointer;background:none;border:0;padding:0}
-  .code{letter-spacing:.4em;font-size:22px!important;text-align:center;font-family:'Plus Jakarta Sans'!important;font-weight:800}
+  .otp{letter-spacing:.4em;font-size:22px!important;text-align:center;font-weight:800!important}
   .subnav{max-width:1100px;margin:16px auto 0;padding:0 20px;display:flex;gap:6px}
   .subnav button{border:1px solid var(--line);background:#fff;padding:9px 16px;border-radius:999px;font:700 13px 'Plus Jakarta Sans';cursor:pointer;color:var(--mute)}
   .subnav button.on{background:var(--grad);color:#fff;border-color:transparent}
@@ -153,7 +163,7 @@
 
     <div id="vCode" style="display:none">
       <p style="font-size:14px;color:var(--mute)">We sent a 6-digit code to <b id="codeEmail"></b>. Check spam too.</p>
-      <label class="field">Verification code</label><input type="text" id="aCode" class="code" maxlength="6" inputmode="numeric" placeholder="000000" onkeydown="if(event.key==='Enter')doVerify()">
+      <label class="field">Verification code</label><input type="text" id="aCode" class="otp" maxlength="6" inputmode="numeric" placeholder="000000" onkeydown="if(event.key==='Enter')doVerify()">
       <div id="resetFields" style="display:none"><label class="field">New password</label><input type="password" id="aNewPass" placeholder="At least 6 characters"></div>
       <div class="status err" id="codeErr"></div>
       <button class="btn" style="width:100%;margin-top:12px" onclick="doVerify()">Continue</button>
@@ -199,64 +209,52 @@
 </div>
 
 <main id="app" style="display:none">
-  <section class="card">
-    <h2>Accounts</h2>
+  <section class="card" id="accCard">
+    <h2>Projects</h2>
     <div class="newacc">
-      <input type="text" id="accName" placeholder="New account name" onkeydown="if(event.key==='Enter')createAcc()">
+      <input type="text" id="accName" placeholder="New project name" onkeydown="if(event.key==='Enter')createAcc()">
       <button class="btn" onclick="createAcc()">Add</button>
     </div>
     <div id="accList"><div class="empty">Loading…</div></div>
   </section>
 
   <section class="card" id="detail">
-    <div class="empty" style="padding:60px 0">Select an account, or create one.<br>Each account gets one QR that recognises all of its pictures.</div>
+    <div class="empty" style="padding:60px 0">Create a project to start.<br>Each project gets one QR that recognises all of its photos.</div>
   </section>
 </main>
 
 <template id="detailTpl">
-  <div class="head">
-    <h2 id="dName"></h2>
-    <div class="r">
-      <button class="btn" onclick="showQr()">Show QR</button>
-      <button class="btn ghost" onclick="window.open(CUR.qrUrl)">Test player</button>
-      <button class="btn danger" onclick="deleteAcc()">Delete</button>
-    </div>
-  </div>
-  <div class="code" id="dCode"></div>
-  <div id="stats" style="display:none;margin-bottom:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
+  <div class="head"><h2 id="dName"></h2><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div>
+  <div class="code" id="dCode" style="display:none"></div>
 
-  <h2 style="font-size:14px">Add a picture + video</h2>
-  <label class="field">Title</label>
-  <input type="text" id="title" placeholder="e.g. Front page, Product box, Page 3">
-  <div class="grid2">
-    <div>
-      <label class="field">Target image (printed picture)</label>
-      <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*">
-        <div id="imgPrev">Tap to choose an image<br><span class="hint">You can crop it next</span></div></div>
-    </div>
-    <div>
-      <label class="field">Video to play on it
-        <span style="float:right;font-weight:500"><a href="#" id="vidMode" onclick="toggleVidMode(event)">Use a URL instead</a></span></label>
-      <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*">
-        <div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
-      <div id="urlBox" style="display:none">
-        <input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()">
-        <div class="status" id="urlSt">Direct MP4 link only — YouTube / Drive links won't work</div>
+  <div class="stepc" id="st1"><div class="sh"><i><span>1</span></i><b>Upload the photo</b><small>the one you will print</small></div>
+    <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*"><div id="imgPrev">Tap to choose a photo</div></div>
+  </div>
+
+  <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
+    <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*"><div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
+    <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Direct MP4 link only</div></div>
+    <div class="tiny" style="margin-top:8px"><a href="#" id="vidMode" onclick="toggleVidMode(event)" style="color:var(--b);font-weight:600">Use a video link instead</a></div>
+    <details class="adv"><summary>Options</summary>
+      <label class="field">Name for this photo</label><input type="text" id="title" placeholder="e.g. Front page">
+      <label class="field">How the video sits on the photo</label>
+      <div class="chips" style="margin:0">
+        <label class="chip on"><input type="radio" name="fit" value="fill" checked hidden> Fill edge to edge</label>
+        <label class="chip"><input type="radio" name="fit" value="fit" hidden> Fit inside</label>
+        <label class="chip"><input type="radio" name="fit" value="stretch" hidden> Stretch</label>
       </div>
-    </div>
+    </details>
+    <div class="progress" id="prog"><i></i></div><div class="status" id="st"></div>
+    <button class="btn" style="width:100%;margin-top:12px" id="saveBtn" onclick="addItem()">Save photo + video</button>
   </div>
-  <label class="field">How the video sits on the picture</label>
-  <div class="chips" style="margin:0">
-    <label class="chip on"><input type="radio" name="fit" value="fill" checked hidden> Fill edge to edge</label>
-    <label class="chip"><input type="radio" name="fit" value="fit" hidden> Fit inside (no crop)</label>
-    <label class="chip"><input type="radio" name="fit" value="stretch" hidden> Stretch</label>
-  </div>
-  <div class="progress" id="prog"><i></i></div>
-  <div class="status" id="st"></div>
-  <button class="btn" style="width:100%;margin-top:14px" id="saveBtn" onclick="addItem()">Compile & add</button>
-  <div class="tip">Every time you add or remove a picture, all pictures in this account are re-analysed together so one QR recognises them all. Expect ~15–30 s per picture. Your plan allows a fixed number of photos — see the bar at the top.</div>
 
-  <h2 style="font-size:14px;margin-top:26px">Pictures in this account</h2>
+  <div class="stepc" id="st3"><div class="sh"><i><span>3</span></i><b>Generate the QR</b><small>print, stick or share it</small></div>
+    <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="shareQr()">Share on WhatsApp</button></div>
+  </div>
+
+  <div id="stats" style="display:none;margin-top:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
+  <h2 style="font-size:14px;margin-top:22px">Photos in this project</h2>
   <div id="items"></div>
 </template>
 
@@ -304,12 +302,12 @@
 <div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
   <div class="box">
     <h3 id="qrTitle"></h3>
-    <p>One QR for this whole account. Print it once — it recognises every picture added here, now or later.</p>
+    <p>Print it, stick it, or share it. This QR recognises every photo in this project, now or later.</p>
     <div id="qr"></div>
     <div class="link" id="qrLink"></div>
     <div class="row">
       <button class="btn" onclick="downloadQr()">Download QR</button>
-      <button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
+      <button class="btn ghost" onclick="shareQr()">WhatsApp</button><button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
       <button class="btn ghost" onclick="closeQr()">Close</button>
     </div>
   </div>
@@ -438,6 +436,8 @@ async function loadAccounts(keep){
       <span class="k">${a.items.length} pic${a.items.length===1?'':'s'}</span>
     </div>`).join('') : '<div class="empty">No accounts yet</div>';
   if(keep&&CUR) openAcc(CUR.code);
+  const single=USER&&USER.limits.accounts===1&&ACCOUNTS.length>=1; $('#accCard').style.display=single?'none':''; if(single&&!CUR) openAcc(ACCOUNTS[0].code);
+  document.getElementById('app').style.gridTemplateColumns=single?'1fr':'';
 }
 async function createAcc(){
   const name=$('#accName').value.trim(); if(!name) return;
@@ -448,8 +448,8 @@ function openAcc(code){
   CUR=ACCOUNTS.find(a=>a.code===code); if(!CUR) return;
   document.querySelectorAll('.acc').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
   const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
-  $('#dName').textContent=CUR.name; $('#dCode').textContent='Player link: '+CUR.qrUrl;
-  bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false;
+  $('#dName').textContent=CUR.name; $('#dCode').textContent=CUR.qrUrl;
+  bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false; updSteps();
   if(USER.limits.analytics){ $('#stats').style.display=''; $('#kAll').textContent=CUR.scans; $('#k30').textContent=CUR.scans30;
     post({action:'stats',code:CUR.code}).then(r=>{ if(!r.ok) return; const m=new Map(r.days.map(d=>[d.day,d.n])); const bars=[]; let mx=1;
       for(let i=29;i>=0;i--){ const d=new Date(Date.now()-i*86400000).toISOString().slice(0,10); const n=m.get(d)||0; mx=Math.max(mx,n); bars.push(n); }
@@ -460,6 +460,13 @@ async function deleteAcc(){
   await post({action:'account_delete',code:CUR.code}); CUR=null;
   $('#detail').innerHTML='<div class="empty" style="padding:60px 0">Select an account.</div>'; loadAccounts();
 }
+function updSteps(){
+  const has=CUR&&CUR.items.length>0;
+  $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
+  $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
+  $('#qrBtn').textContent=has?'Show my QR':'Generate my QR (add a photo first)';
+}
+function shareQr(){ const t=encodeURIComponent(`Scan this QR, then point your phone at the photo: ${CUR.qrUrl}`); window.open('https://wa.me/?text='+t); }
 function renderItems(){
   const sh=r=>r>1.05?'portrait':r<0.95?'landscape':'square';
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
@@ -484,7 +491,7 @@ function bindPickers(){
     const url=URL.createObjectURL(vidFile);
     const v=document.createElement('video'); v.onloadedmetadata=()=>{vidRatio=v.videoHeight/v.videoWidth;}; v.src=url;
     $('#vidPrev').innerHTML=`<video src="${url}" muted playsinline></video><span class="hint">${esc(vidFile.name)} · ${(vidFile.size/1048576).toFixed(1)} MB</span>`;
-    $('#dropVid').classList.add('on');
+    $('#dropVid').classList.add('on'); updSteps();
   };
 }
 function toggleVidMode(e){
@@ -514,7 +521,7 @@ function applyCrop(){
   const c=cropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'});
   c.toBlob(b=>{ imgFile=new File([b],'target.jpg',{type:'image/jpeg'}); imgRatio=c.height/c.width;
     $('#imgPrev').innerHTML=`<img src="${URL.createObjectURL(b)}"><span class="hint">${c.width}×${c.height} · tap to change</span>`;
-    $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); },'image/jpeg',0.92);
+    $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); updSteps(); },'image/jpeg',0.92);
 }
 
 function setProg(p,msg,err){ const pr=$('#prog'); if(!pr) return; pr.style.display='block'; pr.firstElementChild.style.width=p+'%'; const s=$('#st'); s.textContent=msg; s.className='status'+(err?' err':''); }
@@ -542,7 +549,7 @@ async function addItem(){
     if(urlMode) fields.video_url=vidUrl; else files.video=vidFile;
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true);
+    await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
 }
 async function removeItem(id){
