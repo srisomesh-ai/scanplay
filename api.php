@@ -79,6 +79,15 @@ function issueCode($u, $what) {
   return sendMail($u['email'], "ScanPlay $what code: $code", codeMail($u['name'], $code, $what));
 }
 function checkCode($u, $code) { return $u['code'] && (int)$u['code_exp'] > now() && password_verify(trim($code), $u['code']); }
+/* Turn share links into direct-download links; reject streaming sites */
+function resolveVideoUrl($url) {
+  if (preg_match('#(youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com|vimeo\.com/\d)#i', $url))
+    return [null, 'YouTube, Instagram, Facebook, TikTok and Vimeo links cannot be used — those sites do not provide video files. Download the clip and upload it, or put it on Google Drive and paste that link.'];
+  if (preg_match('#drive\.google\.com/(?:file/d/|open\?id=|uc\?.*id=)([\w-]+)#', $url, $m)) return ["https://drive.google.com/uc?export=download&id={$m[1]}&confirm=t", null];
+  if (preg_match('#drive\.google\.com/.*[?&]id=([\w-]+)#', $url, $m)) return ["https://drive.google.com/uc?export=download&id={$m[1]}&confirm=t", null];
+  if (preg_match('#dropbox\.com/#', $url)) return [preg_replace('/[?&]dl=0/', '', $url).(strpos($url,'?')!==false?'&':'?').'dl=1', null];
+  return [$url, null];
+}
 function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET token=?, code=NULL WHERE id=?", [$t, $id]); return $t; }
 
 /* plan state for a user: active | grace | expired */
@@ -256,6 +265,7 @@ switch ($action) {
       out(false, ['error'=>'Photo, a video (file or URL) and compiled file are all required']);
     if (!empty($_FILES['video']) && $_FILES['video']['size'] > MAX_VIDEO_MB*1048576) out(false, ['error'=>"Video must be under ".MAX_VIDEO_MB." MB"]);
     if ($videoUrl!=='' && !preg_match('#^https?://#i', $videoUrl)) out(false, ['error'=>'Video URL must start with http:// or https://']);
+    if ($videoUrl!=='') { [$videoUrl, $vErr] = resolveVideoUrl($videoUrl); if ($vErr) out(false, ['error'=>$vErr]); }
 
     $id = substr(bin2hex(random_bytes(5)),0,8); $dir = DATA_DIR."/$code/$id"; mkdir($dir, 0755, true);
     move_uploaded_file($_FILES['target']['tmp_name'], "$dir/target.jpg");
@@ -265,7 +275,15 @@ switch ($action) {
       set_time_limit(600); $fp=fopen("$dir/video.mp4",'w'); $ch=curl_init($videoUrl);
       curl_setopt_array($ch,[CURLOPT_FILE=>$fp,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>5,CURLOPT_TIMEOUT=>560,CURLOPT_USERAGENT=>'Mozilla/5.0 ScanPlay/1.0',CURLOPT_MAXFILESIZE=>MAX_VIDEO_MB*1048576]);
       $okDl=curl_exec($ch); $http=curl_getinfo($ch,CURLINFO_HTTP_CODE); $ctype=curl_getinfo($ch,CURLINFO_CONTENT_TYPE)?:''; $err=curl_error($ch); curl_close($ch); fclose($fp);
-      if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that URL'.($err?" ($err)":'').'. It must be a direct link to an MP4 file.']); }
+      if (stripos($ctype,'text/html')!==false && strpos($videoUrl,'drive.google.com')!==false) {   // large Drive files: virus-scan interstitial
+        $html=file_get_contents("$dir/video.mp4");
+        if (preg_match('/action="([^"]+)"/',$html,$fm) && preg_match('/name="uuid" value="([^"]+)"/',$html,$um) && preg_match('/name="id" value="([^"]+)"/',$html,$im)) {
+          $u2=html_entity_decode($fm[1])."?id={$im[1]}&export=download&confirm=t&uuid={$um[1]}";
+          $fp=fopen("$dir/video.mp4",'w'); $ch=curl_init($u2); curl_setopt_array($ch,[CURLOPT_FILE=>$fp,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>560,CURLOPT_USERAGENT=>'Mozilla/5.0 ScanPlay/1.0']);
+          $okDl=curl_exec($ch); $http=curl_getinfo($ch,CURLINFO_HTTP_CODE); $ctype=curl_getinfo($ch,CURLINFO_CONTENT_TYPE)?:''; curl_close($ch); fclose($fp);
+        }
+      }
+      if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that link'.($err?" ($err)":'').'. Use a Google Drive / Dropbox share link (set to "Anyone with the link") or a direct .mp4 link.']); }
     }
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created) VALUES (?,?,?,?,?,?,?)",

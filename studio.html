@@ -233,7 +233,7 @@
 
   <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
     <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*"><div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
-    <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Direct MP4 link only</div></div>
+    <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Google Drive or Dropbox share link, or a direct .mp4 link. YouTube / Instagram links do not work.</div></div>
     <div class="tiny" style="margin-top:8px"><a href="#" id="vidMode" onclick="toggleVidMode(event)" style="color:var(--b);font-weight:600">Use a video link instead</a></div>
     <details class="adv"><summary>Options</summary>
       <label class="field">Name for this photo</label><input type="text" id="title" placeholder="e.g. Front page">
@@ -504,8 +504,10 @@ function toggleVidMode(e){
 let urlTimer;
 function checkUrl(){
   clearTimeout(urlTimer); vidUrl=$('#vidUrl').value.trim(); vidRatio=1;
-  const st=$('#urlSt'); st.className='status'; st.textContent='Direct MP4 link only — YouTube / Drive links won\'t work';
+  const st=$('#urlSt'); st.className='status'; st.textContent='Google Drive or Dropbox share link, or a direct .mp4 link.';
   if(!/^https?:\/\//i.test(vidUrl)) return;
+  if(/youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com/i.test(vidUrl)){ st.className='status err'; st.textContent='YouTube, Instagram, Facebook and TikTok links cannot be used — they do not give out video files. Download the clip and upload it, or put it on Google Drive and paste that link.'; return; }
+  if(/drive\.google\.com|dropbox\.com/i.test(vidUrl)){ st.textContent='Drive/Dropbox link — the server will download it when you save. Make sure sharing is set to "Anyone with the link".'; updSteps(); return; }
   urlTimer=setTimeout(()=>{
     st.textContent='Checking…';
     const v=document.createElement('video'); v.preload='metadata';
