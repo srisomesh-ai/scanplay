@@ -49,6 +49,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id I
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
+$db->exec("CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, user_id INTEGER, who TEXT, action TEXT, detail TEXT, ip TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, percent INTEGER DEFAULT 0, flat INTEGER DEFAULT 0, max_uses INTEGER DEFAULT 0, uses INTEGER DEFAULT 0, expires INTEGER DEFAULT 0, active INTEGER DEFAULT 1, note TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE payments ADD COLUMN promo TEXT"); $db->exec("ALTER TABLE payments ADD COLUMN discount INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT, payment_id TEXT, plan TEXT, period TEXT, amount INTEGER, status TEXT, created INTEGER)");
@@ -107,6 +108,9 @@ function applyPromo($codeIn, $priceRupees) {
   $d = max(0, min($d, $priceRupees - 1));
   return [$p, $d, null];
 }
+function logAct($userId, $action, $detail='', $who='user') {
+  q("INSERT INTO activity (ts,user_id,who,action,detail,ip) VALUES (?,?,?,?,?,?)", [now(), (int)$userId, $who, $action, mb_substr((string)$detail,0,200), $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '']);
+}
 function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET token=?, code=NULL WHERE id=?", [$t, $id]); return $t; }
 
 /* plan state for a user: active | grace | expired */
@@ -163,13 +167,14 @@ switch ($action) {
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
     else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
+    logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
   }
   case 'verify': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
-    q("UPDATE users SET verified=1, plan_until=MAX(plan_until, ?) WHERE id=?", [now()+7*86400, $u['id']]);
+    q("UPDATE users SET verified=1, plan_until=MAX(plan_until, ?) WHERE id=?", [now()+7*86400, $u['id']]); logAct($u['id'],'verified');
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'resend': {
@@ -179,9 +184,9 @@ switch ($action) {
   case 'login': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? '';
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
-    if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) out(false, ['error'=>'Wrong email or password']);
+    if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) { if ($u) logAct($u['id'],'login_failed'); out(false, ['error'=>'Wrong email or password']); }
     if (!$u['verified'] && mailConfigured()) { issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]); }
-    out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
+    logAct($u['id'],'login'); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
   }
   case 'forgot': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
@@ -192,7 +197,7 @@ switch ($action) {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
     if (strlen($_POST['newpass'] ?? '') < 6) out(false, ['error'=>'Password must be at least 6 characters']);
-    q("UPDATE users SET pass=?, verified=1 WHERE id=?", [password_hash($_POST['newpass'], PASSWORD_DEFAULT), $u['id']]);
+    q("UPDATE users SET pass=?, verified=1 WHERE id=?", [password_hash($_POST['newpass'], PASSWORD_DEFAULT), $u['id']]); logAct($u['id'],'password_reset');
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'google': {
@@ -202,6 +207,7 @@ switch ($action) {
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]); }
     else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
+    logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'logout': { $u = auth(); q("UPDATE users SET token=NULL WHERE id=?", [$u['id']]); out(true); }
@@ -237,14 +243,14 @@ switch ($action) {
     if ($lim && $have >= $lim) out(false, ['error'=>"Your plan allows $lim account".($lim>1?'s':'').". Upgrade for more.", 'upgrade'=>true]);
     $code = substr(bin2hex(random_bytes(4)),0,8);
     q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $u['id'], $name, now()]);
-    mkdir(DATA_DIR."/$code", 0755, true);
+    mkdir(DATA_DIR."/$code", 0755, true); logAct($u['id'],'project_create',"$code $name");
     out(true, ['code'=>$code]);
   }
   case 'account_delete': {
     $u = auth(); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
     q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]);
-    rrmdir(DATA_DIR."/$code"); out(true);
+    rrmdir(DATA_DIR."/$code"); logAct($u['id'],'project_delete',$code); out(true);
   }
 
   /* ---------- chunked video upload (background, resumable) ---------- */
@@ -307,7 +313,7 @@ switch ($action) {
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created) VALUES (?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now()]);
-    out(true, ['id'=>$id]);
+    logAct($u['id'],'photo_add',"$code/$id"); out(true, ['id'=>$id]);
   }
   case 'item_update': {
     $u = auth(); $code = clean($_POST['code'] ?? ''); $id = clean($_POST['id'] ?? '');
@@ -324,7 +330,7 @@ switch ($action) {
     $mind = DATA_DIR."/$code/targets.mind";
     if (!empty($_FILES['mind'])) move_uploaded_file($_FILES['mind']['tmp_name'], $mind);
     elseif (!row("SELECT id FROM items WHERE code=?", [$code]) && file_exists($mind)) unlink($mind);
-    out(true);
+    logAct($u['id'],'photo_delete',"$code/$id"); out(true);
   }
 
   /* ---------- public player ---------- */
@@ -373,6 +379,7 @@ switch ($action) {
     if ($pay['status'] !== 'paid') {
       q("UPDATE payments SET payment_id=?, status='paid' WHERE id=?", [$pid, $pay['id']]);
       if (!empty($pay['promo'])) q("UPDATE promos SET uses=uses+1 WHERE code=?", [$pay['promo']]);
+      logAct($u['id'],'payment',"{$pay['plan']} {$pay['period']} ₹".($pay['amount']/100)." $pid");
       $add = $pay['period']==='year' ? 365*86400 : 30*86400;
       $base = ($u['plan']===$pay['plan'] && (int)$u['plan_until'] > now()) ? (int)$u['plan_until'] : now();   // extend if same plan still active
       q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$pay['plan'], $base+$add, $u['id']]);
@@ -405,39 +412,48 @@ switch ($action) {
     $u = row("SELECT * FROM users WHERE id=?", [$id]); if (!$u) out(false, ['error'=>'No such user']); unset($u['pass'],$u['token'],$u['code']);
     $accs = array_map('pubAccount', rows("SELECT * FROM accounts WHERE user_id=? ORDER BY created", [$id]));
     $pays = rows("SELECT order_id,payment_id,plan,period,amount,status,created FROM payments WHERE user_id=? ORDER BY created DESC", [$id]);
-    out(true, ['user'=>$u, 'accounts'=>$accs, 'payments'=>$pays, 'info'=>userInfo(row("SELECT * FROM users WHERE id=?", [$id]))]);
+    $act = rows("SELECT ts,who,action,detail,ip FROM activity WHERE user_id=? ORDER BY id DESC LIMIT 100", [$id]);
+    out(true, ['user'=>$u, 'accounts'=>$accs, 'payments'=>$pays, 'activity'=>$act, 'info'=>userInfo(row("SELECT * FROM users WHERE id=?", [$id]))]);
   }
   case 'admin_setplan': {
-    ownerAuth(); $id=(int)($_POST['id']??0); $plan=$_POST['plan']??''; $days=(int)($_POST['days']??30);
+    ownerAuth(); logAct((int)($_POST['id']??0),'admin_setplan',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0); $plan=$_POST['plan']??''; $days=(int)($_POST['days']??30);
     if (!isset(PLANS[$plan])) out(false, ['error'=>'Bad plan']);
     q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$plan, now()+$days*86400, $id]); out(true);
   }
-  case 'admin_extend': { ownerAuth(); $id=(int)($_POST['id']??0); $days=(int)($_POST['days']??30); $u=row("SELECT plan_until FROM users WHERE id=?",[$id]); $base=max((int)$u['plan_until'], now()); q("UPDATE users SET plan_until=? WHERE id=?", [$base+$days*86400, $id]); out(true); }
+  case 'admin_extend': { ownerAuth(); logAct((int)($_POST['id']??0),'admin_extend',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0); $days=(int)($_POST['days']??30); $u=row("SELECT plan_until FROM users WHERE id=?",[$id]); $base=max((int)$u['plan_until'], now()); q("UPDATE users SET plan_until=? WHERE id=?", [$base+$days*86400, $id]); out(true); }
   case 'admin_credit': {
-    ownerAuth(); $id=(int)($_POST['id']??0);
+    ownerAuth(); logAct((int)($_POST['id']??0),'admin_credit',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0);
     if (isset($_POST['photos'])) q("UPDATE users SET extra_photos=? WHERE id=?", [max(0,(int)$_POST['photos']), $id]);
     if (isset($_POST['accounts'])) q("UPDATE users SET extra_accounts=? WHERE id=?", [max(0,(int)$_POST['accounts']), $id]);
     if (isset($_POST['note'])) q("UPDATE users SET note=? WHERE id=?", [trim(strip_tags($_POST['note'])), $id]);
     out(true);
   }
-  case 'admin_verify': { ownerAuth(); q("UPDATE users SET verified=1 WHERE id=?", [(int)($_POST['id']??0)]); out(true); }
-  case 'admin_setpass': { ownerAuth(); $p=$_POST['pass']??''; if (strlen($p)<6) out(false,['error'=>'Min 6 chars']); q("UPDATE users SET pass=?, token=NULL WHERE id=?", [password_hash($p,PASSWORD_DEFAULT), (int)($_POST['id']??0)]); out(true); }
+  case 'admin_verify': { ownerAuth(); logAct((int)($_POST['id']??0),'admin_verify',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); q("UPDATE users SET verified=1 WHERE id=?", [(int)($_POST['id']??0)]); out(true); }
+  case 'admin_setpass': { ownerAuth(); logAct((int)($_POST['id']??0),'admin_setpass',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $p=$_POST['pass']??''; if (strlen($p)<6) out(false,['error'=>'Min 6 chars']); q("UPDATE users SET pass=?, token=NULL WHERE id=?", [password_hash($p,PASSWORD_DEFAULT), (int)($_POST['id']??0)]); out(true); }
   case 'admin_item_delete': {
-    ownerAuth(); $code=clean($_POST['code']??''); $id=clean($_POST['id']??'');
+    ownerAuth(); logAct(0,'admin_item_delete',json_encode($_POST),'admin'); $code=clean($_POST['code']??''); $id=clean($_POST['id']??'');
     q("DELETE FROM items WHERE id=? AND code=?", [$id,$code]); rrmdir(DATA_DIR."/$code/$id");
     if (!row("SELECT id FROM items WHERE code=?", [$code])) @unlink(DATA_DIR."/$code/targets.mind");
     out(true, ['note'=>'Removed. The owner must open the studio once so remaining photos are recompiled.']);
   }
-  case 'admin_block': { ownerAuth(); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
+  case 'admin_block': { ownerAuth(); logAct(0,'admin_block',json_encode($_POST),'admin'); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
   case 'admin_account_delete': {
-    ownerAuth(); $code=clean($_POST['code']??'');
+    ownerAuth(); logAct(0,'admin_account_delete',json_encode($_POST),'admin'); $code=clean($_POST['code']??'');
     q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]); rrmdir(DATA_DIR."/$code"); out(true);
   }
   case 'admin_user_delete': {
-    ownerAuth(); $id=(int)($_POST['id']??0);
+    ownerAuth(); logAct((int)($_POST['id']??0),'admin_user_delete',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0);
     foreach (rows("SELECT code FROM accounts WHERE user_id=?", [$id]) as $acc) { q("DELETE FROM items WHERE code=?", [$acc['code']]); q("DELETE FROM scans WHERE code=?", [$acc['code']]); rrmdir(DATA_DIR."/{$acc['code']}"); }
     q("DELETE FROM accounts WHERE user_id=?", [$id]); rrmdir(DATA_DIR."/users/$id");
     q("UPDATE users SET deleted=1, token=NULL, email=email||'.deleted.'||id WHERE id=?", [$id]); out(true);
+  }
+
+  case 'admin_activity': {
+    ownerAuth(); $q = trim($_POST['q'] ?? '');
+    $rows = $q ? rows("SELECT a.*, u.email FROM activity a LEFT JOIN users u ON u.id=a.user_id WHERE a.action LIKE ? OR a.detail LIKE ? OR u.email LIKE ? OR a.ip LIKE ? ORDER BY a.id DESC LIMIT 300", ["%$q%","%$q%","%$q%","%$q%"])
+               : rows("SELECT a.*, u.email FROM activity a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 200");
+    $sus = rows("SELECT ip, COUNT(*) n FROM activity WHERE action='login_failed' AND ts>? GROUP BY ip HAVING n>=5 ORDER BY n DESC", [now()-86400]);
+    out(true, ['activity'=>$rows, 'suspicious'=>$sus]);
   }
 
   /* ---------- promo codes (admin) ---------- */
