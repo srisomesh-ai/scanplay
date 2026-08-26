@@ -18,7 +18,8 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{p
 tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}.tag.a{background:#E8F9EE;color:#15803D}.tag.g{background:#FFF4E5;color:#B45309}.tag.x{background:#FEE2E2;color:#B91C1C}.tag.p{background:var(--paper);color:var(--b)}
 .modal{position:fixed;inset:0;background:rgba(15,10,31,.5);display:none;align-items:flex-start;justify-content:center;padding:12px;overflow:auto;z-index:9;-webkit-overflow-scrolling:touch}.modal.open{display:flex}
-.box{background:#fff;border-radius:20px;padding:22px;max-width:860px;width:100%}
+.box{background:#fff;border-radius:20px;padding:22px;max-width:860px;width:100%;position:relative}
+.box>.row:first-child{position:sticky;top:-22px;background:#fff;padding:8px 0;z-index:2}
 .box h2{font-size:18px;margin-bottom:4px} .box h3{font-size:14px;margin:18px 0 8px}
 .card{border:1.5px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
 .field{display:block;font-size:12px;font-weight:700;color:var(--mute);margin:10px 0 4px}
@@ -43,7 +44,7 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
   <table><thead><tr><th>User</th><th>Plan</th><th>Until</th><th>Usage</th><th>Scans</th><th>Paid</th><th>Joined</th></tr></thead><tbody id="tb"></tbody></table>
 </div>
 
-<div class="modal" id="m" onclick="if(event.target===this)close()"><div class="box" id="mb"></div></div>
+<div class="modal" id="m" onclick="if(event.target===this)closeUser()"><div class="box" id="mb"></div></div>
 
 <script>
 let P=sessionStorage.getItem('sp_admin')||'', DATA=null; const $=s=>document.querySelector(s);
@@ -71,7 +72,7 @@ function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value, s=$('#s
     <td><span class="tag p">${u.plan}</span>${u.extra_photos>0?'<br><span style="font-size:11px">+'+u.extra_photos+' photos</span>':''}</td><td>${d(u.plan_until)}<br><span class="tag ${u.state==='active'?'a':u.state==='grace'?'g':'x'}">${u.state}</span></td>
     <td>${u.accs} proj · ${u.photos} photos</td><td>${u.scans||0}</td><td>${u.paid?inr(u.paid/100):'—'}</td><td>${d(u.created)}</td></tr>`).join(''); }
 async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok) return alert(r.error); const u=r.user, i=r.info, L=i.limits, opts=Object.keys(DATA.plans).map(k=>`<option value="${k}" ${u.plan===k?'selected':''}>${DATA.plans[k].name}</option>`).join('');
-  $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><div><h2>${u.name}</h2><div style="color:var(--mute);font-size:13px">${u.email} · ${u.phone||'no phone'} · joined ${d(u.created)}${u.google_id?' · Google':''}</div></div><button class="btn g s" onclick="close()">Close</button></div>
+  $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><div><h2>${u.name}</h2><div style="color:var(--mute);font-size:13px">${u.email} · ${u.phone||'no phone'} · joined ${d(u.created)}${u.google_id?' · Google':''}</div></div><button class="btn g s" onclick="closeUser()">Close</button></div>
   <div class="grid">
     <div class="card"><h3 style="margin-top:0">Plan</h3><div class="st">Now: <b>${i.planName}</b> · ${i.state} · until ${d(u.plan_until)}</div>
       <label class="field">Set plan</label><div class="row"><select id="pl">${opts}</select><input id="pd" type="number" value="30" style="width:80px"> days <button class="btn s" onclick="act('admin_setplan',{id:${id},plan:$('#pl').value,days:$('#pd').value})">Apply</button></div>
@@ -86,8 +87,9 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
   </div>
   <h3>Projects &amp; photos</h3>${r.accounts.length?r.accounts.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${a.name}</b> ${a.blocked?'<span class="tag x">BLOCKED</span>':''} <span style="color:var(--mute);font-size:12px">${a.code} · ${a.scans} scans</span><br><a href="${a.qrUrl}" target="_blank" style="font-size:12px;color:var(--b)">${a.qrUrl}</a></div><span class="row"><button class="btn g s" onclick="act('admin_block',{code:'${a.code}',blocked:${a.blocked?0:1}},false,${id})">${a.blocked?'Unblock':'Block'}</button><button class="btn d s" onclick="if(confirm('Delete project ${a.name}?'))act('admin_account_delete',{code:'${a.code}'},false,${id})">Delete project</button></span></div>
     ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${it.title}</b><div style="font-size:12px;color:var(--mute)">${it.id} · fit: ${it.fit||'fit'} · <a href="data/${a.code}/${it.id}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${a.code}',id:'${it.id}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
-  <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }catch(e){ $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><h2>Could not open user</h2><button class="btn g s" onclick="close()">Close</button></div><p class="st err">${e.message}</p><p class="st">Redeploy from hPanel Git and hard-refresh; if it persists, send this message to support.</p>`; $('#m').classList.add('open'); } }
-async function act(a,f,closeAfter,reopen){ const r=await api(a,f); if(!r.ok) return alert(r.error); if(r.note) alert(r.note); await load(); if(closeAfter) close(); else openUser(reopen||f.id); }
-function close(){ $('#m').classList.remove('open'); $('#mb').innerHTML=''; }
+  <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }catch(e){ $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><h2>Could not open user</h2><button class="btn g s" onclick="closeUser()">Close</button></div><p class="st err">${e.message}</p><p class="st">Redeploy from hPanel Git and hard-refresh; if it persists, send this message to support.</p>`; $('#m').classList.add('open'); } }
+async function act(a,f,closeAfter,reopen){ const r=await api(a,f); if(!r.ok) return alert(r.error); if(r.note) alert(r.note); await load(); if(closeAfter) closeUser(); else openUser(reopen||f.id); }
+function closeUser(){ $('#m').classList.remove('open'); $('#mb').innerHTML=''; }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeUser(); });
 if(P) load();
 </script></body></html>
