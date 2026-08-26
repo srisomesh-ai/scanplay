@@ -180,6 +180,7 @@
     </div>
   </div>
 </div>
+<div style="text-align:center;margin:-30px auto 20px;font-size:13px;color:var(--mute)" id="appHint">Prefer an app? <a href="https://play.google.com/store/apps/details?id=in.scanplay.app" target="_blank" rel="noopener" style="color:var(--b);font-weight:700">Get ScanPlay on Google Play</a></div>
 <div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
 <div class="subnav" id="subnav" style="display:none"><button class="on" id="nDash" onclick="showTab('dash')">Dashboard</button><button id="nAcc" onclick="showTab('acc')">Accounts &amp; QRs</button></div>
@@ -362,7 +363,7 @@ async function initGoogle(){
   tryRender();
 }
 async function logout(){ await post({action:'logout'}).catch(()=>{}); localStorage.removeItem('sp_token'); location.reload(); }
-function boot(){ $('#login').style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab(ACCOUNTS.length?'acc':'dash')); }
+function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab(ACCOUNTS.length?'acc':'dash')); }
 function showTab(t){ $('#nDash').classList.toggle('on',t==='dash'); $('#nAcc').classList.toggle('on',t==='acc'); $('#dash').style.display=t==='dash'?'grid':'none'; $('#app').style.display=t==='acc'?'grid':'none'; if(t==='dash') renderDash(); }
 async function startFlow(){
   showTab('acc');
