@@ -23,3 +23,11 @@ AddType application/octet-stream .mind
 <FilesMatch "scanplay\.db-(wal|shm)$">
   Require all denied
 </FilesMatch>
+
+# Never serve config files
+<Files "config.php">
+  Require all denied
+</Files>
+<Files "config.sample.php">
+  Require all denied
+</Files>

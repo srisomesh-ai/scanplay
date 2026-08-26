@@ -8,11 +8,16 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, X-Token, X-Admin-Pass');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 
-/* ---------------- CONFIG ---------------- */
-define('OWNER_PASS',   'arAdmin@2026');                 // owner/admin panel password — change
-define('CRON_KEY',     'sp-cron-7c1e9a');               // for ?action=cron&key=
-define('RZP_KEY_ID',   'rzp_test_Svq7brYQvxA6kz');        // Razorpay key id (TEST — swap for live)
-define('RZP_KEY_SECRET','vHNYS7qh04Fyklra0YbzB6Iy');    // Razorpay key secret (TEST)
+/* ---------------- CONFIG ----------------
+   Secrets live in config.php (NOT in git). Copy config.sample.php to config.php on the server and fill it in. */
+$cfg = file_exists(__DIR__.'/config.php') ? include __DIR__.'/config.php' : [];
+$cfg += [ 'owner_pass'=>'arAdmin@2026', 'cron_key'=>'sp-cron-7c1e9a', 'rzp_key_id'=>'rzp_test_Svq7brYQvxA6kz', 'rzp_key_secret'=>'vHNYS7qh04Fyklra0YbzB6Iy',
+          'smtp_host'=>'smtp.hostinger.com', 'smtp_port'=>465, 'smtp_user'=>'info@scanplay.in', 'smtp_pass'=>'CHANGE_ME', 'mail_from_name'=>'ScanPlay',
+          'google_client_id'=>'CHANGE_ME.apps.googleusercontent.com', 'rzp_webhook_secret'=>'' ];
+define('OWNER_PASS', $cfg['owner_pass']); define('CRON_KEY', $cfg['cron_key']);
+define('RZP_KEY_ID', $cfg['rzp_key_id']); define('RZP_KEY_SECRET', $cfg['rzp_key_secret']); define('RZP_WEBHOOK_SECRET', $cfg['rzp_webhook_secret']);
+define('SMTP_HOST', $cfg['smtp_host']); define('SMTP_PORT', (int)$cfg['smtp_port']); define('SMTP_USER', $cfg['smtp_user']); define('SMTP_PASS', $cfg['smtp_pass']); define('MAIL_FROM_NAME', $cfg['mail_from_name']);
+define('GOOGLE_CLIENT_ID', $cfg['google_client_id']);
 define('DATA_DIR', __DIR__ . '/data');
 define('MAX_VIDEO_MB', 200);
 define('GRACE_DAYS', 30);
