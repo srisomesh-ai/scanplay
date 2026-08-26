@@ -16,6 +16,12 @@ define('RZP_KEY_SECRET','XXXXXXXXXXXXXXXXXXXXXXXX');    // Razorpay key secret
 define('DATA_DIR', __DIR__ . '/data');
 define('MAX_VIDEO_MB', 200);
 define('GRACE_DAYS', 30);
+/* Email (Hostinger mailbox) — fill in once noreply@scanplay.in exists */
+define('SMTP_HOST', 'smtp.hostinger.com'); define('SMTP_PORT', 465);
+define('SMTP_USER', 'noreply@scanplay.in'); define('SMTP_PASS', 'CHANGE_ME');
+define('MAIL_FROM_NAME', 'ScanPlay');
+/* Google sign-in — OAuth client ID from console.cloud.google.com (authorised origin: https://scanplay.in) */
+define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
 
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [
@@ -33,6 +39,7 @@ catch (Exception $e) { echo json_encode(['ok'=>false,'error'=>'Database unavaila
 $db->exec("PRAGMA journal_mode=WAL");
 $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, pass TEXT, name TEXT, phone TEXT,
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
+foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
@@ -47,6 +54,32 @@ function q($sql, $p = []) { global $db; $st = $db->prepare($sql); $st->execute($
 function row($sql, $p = []) { return q($sql,$p)->fetch(PDO::FETCH_ASSOC); }
 function rows($sql, $p = []) { return q($sql,$p)->fetchAll(PDO::FETCH_ASSOC); }
 function now() { return time(); }
+function mailConfigured() { return SMTP_PASS !== 'CHANGE_ME'; }
+/* Minimal SMTP client (SSL) — no dependencies */
+function sendMail($to, $subject, $html) {
+  if (!mailConfigured()) return false;
+  $fp = @stream_socket_client('ssl://'.SMTP_HOST.':'.SMTP_PORT, $errno, $errstr, 15); if (!$fp) return false;
+  $read = function() use ($fp) { $r=''; while ($l=fgets($fp,515)) { $r.=$l; if (substr($l,3,1)===' ') break; } return $r; };
+  $cmd  = function($c) use ($fp,$read) { fwrite($fp, $c."\r\n"); return $read(); };
+  $read(); $cmd('EHLO scanplay.in'); $cmd('AUTH LOGIN'); $cmd(base64_encode(SMTP_USER)); $r=$cmd(base64_encode(SMTP_PASS));
+  if (strpos($r,'235')!==0) { fclose($fp); return false; }
+  $cmd('MAIL FROM:<'.SMTP_USER.'>'); $cmd('RCPT TO:<'.$to.'>'); $cmd('DATA');
+  $msg = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html));
+  $r=$cmd($msg."\r\n."); $cmd('QUIT'); fclose($fp); return strpos($r,'250')===0;
+}
+function codeMail($name, $code, $what) {
+  return "<div style='font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'>
+  <div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div><p>Hi ".htmlspecialchars($name).",</p><p>Your $what code is:</p>
+  <div style='font-size:34px;font-weight:800;letter-spacing:8px;background:#F6F3FF;padding:16px;text-align:center;border-radius:10px'>$code</div>
+  <p style='color:#666;font-size:13px'>It expires in 15 minutes. If you didn't request this, ignore this email.</p></div>";
+}
+function issueCode($u, $what) {
+  $code = str_pad((string)random_int(0,999999), 6, '0', STR_PAD_LEFT);
+  q("UPDATE users SET code=?, code_exp=? WHERE id=?", [password_hash($code, PASSWORD_DEFAULT), now()+900, $u['id']]);
+  return sendMail($u['email'], "ScanPlay $what code: $code", codeMail($u['name'], $code, $what));
+}
+function checkCode($u, $code) { return $u['code'] && (int)$u['code_exp'] > now() && password_verify(trim($code), $u['code']); }
+function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET token=?, code=NULL WHERE id=?", [$t, $id]); return $t; }
 
 /* plan state for a user: active | grace | expired */
 function planState($u) {
@@ -90,24 +123,58 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && !$_POST && !$_FILES && ($_SERVER['CON
 switch ($action) {
 
   /* ---------- auth ---------- */
+  case 'config': out(true, ['google'=> GOOGLE_CLIENT_ID !== 'CHANGE_ME.apps.googleusercontent.com' ? GOOGLE_CLIENT_ID : null, 'mail'=>mailConfigured()]);
+
   case 'signup': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? ''; $name = trim(strip_tags($_POST['name'] ?? '')); $phone = preg_replace('/\D/','',$_POST['phone'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
     if ($name === '') out(false, ['error'=>'Enter your name']);
-    if (row("SELECT id FROM users WHERE email=?", [$email])) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
-    $token = bin2hex(random_bytes(24));
-    q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,token) VALUES (?,?,?,?,'free',?,?,?)",
-      [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now(), $token]);
+    $ex = row("SELECT * FROM users WHERE email=?", [$email]);
+    if ($ex && $ex['verified']) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
+    if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
+    else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
-    out(true, ['token'=>$token, 'user'=>userInfo($u)]);
+    if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
+    issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
+  }
+  case 'verify': {
+    $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
+    if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
+    q("UPDATE users SET verified=1, plan_until=MAX(plan_until, ?) WHERE id=?", [now()+7*86400, $u['id']]);
+    out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
+  }
+  case 'resend': {
+    $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
+    if ($u) issueCode($u, isset($_POST['reset']) ? 'password reset' : 'verification'); out(true);
   }
   case 'login': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? '';
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
-    if (!$u || !password_verify($pass, $u['pass'])) out(false, ['error'=>'Wrong email or password']);
-    $token = bin2hex(random_bytes(24)); q("UPDATE users SET token=? WHERE id=?", [$token, $u['id']]); $u['token']=$token;
-    out(true, ['token'=>$token, 'user'=>userInfo($u)]);
+    if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) out(false, ['error'=>'Wrong email or password']);
+    if (!$u['verified'] && mailConfigured()) { issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]); }
+    out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
+  }
+  case 'forgot': {
+    $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
+    if (!mailConfigured()) out(false, ['error'=>'Password reset by email is not set up yet. Message us on WhatsApp.']);
+    if ($u) issueCode($u, 'password reset'); out(true);   // same answer whether or not the email exists
+  }
+  case 'reset': {
+    $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
+    if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
+    if (strlen($_POST['newpass'] ?? '') < 6) out(false, ['error'=>'Password must be at least 6 characters']);
+    q("UPDATE users SET pass=?, verified=1 WHERE id=?", [password_hash($_POST['newpass'], PASSWORD_DEFAULT), $u['id']]);
+    out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
+  }
+  case 'google': {
+    $cred = $_POST['credential'] ?? ''; if (!$cred) out(false, ['error'=>'No Google credential']);
+    $info = json_decode(@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token='.urlencode($cred)), true);
+    if (!$info || ($info['aud'] ?? '') !== GOOGLE_CLIENT_ID || empty($info['email']) || ($info['email_verified'] ?? 'false') !== 'true') out(false, ['error'=>'Google sign-in could not be verified']);
+    $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
+    if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]); }
+    else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
+    out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'logout': { $u = auth(); q("UPDATE users SET token=NULL WHERE id=?", [$u['id']]); out(true); }
   case 'me': { $u = auth(); out(true, ['user'=>userInfo($u)]); }
