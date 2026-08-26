@@ -49,6 +49,8 @@ $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id I
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
+$db->exec("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, percent INTEGER DEFAULT 0, flat INTEGER DEFAULT 0, max_uses INTEGER DEFAULT 0, uses INTEGER DEFAULT 0, expires INTEGER DEFAULT 0, active INTEGER DEFAULT 1, note TEXT, created INTEGER)");
+try { $db->exec("ALTER TABLE payments ADD COLUMN promo TEXT"); $db->exec("ALTER TABLE payments ADD COLUMN discount INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT, payment_id TEXT, plan TEXT, period TEXT, amount INTEGER, status TEXT, created INTEGER)");
 
 /* ---------------- helpers ---------------- */
@@ -93,6 +95,17 @@ function resolveVideoUrl($url) {
   if (preg_match('#drive\.google\.com/.*[?&]id=([\w-]+)#', $url, $m)) return ["https://drive.google.com/uc?export=download&id={$m[1]}&confirm=t", null];
   if (preg_match('#dropbox\.com/#', $url)) return [preg_replace('/[?&]dl=0/', '', $url).(strpos($url,'?')!==false?'&':'?').'dl=1', null];
   return [$url, null];
+}
+/* Promo: returns [promoRow, discountRupees, error] for a plan/period price */
+function applyPromo($codeIn, $priceRupees) {
+  $code = strtoupper(preg_replace('/[^A-Z0-9]/','', strtoupper($codeIn))); if ($code==='') return [null,0,null];
+  $p = row("SELECT * FROM promos WHERE code=?", [$code]);
+  if (!$p || !$p['active']) return [null,0,'That promo code is not valid'];
+  if ($p['expires'] && now() > (int)$p['expires']) return [null,0,'That promo code has expired'];
+  if ($p['max_uses'] && (int)$p['uses'] >= (int)$p['max_uses']) return [null,0,'That promo code has been fully used'];
+  $d = (int)round($priceRupees * (int)$p['percent'] / 100) + (int)$p['flat'];
+  $d = max(0, min($d, $priceRupees - 1));
+  return [$p, $d, null];
 }
 function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET token=?, code=NULL WHERE id=?", [$t, $id]); return $t; }
 
@@ -332,17 +345,25 @@ switch ($action) {
   }
 
   /* ---------- payments (Razorpay Orders) ---------- */
+  case 'promo_check': {
+    $u = auth(); $plan = $_POST['plan'] ?? ''; $period = ($_POST['period'] ?? 'month')==='year' ? 'year' : 'month';
+    if (!isset(PLANS[$plan]) || $plan==='free') out(false, ['error'=>'Choose a paid plan']);
+    $price = PLANS[$plan][$period]; [$p,$d,$err] = applyPromo($_POST['code'] ?? '', $price);
+    if ($err) out(false, ['error'=>$err]);
+    out(true, ['code'=>$p['code'], 'discount'=>$d, 'total'=>$price-$d, 'label'=>$p['percent'] ? $p['percent'].'% off' : '₹'.$p['flat'].' off']);
+  }
   case 'pay_create': {
     $u = auth(); $plan = $_POST['plan'] ?? ''; $period = ($_POST['period'] ?? 'month')==='year' ? 'year' : 'month';
     if (!isset(PLANS[$plan]) || $plan==='free') out(false, ['error'=>'Choose a paid plan']);
-    $amount = PLANS[$plan][$period] * 100;
+    $price = PLANS[$plan][$period]; [$promo,$disc,$perr] = applyPromo($_POST['promo'] ?? '', $price); if ($perr) out(false, ['error'=>$perr]);
+    $amount = ($price - $disc) * 100;
     $ch = curl_init('https://api.razorpay.com/v1/orders');
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_USERPWD=>RZP_KEY_ID.':'.RZP_KEY_SECRET, CURLOPT_POST=>true,
       CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
       CURLOPT_POSTFIELDS=>json_encode(['amount'=>$amount,'currency'=>'INR','receipt'=>"u{$u['id']}-".now(),'notes'=>['user'=>$u['id'],'plan'=>$plan,'period'=>$period]])]);
     $res = json_decode(curl_exec($ch), true); curl_close($ch);
     if (empty($res['id'])) out(false, ['error'=>'Could not start payment: '.($res['error']['description'] ?? 'Razorpay not configured')]);
-    q("INSERT INTO payments (user_id,order_id,plan,period,amount,status,created) VALUES (?,?,?,?,?,'created',?)", [$u['id'], $res['id'], $plan, $period, $amount, now()]);
+    q("INSERT INTO payments (user_id,order_id,plan,period,amount,status,created,promo,discount) VALUES (?,?,?,?,?,'created',?,?,?)", [$u['id'], $res['id'], $plan, $period, $amount, now(), $promo ? $promo['code'] : null, $disc*100]);
     out(true, ['order_id'=>$res['id'], 'amount'=>$amount, 'key'=>RZP_KEY_ID, 'name'=>$u['name'], 'email'=>$u['email'], 'phone'=>$u['phone'], 'label'=>PLANS[$plan]['name'].' · '.($period==='year'?'1 year':'1 month')]);
   }
   case 'pay_verify': {
@@ -351,6 +372,7 @@ switch ($action) {
     if (!hash_equals(hash_hmac('sha256', "$oid|$pid", RZP_KEY_SECRET), $sig)) out(false, ['error'=>'Payment verification failed']);
     if ($pay['status'] !== 'paid') {
       q("UPDATE payments SET payment_id=?, status='paid' WHERE id=?", [$pid, $pay['id']]);
+      if (!empty($pay['promo'])) q("UPDATE promos SET uses=uses+1 WHERE code=?", [$pay['promo']]);
       $add = $pay['period']==='year' ? 365*86400 : 30*86400;
       $base = ($u['plan']===$pay['plan'] && (int)$u['plan_until'] > now()) ? (int)$u['plan_until'] : now();   // extend if same plan still active
       q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$pay['plan'], $base+$add, $u['id']]);
@@ -417,6 +439,24 @@ switch ($action) {
     q("DELETE FROM accounts WHERE user_id=?", [$id]); rrmdir(DATA_DIR."/users/$id");
     q("UPDATE users SET deleted=1, token=NULL, email=email||'.deleted.'||id WHERE id=?", [$id]); out(true);
   }
+
+  /* ---------- promo codes (admin) ---------- */
+  case 'admin_promos': {
+    ownerAuth();
+    $list = rows("SELECT p.*, (SELECT COUNT(*) FROM payments x WHERE x.promo=p.code AND x.status='paid') paid_count, (SELECT SUM(amount) FROM payments x WHERE x.promo=p.code AND x.status='paid') revenue, (SELECT SUM(discount) FROM payments x WHERE x.promo=p.code AND x.status='paid') given FROM promos p ORDER BY created DESC");
+    $sales = rows("SELECT pm.created, pm.plan, pm.period, pm.amount, pm.discount, pm.promo, u.name, u.email FROM payments pm JOIN users u ON u.id=pm.user_id WHERE pm.status='paid' AND pm.promo IS NOT NULL ORDER BY pm.created DESC LIMIT 200");
+    out(true, ['promos'=>$list, 'sales'=>$sales]);
+  }
+  case 'admin_promo_save': {
+    ownerAuth(); $code = strtoupper(preg_replace('/[^A-Za-z0-9]/','', $_POST['code'] ?? '')); if (strlen($code)<3) out(false, ['error'=>'Code must be 3+ letters/numbers']);
+    $pct=max(0,min(90,(int)($_POST['percent']??0))); $flat=max(0,(int)($_POST['flat']??0)); if(!$pct && !$flat) out(false, ['error'=>'Give a percent or a flat amount']);
+    $exp = !empty($_POST['expires']) ? strtotime($_POST['expires'].' 23:59:59') : 0;
+    q("INSERT INTO promos (code,percent,flat,max_uses,expires,active,note,created) VALUES (?,?,?,?,?,1,?,?) ON CONFLICT(code) DO UPDATE SET percent=excluded.percent, flat=excluded.flat, max_uses=excluded.max_uses, expires=excluded.expires, note=excluded.note",
+      [$code,$pct,$flat,max(0,(int)($_POST['max_uses']??0)),$exp,trim(strip_tags($_POST['note']??'')),now()]);
+    out(true, ['code'=>$code]);
+  }
+  case 'admin_promo_toggle': { ownerAuth(); q("UPDATE promos SET active=? WHERE code=?", [(int)!!($_POST['active']??0), strtoupper($_POST['code']??'')]); out(true); }
+  case 'admin_promo_delete': { ownerAuth(); q("DELETE FROM promos WHERE code=?", [strtoupper($_POST['code']??'')]); out(true); }
 
   /* ---------- backups ---------- */
   case 'admin_backup': {

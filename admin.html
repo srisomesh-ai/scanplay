@@ -34,6 +34,10 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 <div class="w" id="app" style="display:none">
   <div class="kpis" id="kpis"></div>
   <div class="row"><input id="q" placeholder="Search name, email, phone" style="flex:1;min-width:200px" oninput="render()"><select id="f" onchange="render()"><option value="">All plans</option><option value="free">Free</option><option value="personal">Personal</option><option value="business">Business</option><option value="pro">Pro</option><option value="agency">Agency</option></select><select id="s" onchange="render()"><option value="">Any state</option><option value="active">Active</option><option value="grace">Grace</option><option value="expired">Expired</option></select><button class="btn g" onclick="load()">Refresh</button><button class="btn" onclick="backup()">Download backup</button></div>
+  <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Promo codes</b><button class="btn g s" onclick="loadPromos()">Refresh</button></div>
+    <div class="row" style="margin-top:8px"><input id="pcode" placeholder="CODE e.g. RAVI" style="width:120px;text-transform:uppercase"><input id="ppct" type="number" placeholder="% off" style="width:80px"><input id="pflat" type="number" placeholder="₹ off" style="width:90px"><input id="pmax" type="number" placeholder="Max uses (0=∞)" style="width:130px"><input id="pexp" type="date"><input id="pnote" placeholder="Note (e.g. friend Ravi, 20% share)" style="flex:1;min-width:160px"><button class="btn s" onclick="savePromo()">Create / update</button></div>
+    <table id="pt"></table><div class="st" id="pst"></div></div>
+  <h3 style="margin:18px 0 0;font-size:15px">Users</h3>
   <table><thead><tr><th>User</th><th>Plan</th><th>Until</th><th>Usage</th><th>Scans</th><th>Paid</th><th>Joined</th></tr></thead><tbody id="tb"></tbody></table>
 </div>
 
@@ -41,6 +45,11 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 
 <script>
 let P=sessionStorage.getItem('sp_admin')||'', DATA=null; const $=s=>document.querySelector(s);
+async function loadPromos(){ const r=await api('admin_promos'); if(!r.ok) return; 
+  $('#pt').innerHTML='<tr><th>Code</th><th>Discount</th><th>Uses</th><th>Expires</th><th>Sales</th><th>Revenue</th><th>Discount given</th><th>Note</th><th></th></tr>'+(r.promos.map(p=>`<tr><td><b>${p.code}</b> ${p.active?'':'<span class="tag x">off</span>'}</td><td>${p.percent?p.percent+'%':''}${p.flat?' ₹'+p.flat:''}</td><td>${p.uses}${p.max_uses?' / '+p.max_uses:''}</td><td>${p.expires?d(p.expires):'—'}</td><td>${p.paid_count||0}</td><td>${inr((p.revenue||0)/100)}</td><td>${inr((p.given||0)/100)}</td><td style="max-width:180px">${p.note||''}</td>
+    <td class="row"><button class="btn g s" onclick="api('admin_promo_toggle',{code:'${p.code}',active:${p.active?0:1}}).then(loadPromos)">${p.active?'Disable':'Enable'}</button><button class="btn d s" onclick="if(confirm('Delete ${p.code}?'))api('admin_promo_delete',{code:'${p.code}'}).then(loadPromos)">Delete</button></td></tr>`).join('')||'<tr><td colspan="9" class="st">No promo codes yet</td></tr>');
+  $('#pst').innerHTML=r.sales.length?'<b>Recent promo sales:</b> '+r.sales.slice(0,20).map(s=>`${d(s.created)} ${s.promo} · ${s.name} · ${s.plan}/${s.period} · paid ${inr(s.amount/100)} (saved ${inr(s.discount/100)})`).join('<br>'):''; }
+async function savePromo(){ const r=await api('admin_promo_save',{code:$('#pcode').value,percent:$('#ppct').value||0,flat:$('#pflat').value||0,max_uses:$('#pmax').value||0,expires:$('#pexp').value,note:$('#pnote').value}); if(!r.ok) return alert(r.error); $('#pcode').value='';$('#pnote').value=''; loadPromos(); }
 async function backup(){ const fd=new FormData(); const r=await fetch('api.php?action=admin_backup',{method:'POST',body:fd,headers:{'X-Admin-Pass':P}}); if(!r.ok){alert('Backup failed');return;} const b=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='scanplay-backup-'+new Date().toISOString().slice(0,10)+'.zip'; a.click(); }
 async function api(a,f={}){const fd=new FormData();Object.entries(f).forEach(([k,v])=>fd.append(k,v));return (await fetch('api.php?action='+a,{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();}
 const d=t=>new Date(t*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
@@ -48,7 +57,7 @@ const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
 async function load(){ if(!P) P=$('#p').value; const r=await api('admin_users'); if(!r.ok){ $('#lerr').textContent=r.error; P=''; return; } sessionStorage.setItem('sp_admin',P);
   DATA=r; $('#login').style.display='none'; $('#app').style.display=''; $('#out').style.display='';
   const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${t.active}</b><span>Active plans</span></div><div class="kpi"><b>${t.paid}</b><span>Paying users</span></div><div class="kpi"><b>${inr(t.revenue)}</b><span>Revenue (Razorpay)</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div><div class="kpi"><b>${t.photos}</b><span>Photos stored</span></div><div class="kpi" style="${t.integrity==='ok'?'':'background:#FEE2E2'}"><b>${t.integrity==='ok'?'OK':'CHECK'}</b><span>Database integrity</span></div><div class="kpi"><b>${t.backups}</b><span>Daily backups kept<br>${t.lastBackup}</span></div>`;
-  render(); }
+  render(); loadPromos(); }
 function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value, s=$('#s').value;
   $('#tb').innerHTML=DATA.users.filter(u=>(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().includes(q))&&(!f||u.plan===f)&&(!s||u.state===s)).map(u=>`<tr class="u" onclick="open(${u.id})">
     <td><b>${u.name||''}</b><br><span style="color:var(--mute)">${u.email}${u.phone?' · '+u.phone:''}</span>${u.verified?'':' <span class="tag x">unverified</span>'}${u.note?'<br><span style="font-size:11px;color:var(--b)">📝 '+u.note+'</span>':''}</td>

@@ -289,6 +289,7 @@
     <p id="upMsg">Every plan: unlimited scans, videos up to 200 MB, data kept while subscribed.</p>
     <div class="seg"><button class="on" id="segM" onclick="setPeriod('month')">Monthly</button><button id="segY" onclick="setPeriod('year')">Yearly · 2 months free</button></div>
     <div class="plans" id="planGrid"></div>
+    <div class="row" style="justify-content:flex-start;margin:4px 0 10px"><input type="text" id="promo" placeholder="Promo code (optional)" style="max-width:220px;text-transform:uppercase" oninput="PROMO=null;renderPlans()"><button class="btn ghost sm" onclick="applyPromoCode()">Apply</button><span class="status" id="promoSt" style="margin:0"></span></div>
     <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="closeUp()">Not now</button><button class="btn ghost" id="upiBtn" onclick="payUpi()">Pay by UPI</button><button class="btn" id="payBtn" onclick="pay()">Pay with Razorpay</button></div>
     <div class="status" style="margin-top:6px">UPI: <b>scanplay@ybl</b> — PhonePe, GPay, Paytm or any UPI app. Razorpay: cards, net banking, UPI with instant activation.</div>
     <div class="status" id="payErr" style="margin-top:8px"></div>
@@ -327,7 +328,7 @@ window.MindCompiler = Compiler;
 </script>
 <script>
 const API='api.php';
-let TOKEN=localStorage.getItem('sp_token')||'', USER=null, ACCOUNTS=[], CUR=null, PERIOD='month', PICK='personal';
+let TOKEN=localStorage.getItem('sp_token')||'', USER=null, ACCOUNTS=[], CUR=null, PERIOD='month', PICK='personal', PROMO=null;
 let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null, UP=null;
 let authMode='in', pendingEmail='', codeMode='verify', CFG={};
 const $=s=>document.querySelector(s);
@@ -406,23 +407,29 @@ function renderPlan(){
 const PLANS_UI=[['personal','Personal','5 photos · 1 QR'],['business','Business','15 photos · 3 QRs · logo · analytics'],['pro','Pro','30 photos · 10 QRs · sub-logins'],['agency','Agency','50 photos · unlimited QRs · custom domain']];
 function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
 function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
-function setPeriod(p){ PERIOD=p; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
+function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
 function renderPlans(){
   const L=USER?USER.limits:null;
-  $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';renderPlans()"><b>${n}</b><div class="pr">₹${pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
-  $('#payBtn').textContent=`Pay ₹${PRICES[PICK][PERIOD].toLocaleString('en-IN')} with Razorpay`; $('#upiBtn').textContent=`Pay ₹${PRICES[PICK][PERIOD].toLocaleString('en-IN')} by UPI`;
+  $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; const dis=PROMO&&PROMO.plan===k&&PROMO.period===PERIOD; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';PROMO=null;$('#promoSt').textContent='';renderPlans()"><b>${n}</b><div class="pr">${dis?`<s style="opacity:.5;font-size:14px">₹${pr.toLocaleString('en-IN')}</s> ₹${PROMO.total.toLocaleString('en-IN')}`:'₹'+pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
+  const tot=finalPrice(); $('#payBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} with Razorpay`; $('#upiBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} by UPI`;
 }
 const PRICES={personal:{month:999,year:4999},business:{month:2999,year:24999},pro:{month:5999,year:49999},agency:{month:9999,year:84999}};
 /* Razorpay payment-page links per plan — paste when ready; empty = use in-studio Razorpay checkout */
 const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{month:'',year:''},agency:{month:'',year:''}};
 const UPI_ID='scanplay@ybl';
-function upiLink(plan,period){ const amt=PRICES[plan][period]; const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function payUpi(){ const amt=PRICES[PICK][PERIOD]; location.href=upiLink(PICK,PERIOD);
-  setTimeout(()=>{ $('#payErr').className='status'; $('#payErr').innerHTML=`Paid ₹${amt.toLocaleString('en-IN')} to <b>${UPI_ID}</b>? <a href="https://wa.me/918985849710?text=${encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+'). My email: '+(USER?USER.email:'')+'. Screenshot attached.')}" target="_blank" style="color:var(--b);font-weight:700">Send the screenshot on WhatsApp</a> and we activate your plan within a few hours.`; },1500); }
+function upiLink(plan,period){ const amt=finalPrice(); const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
+function payUpi(){ const amt=finalPrice(); location.href=upiLink(PICK,PERIOD);
+  setTimeout(()=>{ $('#payErr').className='status'; $('#payErr').innerHTML=`Paid ₹${amt.toLocaleString('en-IN')} to <b>${UPI_ID}</b>? <a href="https://wa.me/918985849710?text=${encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+')'+(PROMO?' with promo '+PROMO.code:'')+'. My email: '+(USER?USER.email:'')+'. Screenshot attached.')}" target="_blank" style="color:var(--b);font-weight:700">Send the screenshot on WhatsApp</a> and we activate your plan within a few hours.`; },1500); }
+function finalPrice(){ const p=PRICES[PICK][PERIOD]; return PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD ? PROMO.total : p; }
+async function applyPromoCode(){
+  const code=$('#promo').value.trim(); const st=$('#promoSt'); if(!code){ PROMO=null; st.textContent=''; renderPlans(); return; }
+  const r=await post({action:'promo_check',plan:PICK,period:PERIOD,code}); if(!r.ok){ PROMO=null; st.className='status err'; st.textContent=r.error; renderPlans(); return; }
+  PROMO={code:r.code,total:r.total,discount:r.discount,plan:PICK,period:PERIOD}; st.className='status'; st.textContent=`${r.code}: ${r.label} — you save ₹${r.discount.toLocaleString('en-IN')}`; renderPlans();
+}
 async function pay(){
   $('#payErr').textContent='';
   const link=PAY_LINKS[PICK]&&PAY_LINKS[PICK][PERIOD]; if(link){ window.open(link,'_blank'); $('#payErr').className='status'; $('#payErr').textContent='Payment page opened in a new tab. Your plan activates automatically after payment — refresh this page in a minute.'; return; }
-  const r=await post({action:'pay_create',plan:PICK,period:PERIOD}); if(!r.ok){ $('#payErr').textContent=r.error; return; }
+  const r=await post({action:'pay_create',plan:PICK,period:PERIOD,promo:(PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD)?PROMO.code:''}); if(!r.ok){ $('#payErr').textContent=r.error; return; }
   const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
     prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#7C3AED'},
     handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
