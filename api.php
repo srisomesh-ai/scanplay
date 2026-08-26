@@ -131,7 +131,7 @@ function pubAccount($a) {
 }
 
 $action = $_REQUEST['action'] ?? '';
-if ($_SERVER['REQUEST_METHOD']==='POST' && !$_POST && !$_FILES && ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0)
+if ($_SERVER['REQUEST_METHOD']==='POST' && !$_POST && !$_FILES && ($_SERVER['CONTENT_LENGTH'] ?? 0) > 1048576)
   out(false, ['error'=>'Upload too large for server ('.round($_SERVER['CONTENT_LENGTH']/1048576).' MB). Use a smaller video.']);
 
 switch ($action) {
