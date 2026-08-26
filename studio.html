@@ -320,7 +320,7 @@ window.MindCompiler = Compiler;
 <script>
 const API='api.php';
 let TOKEN=localStorage.getItem('sp_token')||'', USER=null, ACCOUNTS=[], CUR=null, PERIOD='month', PICK='personal';
-let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null;
+let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null, UP=null;
 let authMode='in', pendingEmail='', codeMode='verify', CFG={};
 const $=s=>document.querySelector(s);
 function showView(v){ ['In','Code','Forgot'].forEach(x=>$('#v'+x).style.display='none'); $('#v'+{in:'In',code:'Code',forgot:'Forgot'}[v]).style.display=''; }
@@ -449,7 +449,7 @@ function openAcc(code){
   document.querySelectorAll('.acc').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
   const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
   $('#dName').textContent=CUR.name; $('#dCode').textContent=CUR.qrUrl;
-  bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false; updSteps();
+  bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false; UP=null; updSteps();
   if(USER.limits.analytics){ $('#stats').style.display=''; $('#kAll').textContent=CUR.scans; $('#k30').textContent=CUR.scans30;
     post({action:'stats',code:CUR.code}).then(r=>{ if(!r.ok) return; const m=new Map(r.days.map(d=>[d.day,d.n])); const bars=[]; let mx=1;
       for(let i=29;i>=0;i--){ const d=new Date(Date.now()-i*86400000).toISOString().slice(0,10); const n=m.get(d)||0; mx=Math.max(mx,n); bars.push(n); }
@@ -490,8 +490,10 @@ function bindPickers(){
     vidFile=e.target.files[0]; if(!vidFile) return;
     const url=URL.createObjectURL(vidFile);
     const v=document.createElement('video'); v.onloadedmetadata=()=>{vidRatio=v.videoHeight/v.videoWidth;}; v.src=url;
-    $('#vidPrev').innerHTML=`<video src="${url}" muted playsinline></video><span class="hint">${esc(vidFile.name)} · ${(vidFile.size/1048576).toFixed(1)} MB</span>`;
+    $('#vidPrev').innerHTML=`<video src="${url}" muted playsinline></video><span class="hint" id="vidHint">${esc(vidFile.name)} · ${(vidFile.size/1048576).toFixed(1)} MB</span><div class="progress" id="vprog" style="display:block;margin-top:8px"><i></i></div>`;
     $('#dropVid').classList.add('on'); updSteps();
+    if(vidFile.size>60*1048576) $('#vidHint').innerHTML+=' · <span style="color:var(--amber)">Large — 720p and under 30 s uploads much faster</span>';
+    startUpload(vidFile);
   };
 }
 function toggleVidMode(e){
@@ -524,6 +526,28 @@ function applyCrop(){
     $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); updSteps(); },'image/jpeg',0.92);
 }
 
+/* background chunked upload */
+const CHUNK=4*1048576;
+function startUpload(file){
+  const my={id:null,done:false,file,promise:null}; UP=my;
+  my.promise=(async()=>{
+    const st=await post({action:'up_start',size:file.size}); if(!st.ok) throw new Error(st.error); my.id=st.id;
+    let off=0, t0=Date.now(), tries=0;
+    while(off<file.size){
+      if(UP!==my) throw new Error('cancelled');
+      const fd=new FormData(); fd.append('id',my.id); fd.append('offset',off); fd.append('chunk',file.slice(off,off+CHUNK),'c');
+      let r; try{ r=await (await fetch(API+'?action=up_chunk',{method:'POST',body:fd,headers:{'X-Token':TOKEN}})).json(); }catch(e){ r=null; }
+      if(!r||!r.ok){ if(++tries>8) throw new Error('Upload failed — check your connection and try again'); await new Promise(x=>setTimeout(x,1500*tries)); continue; }
+      tries=0; off=r.received;
+      const pct=Math.round(off/file.size*100), mbps=(off/1048576)/((Date.now()-t0)/1000);
+      const pr=$('#vprog'), h=$('#vidHint'); if(pr) pr.firstElementChild.style.width=pct+'%';
+      if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploading ${pct}% (${mbps.toFixed(1)} MB/s)`;
+    }
+    my.done=true; const h=$('#vidHint'); if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploaded ✓`;
+    return my.id;
+  })();
+  my.promise.catch(e=>{ const h=$('#vidHint'); if(h&&UP===my) h.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>'; });
+}
 function setProg(p,msg,err){ const pr=$('#prog'); if(!pr) return; pr.style.display='block'; pr.firstElementChild.style.width=p+'%'; const s=$('#st'); s.textContent=msg; s.className='status'+(err?' err':''); }
 const loadImg=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not load a stored picture')); i.src=src; });
 async function compileAll(images, from, to){
@@ -543,10 +567,11 @@ async function addItem(){
     setProg(2,'Loading existing pictures…');
     const existing=await Promise.all(CUR.items.map(it=>loadImg(it.thumb+'?v='+Date.now())));
     const mind=await compileAll([...existing, await loadImg(URL.createObjectURL(imgFile))], 5, 85);
-    setProg(87, urlMode?'Server is downloading the video…':'Uploading…');
     const fields={action:'item_add',code:CUR.code,title,ratio:imgRatio.toFixed(4),vratio:vidRatio.toFixed(4),fit:(document.querySelector('input[name=fit]:checked')||{}).value||'fill'};
     const files={target:imgFile,mind};
-    if(urlMode) fields.video_url=vidUrl; else files.video=vidFile;
+    if(urlMode) { fields.video_url=vidUrl; setProg(87,'Server is downloading the video…'); }
+    else if(UP&&UP.file===vidFile){ setProg(86,'Waiting for video upload to finish…'); const iv=setInterval(()=>{ const h=$('#vidHint'); if(h) setProg(86,'Video: '+h.textContent.split('· ').pop()); },500); try{ fields.video_id=await UP.promise; } finally{ clearInterval(iv); } setProg(95,'Saving…'); }
+    else { files.video=vidFile; setProg(87,'Uploading…'); }
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
