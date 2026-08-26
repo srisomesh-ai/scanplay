@@ -371,7 +371,9 @@ switch ($action) {
       (SELECT SUM(s.n) FROM scans s JOIN accounts a ON a.code=s.code WHERE a.user_id=u.id) scans, (SELECT SUM(amount) FROM payments p WHERE p.user_id=u.id AND p.status='paid') paid FROM users u WHERE deleted=0 ORDER BY created DESC");
     foreach ($list as &$x) { unset($x['pass'],$x['token'],$x['code']); $x['state']=planState($x); }
     $tot = ['users'=>count($list), 'active'=>count(array_filter($list, fn($x)=>$x['state']==='active')), 'paid'=>count(array_filter($list, fn($x)=>$x['plan']!=='free')),
-      'revenue'=>(int)(row("SELECT SUM(amount) s FROM payments WHERE status='paid'")['s'] ?? 0)/100, 'scans30'=>(int)(row("SELECT SUM(n) s FROM scans WHERE day>=?", [date('Y-m-d', now()-30*86400)])['s'] ?? 0)];
+      'revenue'=>(int)(row("SELECT SUM(amount) s FROM payments WHERE status='paid'")['s'] ?? 0)/100,
+      'integrity'=>row("PRAGMA integrity_check")['integrity_check'] ?? '?', 'photos'=>(int)row("SELECT COUNT(*) c FROM items")['c'],
+      'backups'=>count(glob(DATA_DIR.'/backups/db-*.sqlite')), 'lastBackup'=>($b=glob(DATA_DIR.'/backups/db-*.sqlite')) ? basename(end($b)) : 'none yet — cron not run', 'scans30'=>(int)(row("SELECT SUM(n) s FROM scans WHERE day>=?", [date('Y-m-d', now()-30*86400)])['s'] ?? 0)];
     out(true, ['users'=>$list, 'plans'=>PLANS, 'totals'=>$tot]);
   }
   case 'admin_user': {
@@ -413,15 +415,32 @@ switch ($action) {
     q("UPDATE users SET deleted=1, token=NULL, email=email||'.deleted.'||id WHERE id=?", [$id]); out(true);
   }
 
-  /* ---------- cron: delete data after grace ---------- */
+  /* ---------- backups ---------- */
+  case 'admin_backup': {
+    ownerAuth(); header_remove('Content-Type');
+    $tmp = tempnam(sys_get_temp_dir(), 'spb'); $z = new ZipArchive(); $z->open($tmp, ZipArchive::OVERWRITE);
+    $db->exec("VACUUM INTO '".DATA_DIR."/backup-live.db'"); $z->addFile(DATA_DIR.'/backup-live.db', 'scanplay.db');
+    $export = ['exported'=>date('c'), 'users'=>rows("SELECT id,email,name,phone,plan,plan_until,created,verified,extra_photos,extra_accounts,note FROM users WHERE deleted=0"),
+               'accounts'=>rows("SELECT * FROM accounts"), 'items'=>rows("SELECT * FROM items"), 'payments'=>rows("SELECT * FROM payments"), 'scans'=>rows("SELECT * FROM scans")];
+    $z->addFromString('export.json', json_encode($export, JSON_PRETTY_PRINT)); $z->close(); @unlink(DATA_DIR.'/backup-live.db');
+    header('Content-Type: application/zip'); header('Content-Disposition: attachment; filename="scanplay-backup-'.date('Ymd-Hi').'.zip"'); header('Content-Length: '.filesize($tmp));
+    readfile($tmp); unlink($tmp); exit;
+  }
+
+  /* ---------- cron: daily backup + delete data after grace ---------- */
   case 'cron': {
     if (($_GET['key'] ?? '') !== CRON_KEY) out(false, ['error'=>'Bad key']);
+    // 1. daily DB backup (keeps 30)
+    $bdir = DATA_DIR.'/backups'; if (!is_dir($bdir)) mkdir($bdir, 0755, true);
+    $bfile = "$bdir/db-".date('Ymd').".sqlite"; if (!file_exists($bfile)) $db->exec("VACUUM INTO '$bfile'");
+    $old = glob("$bdir/db-*.sqlite"); sort($old); foreach (array_slice($old, 0, max(0, count($old)-30)) as $f) @unlink($f);
+    // 2. delete data after grace
     $cut = now() - GRACE_DAYS*86400; $n=0;
     foreach (rows("SELECT id FROM users WHERE plan_until < ? AND deleted=0", [$cut]) as $u) {
       foreach (rows("SELECT code FROM accounts WHERE user_id=?", [$u['id']]) as $a) { rrmdir(DATA_DIR."/{$a['code']}"); q("DELETE FROM items WHERE code=?", [$a['code']]); q("DELETE FROM scans WHERE code=?", [$a['code']]); $n++; }
       q("DELETE FROM accounts WHERE user_id=?", [$u['id']]);
     }
-    out(true, ['accounts_removed'=>$n]);
+    out(true, ['accounts_removed'=>$n, 'backup'=>basename($bfile), 'backups_kept'=>count(glob("$bdir/db-*.sqlite"))]);
   }
 
   default: out(false, ['error'=>'Unknown action']);

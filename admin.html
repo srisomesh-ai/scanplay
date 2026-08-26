@@ -33,7 +33,7 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 
 <div class="w" id="app" style="display:none">
   <div class="kpis" id="kpis"></div>
-  <div class="row"><input id="q" placeholder="Search name, email, phone" style="flex:1;min-width:200px" oninput="render()"><select id="f" onchange="render()"><option value="">All plans</option><option value="free">Free</option><option value="personal">Personal</option><option value="business">Business</option><option value="pro">Pro</option><option value="agency">Agency</option></select><select id="s" onchange="render()"><option value="">Any state</option><option value="active">Active</option><option value="grace">Grace</option><option value="expired">Expired</option></select><button class="btn g" onclick="load()">Refresh</button></div>
+  <div class="row"><input id="q" placeholder="Search name, email, phone" style="flex:1;min-width:200px" oninput="render()"><select id="f" onchange="render()"><option value="">All plans</option><option value="free">Free</option><option value="personal">Personal</option><option value="business">Business</option><option value="pro">Pro</option><option value="agency">Agency</option></select><select id="s" onchange="render()"><option value="">Any state</option><option value="active">Active</option><option value="grace">Grace</option><option value="expired">Expired</option></select><button class="btn g" onclick="load()">Refresh</button><button class="btn" onclick="backup()">Download backup</button></div>
   <table><thead><tr><th>User</th><th>Plan</th><th>Until</th><th>Usage</th><th>Scans</th><th>Paid</th><th>Joined</th></tr></thead><tbody id="tb"></tbody></table>
 </div>
 
@@ -41,12 +41,13 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 
 <script>
 let P=sessionStorage.getItem('sp_admin')||'', DATA=null; const $=s=>document.querySelector(s);
+async function backup(){ const fd=new FormData(); const r=await fetch('api.php?action=admin_backup',{method:'POST',body:fd,headers:{'X-Admin-Pass':P}}); if(!r.ok){alert('Backup failed');return;} const b=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='scanplay-backup-'+new Date().toISOString().slice(0,10)+'.zip'; a.click(); }
 async function api(a,f={}){const fd=new FormData();Object.entries(f).forEach(([k,v])=>fd.append(k,v));return (await fetch('api.php?action='+a,{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();}
 const d=t=>new Date(t*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
 const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
 async function load(){ if(!P) P=$('#p').value; const r=await api('admin_users'); if(!r.ok){ $('#lerr').textContent=r.error; P=''; return; } sessionStorage.setItem('sp_admin',P);
   DATA=r; $('#login').style.display='none'; $('#app').style.display=''; $('#out').style.display='';
-  const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${t.active}</b><span>Active plans</span></div><div class="kpi"><b>${t.paid}</b><span>Paying users</span></div><div class="kpi"><b>${inr(t.revenue)}</b><span>Revenue (Razorpay)</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div>`;
+  const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${t.active}</b><span>Active plans</span></div><div class="kpi"><b>${t.paid}</b><span>Paying users</span></div><div class="kpi"><b>${inr(t.revenue)}</b><span>Revenue (Razorpay)</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div><div class="kpi"><b>${t.photos}</b><span>Photos stored</span></div><div class="kpi" style="${t.integrity==='ok'?'':'background:#FEE2E2'}"><b>${t.integrity==='ok'?'OK':'CHECK'}</b><span>Database integrity</span></div><div class="kpi"><b>${t.backups}</b><span>Daily backups kept<br>${t.lastBackup}</span></div>`;
   render(); }
 function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value, s=$('#s').value;
   $('#tb').innerHTML=DATA.users.filter(u=>(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().includes(q))&&(!f||u.plan===f)&&(!s||u.state===s)).map(u=>`<tr class="u" onclick="open(${u.id})">

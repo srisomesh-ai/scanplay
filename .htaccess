@@ -31,3 +31,8 @@ AddType application/octet-stream .mind
 <Files "config.sample.php">
   Require all denied
 </Files>
+
+# Backups never served over the web
+<FilesMatch "\.(sqlite|db)$">
+  Require all denied
+</FilesMatch>
