@@ -201,7 +201,7 @@
       <button class="btn" onclick="showTab('acc');setTimeout(()=>document.getElementById('accName')&&document.getElementById('accName').focus(),50)">＋ New account &amp; QR</button>
       <button class="btn ghost" onclick="showTab('acc')">Open my accounts</button>
       <button class="btn ghost" onclick="openSettings()">Settings, logo &amp; password</button>
-      <a class="btn ghost" href="https://wa.me/917330984620?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a>
+      <a class="btn ghost" href="https://wa.me/918985849710?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a>
     </div></section>
     <section class="card"><h2>Tips</h2><div class="tipbox"><b>Best results:</b> print at least 4×6 inches on matte paper · video shape should match the photo (use the Fill option) · keep videos under 30 seconds and 60 MB · good light when scanning.</div></section>
   </div>
@@ -417,7 +417,7 @@ const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{mo
 const UPI_ID='scanplay@ybl';
 function upiLink(plan,period){ const amt=PRICES[plan][period]; const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
 function payUpi(){ const amt=PRICES[PICK][PERIOD]; location.href=upiLink(PICK,PERIOD);
-  setTimeout(()=>{ $('#payErr').className='status'; $('#payErr').innerHTML=`Paid ₹${amt.toLocaleString('en-IN')} to <b>${UPI_ID}</b>? <a href="https://wa.me/917330984620?text=${encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+'). My email: '+(USER?USER.email:'')+'. Screenshot attached.')}" target="_blank" style="color:var(--b);font-weight:700">Send the screenshot on WhatsApp</a> and we activate your plan within a few hours.`; },1500); }
+  setTimeout(()=>{ $('#payErr').className='status'; $('#payErr').innerHTML=`Paid ₹${amt.toLocaleString('en-IN')} to <b>${UPI_ID}</b>? <a href="https://wa.me/918985849710?text=${encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+'). My email: '+(USER?USER.email:'')+'. Screenshot attached.')}" target="_blank" style="color:var(--b);font-weight:700">Send the screenshot on WhatsApp</a> and we activate your plan within a few hours.`; },1500); }
 async function pay(){
   $('#payErr').textContent='';
   const link=PAY_LINKS[PICK]&&PAY_LINKS[PICK][PERIOD]; if(link){ window.open(link,'_blank'); $('#payErr').className='status'; $('#payErr').textContent='Payment page opened in a new tab. Your plan activates automatically after payment — refresh this page in a minute.'; return; }
