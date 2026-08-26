@@ -18,7 +18,7 @@ define('MAX_VIDEO_MB', 200);
 define('GRACE_DAYS', 30);
 /* Email (Hostinger mailbox) — fill in once noreply@scanplay.in exists */
 define('SMTP_HOST', 'smtp.hostinger.com'); define('SMTP_PORT', 465);
-define('SMTP_USER', 'noreply@scanplay.in'); define('SMTP_PASS', 'CHANGE_ME');
+define('SMTP_USER', 'info@scanplay.in'); define('SMTP_PASS', 'Simhadriappanna@143');
 define('MAIL_FROM_NAME', 'ScanPlay');
 /* Google sign-in — OAuth client ID from console.cloud.google.com (authorised origin: https://scanplay.in) */
 define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
