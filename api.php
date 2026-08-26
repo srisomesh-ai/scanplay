@@ -46,6 +46,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMEN
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
 foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
+try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
 $db->exec("CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT, payment_id TEXT, plan TEXT, period TEXT, amount INTEGER, status TEXT, created INTEGER)");
@@ -127,7 +128,7 @@ function pubAccount($a) {
   foreach ($items as &$it) $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg";
   $scans = (int)(row("SELECT SUM(n) s FROM scans WHERE code=?", [$a['code']])['s'] ?? 0);
   $scans30 = (int)(row("SELECT SUM(n) s FROM scans WHERE code=? AND day>=?", [$a['code'], date('Y-m-d', now()-30*86400)])['s'] ?? 0);
-  return ['code'=>$a['code'],'name'=>$a['name'],'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
+  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
 }
 
 $action = $_REQUEST['action'] ?? '';
@@ -318,6 +319,7 @@ switch ($action) {
     $code = clean($_GET['c'] ?? '');
     $a = row("SELECT a.*, u.plan, u.plan_until, u.logo, u.id uid FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.code=? AND u.deleted=0", [$code]);
     if (!$a) out(false, ['error'=>'This QR is not linked to any account']);
+    if (!empty($a['blocked'])) out(false, ['error'=>'This content is unavailable']);
     $state = planState($a);
     if ($state === 'expired') out(false, ['error'=>'This experience has expired']);
     $items = rows("SELECT id,title,ratio,vratio,fit FROM items WHERE code=? ORDER BY created", [$code]);
@@ -404,6 +406,7 @@ switch ($action) {
     if (!row("SELECT id FROM items WHERE code=?", [$code])) @unlink(DATA_DIR."/$code/targets.mind");
     out(true, ['note'=>'Removed. The owner must open the studio once so remaining photos are recompiled.']);
   }
+  case 'admin_block': { ownerAuth(); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
   case 'admin_account_delete': {
     ownerAuth(); $code=clean($_POST['code']??'');
     q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]); rrmdir(DATA_DIR."/$code"); out(true);
