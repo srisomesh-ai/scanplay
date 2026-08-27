@@ -44,7 +44,20 @@
 
 /* YouTube floating player: follows the tracked photo on screen (hover, not fused) */
 AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
-  init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; const o=document.getElementById(this.data.ov); if(o) o.style.display='none';}); },
+  init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.sx=null; this.lostAt=0;
+    this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+  tick(t){ const o=document.getElementById(this.data.ov); if(!o) return;
+    if(!this.on){ if(this.sx!==null && t-this.lostAt>900){ o.style.display='none'; this.sx=null; } return; }
+    const cam=this.el.sceneEl.camera; if(!cam) return;
+    const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
+    const tw=Math.max(140,Math.min(W-20,maxx-minx)), tx=(minx+maxx)/2, ty=(miny+maxy)/2;
+    if(this.sx===null){ this.sx=tx; this.sy=ty; this.sw=tw; }
+    else { // adaptive smoothing: tiny jitter -> heavy smoothing, real movement -> quick follow
+      const d=Math.hypot(tx-this.sx,ty-this.sy); const a=Math.min(.6,Math.max(.06,d/60)); this.sx+=(tx-this.sx)*a; this.sy+=(ty-this.sy)*a; this.sw+=(tw-this.sw)*Math.min(.4,Math.max(.05,Math.abs(tw-this.sw)/80)); }
+    const bw=Math.round(this.sw), bh=Math.round(bw*9/16);
+    o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate3d(${Math.round(this.sx-bw/2)}px,${Math.round(this.sy-bh/2)}px,0)`; }
+}); this.el.addEventListener('targetLost',()=>{this.on=false; const o=document.getElementById(this.data.ov); if(o) o.style.display='none';}); },
   tick(){ if(!this.on) return; const o=document.getElementById(this.data.ov); const cam=this.el.sceneEl.camera; if(!o||!cam) return;
     const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
     for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
