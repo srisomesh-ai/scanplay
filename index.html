@@ -113,7 +113,12 @@ a{text-decoration:none;color:inherit}
 /* nav */
 nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:.3s}
 nav.on{border-color:var(--line)}
-nav .w{display:flex;justify-content:space-between;align-items:center;height:70px}
+nav .w{display:flex;justify-content:space-between;align-items:center;height:64px;gap:10px}
+.navr{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.navr .btn{padding:9px 14px;font-size:14px;white-space:nowrap;border-radius:12px}
+.scanbtn{display:inline-flex;align-items:center;gap:6px}
+@media(max-width:520px){.logo{font-size:18px}.logo img{width:26px!important;height:26px!important}.navr{gap:6px}.navr .btn{padding:8px 11px;font-size:13px}.langsel{padding:7px 22px 7px 8px;font-size:12px;background-position:right 6px center}}
+@media(max-width:380px){.navr .scanbtn span{display:none}.navr .scanbtn{padding:8px 10px}}
 .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:21px;letter-spacing:-.03em;color:var(--ink)} .logo b{font-weight:800}
 .logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--b),var(--a));display:grid;place-items:center}
 .logo i::after{content:"";border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
@@ -250,9 +255,9 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <body>
 
 <nav id="nav"><div class="w">
-  <a class="logo" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:30px;height:30px"><span>Scan<b class="grad" style="font-weight:800">Play</b></span></a>
+  <a class="logo" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:30px;height:30px"><span>Scan<b style="font-weight:800;background:linear-gradient(135deg,#7C3AED,#FF4D6D);-webkit-background-clip:text;background-clip:text;color:transparent">Play</b></span></a>
   <div class="links"><a href="#how" data-i18n="nav_how">How it works</a><a href="#uses" data-i18n="nav_uses">Use cases</a><a href="#partners" data-i18n="nav_partners">For printers</a><a href="#pricing" data-i18n="nav_pricing">Pricing</a><a href="#faq" data-i18n="nav_faq">FAQ</a></div>
-  <div style="display:flex;gap:8px;align-items:center"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn g" href="scan.html" style="padding:10px 16px">📷 Scan</a><a class="btn w" href="studio.html" style="padding:10px 18px" data-i18n="signin">Sign in</a></div>
+  <div class="navr"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn g scanbtn" href="scan.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg><span>Scan</span></a><a class="btn w" href="studio.html" data-i18n="signin">Sign in</a></div>
 </div></nav>
 
 <header class="hero w">
@@ -392,7 +397,8 @@ showSlide(); setInterval(showSlide,CYCLE*2);
 /* ---------- language ---------- */
 const D=window.SP_I18N, SUP=Object.keys(D), FONTS={te:'Noto+Sans+Telugu',ta:'Noto+Sans+Tamil',hi:'Noto+Sans+Devanagari',kn:'Noto+Sans+Kannada',ml:'Noto+Sans+Malayalam'};
 const sel=document.getElementById('lang');
-SUP.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=D[c].name;sel.appendChild(o);});
+const SHORT={en:'EN',te:'తె',ta:'த',hi:'हि',kn:'ಕ',ml:'മ'};
+SUP.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=innerWidth<600?(SHORT[c]||c.toUpperCase()):D[c].name;sel.appendChild(o);});
 function apply(code){
   const t=D[code]||D.en; document.documentElement.lang=code;
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n; if(t[k]!=null) el.innerHTML=t[k];});
