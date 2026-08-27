@@ -38,23 +38,6 @@
 <div id="scene"></div>
 
 <script>
-/* Stabiliser: the video rides on a separate entity that follows the tracked target with adaptive smoothing.
-   Small jitter -> heavy smoothing (no shake). Big moves -> fast follow (no lag). Holds through brief drops. */
-AFRAME.registerComponent('sp-stable',{
-  schema:{target:{type:'selector'},minA:{default:0.10},maxA:{default:0.85},gain:{default:6},hold:{default:900}},
-  init(){ this.p=new THREE.Vector3(); this.q=new THREE.Quaternion(); this.s=new THREE.Vector3(1,1,1); this.tp=new THREE.Vector3(); this.tq=new THREE.Quaternion(); this.ts=new THREE.Vector3(); this.has=false; this.seen=false; this.lastSeen=0; this.stable=0; this.el.object3D.visible=false;
-    this.data.target.addEventListener('targetFound',()=>{ this.seen=true; }); this.data.target.addEventListener('targetLost',()=>{ this.seen=false; }); },
-  tick(t,dt){
-    const tgt=this.data.target.object3D; if(!tgt) return;
-    if(this.seen&&tgt.visible){ tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts); this.lastSeen=t;
-      if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stable=0; }
-      const dist=this.p.distanceTo(this.tp); const a=Math.min(this.data.maxA,Math.max(this.data.minA,this.data.minA+dist*this.data.gain));
-      this.p.lerp(this.tp,a); this.q.slerp(this.tq,a); this.s.lerp(this.ts,a);
-      this.stable=Math.min(this.stable+dt,1000); if(this.stable>120) this.el.object3D.visible=true;
-    } else if(this.has && t-this.lastSeen>this.data.hold){ this.el.object3D.visible=false; this.has=false; }
-    if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); }
-  }
-});
 const code=(new URLSearchParams(location.search).get('c')||'').replace(/[^a-z0-9]/g,'');
 const $=s=>document.querySelector(s);
 function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
@@ -80,16 +63,18 @@ function fit(R,VR,mode){
   const k=VR/R;          return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
 }
 
+/* Tracking filter settings (tracker's built-in one-euro filter). ?tune=1 shows a live panel; values persist on this phone. */
+const T=Object.assign({cf:0.0001,beta:0.5,miss:15,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+const TUNE=new URLSearchParams(location.search).get('tune')==='1';
 function start(acc){
   const assets=acc.items.map((it,i)=>`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
   const targets=acc.items.map((it,i)=>{ const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fit'); return `
-      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" id="t${i}"></a-entity>
-      <a-entity sp-stable="target: #t${i}">
+      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}">
         <a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video>
       </a-entity>`; }).join('');
 
   $('#scene').innerHTML=`
-    <a-scene mindar-image="imageTargetSrc: ${acc.mind}?v=${Date.now()}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0005; filterBeta: 0.02; missTolerance: 20; warmupTolerance: 2; maxTrack: 1"
+    <a-scene mindar-image="imageTargetSrc: ${acc.mind}?v=${Date.now()}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: ${T.cf}; filterBeta: ${T.beta}; missTolerance: ${T.miss}; warmupTolerance: ${T.warm}; maxTrack: 1"
              color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
       <a-assets>${assets}</a-assets>
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -105,11 +90,18 @@ function start(acc){
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{
     const i=+t.dataset.i;
     t.addEventListener('targetFound',()=>{ hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(j!==i) v.pause(); }); vids[i].play().catch(()=>{}); });
-    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>vids[i].pause(),1000); });
+    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>vids[i].pause(),800); });
     t.addEventListener('targetFound',()=>clearTimeout(lostT));
   });
-  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
+  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; if(TUNE) tunePanel(); });
   scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
+}
+function tunePanel(){
+  const p=document.createElement('div'); p.style.cssText='position:fixed;left:10px;right:10px;bottom:70px;z-index:8;background:rgba(16,20,24,.88);color:#fff;padding:10px;border-radius:12px;font:12px Inter';
+  const row=(k,label,min,max,step)=>`<label style="display:grid;grid-template-columns:120px 1fr 64px;gap:8px;align-items:center;margin:4px 0">${label}<input type="range" min="${min}" max="${max}" step="${step}" value="${T[k]}" oninput="T.${k}=+this.value;this.nextElementSibling.textContent=this.value;localStorage.setItem('sp_tune',JSON.stringify(T))"><span>${T[k]}</span></label>`;
+  p.innerHTML='<b>Tracking tune</b> — move slider, then Apply'+row('cf','Steady at rest (cf)',0.00001,0.005,0.00001)+row('beta','Follow speed (beta)',0.01,5,0.01)+row('miss','Miss tolerance',1,40,1)+row('warm','Warm-up frames',1,10,1)+
+    '<div style="display:flex;gap:8px;margin-top:6px"><button onclick="location.reload()" style="flex:1;padding:8px;border:0;border-radius:8px;background:#7C3AED;color:#fff;font-weight:700">Apply (reload)</button><button onclick="localStorage.removeItem(\'sp_tune\');location.reload()" style="padding:8px;border:0;border-radius:8px;background:#444;color:#fff">Reset</button></div>';
+  document.body.appendChild(p);
 }
 init();
 </script>
