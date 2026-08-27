@@ -459,11 +459,11 @@ const PRICES={personal:{month:499,year:4990},business:{month:1999,year:19990},pr
 const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{month:'',year:''},agency:{month:'',year:''}};
 const UPI_ID='scanplay@ybl';
 function upiLink(plan,period){ const amt=finalPrice(); const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function upiParams(){ const amt=finalPrice(); const tn=`ScanPlay ${PICK} ${PERIOD} ${USER?USER.email:''}`.slice(0,50); return `pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
+function upiParams(){ const amt=finalPrice(); const tn=('ScanPlay '+PICK+' '+(PERIOD==='year'?'1yr':'1mo')).replace(/[^A-Za-z0-9 ]/g,'').slice(0,35); return `pa=${UPI_ID}&pn=ScanPlay&am=${amt.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`; }
 function upiOpen(app){ const q=upiParams(); const links={phonepe:'phonepe://pay?'+q, gpay:'tez://upi/pay?'+q, paytm:'paytmmp://pay?'+q, any:'upi://pay?'+q};
   location.href=links[app]||links.any; setTimeout(()=>{ if(document.visibilityState==='visible' && app!=='any') toast('If '+({phonepe:'PhonePe',gpay:'Google Pay',paytm:'Paytm'}[app])+' did not open, try "Any UPI app" or the QR.'); },1500); }
 let upiT=null;
-function upiQr(){ const box=$('#upiQrBox'); box.style.display=''; const q=$('#upiQrImg'); q.innerHTML=''; new QRCode(q,{text:'upi://pay?'+upiParams(),width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+function upiQr(){ const box=$('#upiQrBox'); box.style.display=''; const q=$('#upiQrImg'); q.innerHTML=''; new QRCode(q,{text:'upi://pay?'+upiParams(),width:220,height:220,correctLevel:QRCode.CorrectLevel.L});
   clearInterval(upiT); let left=600; const tick=()=>{ const m=String(Math.floor(left/60)).padStart(2,'0'), s2=String(left%60).padStart(2,'0'); $('#upiTimer').textContent=m+':'+s2; if(left--<=0){ clearInterval(upiT); q.innerHTML='<div class="status err">Expired — tap Show QR again</div>'; } }; tick(); upiT=setInterval(tick,1000); }
 function payUpi(){ const amt=finalPrice(); $('#upiAmt').textContent='₹'+amt.toLocaleString('en-IN'); $('#upiPlan').textContent=`${({personal:'Personal',business:'Business',pro:'Pro',agency:'Agency'})[PICK]} · ${PERIOD==='year'?'1 year':'1 month'}${PROMO?' · promo '+PROMO.code:''}`;
   $('#upiQrBox').style.display='none'; clearInterval(upiT);
