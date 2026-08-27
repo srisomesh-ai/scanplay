@@ -48,6 +48,24 @@ window.MindCompiler = Compiler;
 <script>
 
 /* YouTube floating player: follows the tracked photo on screen (hover, not fused) */
+
+/* Stabiliser for fused video: adaptive smoothing of the tracked pose, judged in screen pixels.
+   Jitter of a few px -> heavy smoothing (rock steady). Real movement -> fast follow (no float). */
+AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
+  init(){ this.p=new THREE.Vector3(); this.q=new THREE.Quaternion(); this.s=new THREE.Vector3(1,1,1); this.tp=new THREE.Vector3(); this.tq=new THREE.Quaternion(); this.ts=new THREE.Vector3(); this.pv=new THREE.Vector3(); this.has=false; this.on=false; this.lostAt=0; this.stableMs=0; this.lastScr=null; this.el.object3D.visible=false;
+    this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+  tick(t,dt){ const tgt=this.data.target.object3D, cam=this.el.sceneEl.camera; if(!tgt||!cam) return;
+    if(!this.on){ if(this.has && t-this.lostAt>900){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
+    tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
+    if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stableMs=0; }
+    // movement measured on screen (pixels) so it behaves the same near and far
+    this.pv.copy(this.tp).project(cam); const sx=(this.pv.x+1)/2*innerWidth, sy=(1-this.pv.y)/2*innerHeight;
+    const d=this.lastScr?Math.hypot(sx-this.lastScr[0],sy-this.lastScr[1]):0; this.lastScr=[sx,sy];
+    const a=Math.min(.75,Math.max(.07,d/40));
+    this.p.lerp(this.tp,a); this.q.slerp(this.tq,a); this.s.lerp(this.ts,a);
+    this.stableMs+=dt; if(this.stableMs>100) this.el.object3D.visible=true;
+    const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); }
+});
 AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
   init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.sx=null; this.lostAt=0;
     this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
@@ -75,7 +93,7 @@ function fit(R,VR,mode){
   if(VR>R){ const k=R/VR; return {w:1,h:R,rep:`1 ${k.toFixed(4)}`,off:`0 ${((1-k)/2).toFixed(4)}`}; }
   const k=VR/R; return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
 }
-const T=Object.assign({cf:0.0001,beta:0.5,miss:15,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+const T=Object.assign({cf:0.001,beta:1,miss:15,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
 
 async function init(){
   const r=await fetch('api.php?action=scanner',{cache:'no-store'}).then(x=>x.json()).catch(()=>({ok:false}));
@@ -100,7 +118,8 @@ function start(mindUrl,map){
   const assets=map.map((m,i)=>m.it.yt?'':`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
   map.forEach((m,i)=>{ if(m.it.yt){ const d=document.createElement('div'); d.className='ytov'; d.id='yt'+i; d.innerHTML=`<div id="yt${i}_f"></div>`; document.body.appendChild(d); } });
   const targets=map.map((m,i)=>{ if(m.it.yt) return `<a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" sp-yt="ov: yt${i}; ratio: ${m.it.ratio}"></a-entity>`; const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
-      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
+      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" id="t${i}"></a-entity>
+      <a-entity sp-stable="target: #t${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
   $('#scene').innerHTML=`
     <a-scene mindar-image="imageTargetSrc: ${mindUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: ${T.cf}; filterBeta: ${T.beta}; missTolerance: ${T.miss}; warmupTolerance: ${T.warm}; maxTrack: 1"
              color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
