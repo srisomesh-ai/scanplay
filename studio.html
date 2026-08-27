@@ -546,7 +546,7 @@ async function buildShareCard(){
   function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
 }
 async function setPublic(on){ const r=await post({action:'account_public',code:CUR.code,public:on?1:0}); if(!r.ok){ alert(r.error); return; } CUR.public=on?1:0; $('#pubTxt').textContent=on?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code'; toast(on?'Public: viewers can just open the ScanPlay Scanner and point.':'Private: works with your QR only.'); }
-function shareQr(){
+async function shareQr(){
   const shareUrl=location.origin+'/s.php?c='+CUR.code;
   const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${shareUrl}`;
   try{
