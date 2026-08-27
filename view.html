@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   html,body{margin:0;height:100%;background:#000;font-family:Inter,system-ui,sans-serif;color:#fff;overflow:hidden}
   #scene{position:fixed;inset:0}
@@ -24,6 +25,8 @@
   #brand{position:fixed;top:18px;left:18px;z-index:6;text-decoration:none;color:#fff;font:600 12px Inter;background:rgba(16,20,24,.6);backdrop-filter:blur(8px);padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px}
   #brand img{height:22px;border-radius:4px}
   #brand.wm{background:rgba(255,77,109,.85)}
+  .ytov{position:fixed;left:0;top:0;width:200px;height:112px;z-index:4;display:none;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px #22D3EE,0 20px 50px rgba(0,0,0,.6);background:#000;will-change:transform}
+  .ytov iframe{width:100%;height:100%;border:0;display:block}
   .mindar-ui-overlay{display:none!important}
 </style>
 </head>
@@ -38,6 +41,19 @@
 <div id="scene"></div>
 
 <script>
+
+/* YouTube floating player: follows the tracked photo on screen (hover, not fused) */
+AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
+  init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; const o=document.getElementById(this.data.ov); if(o) o.style.display='none';}); },
+  tick(){ if(!this.on) return; const o=document.getElementById(this.data.ov); const cam=this.el.sceneEl.camera; if(!o||!cam) return;
+    const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
+    const bw=Math.max(140,Math.min(W-20,maxx-minx)), bh=bw*9/16; const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
+    o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate(${cx-bw/2}px,${cy-bh/2}px)`; }
+});
+function ytPlayer(ovId, vid, muted){ return new Promise(res=>{ const mk=()=>{ if(!window.YT||!YT.Player){ setTimeout(mk,150); return; }
+  const p=new YT.Player(ovId+'_f',{videoId:vid,playerVars:{autoplay:0,controls:0,rel:0,modestbranding:1,playsinline:1,loop:1,playlist:vid,mute:muted?1:0},events:{onReady:()=>res(p)}}); }; mk(); }); }
+
 const code=(new URLSearchParams(location.search).get('c')||'').replace(/[^a-z0-9]/g,'');
 const $=s=>document.querySelector(s);
 function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
@@ -67,8 +83,9 @@ function fit(R,VR,mode){
 const T=Object.assign({cf:0.0001,beta:0.5,miss:15,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
 const TUNE=new URLSearchParams(location.search).get('tune')==='1';
 function start(acc){
-  const assets=acc.items.map((it,i)=>`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
-  const targets=acc.items.map((it,i)=>{ const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fit'); return `
+  const assets=acc.items.map((it,i)=>it.yt?'':`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
+  acc.items.forEach((it,i)=>{ if(it.yt){ const d=document.createElement('div'); d.className='ytov'; d.id='yt'+i; d.innerHTML=`<div id="yt${i}_f"></div>`; document.body.appendChild(d); } });
+  const targets=acc.items.map((it,i)=>{ if(it.yt) return `<a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" sp-yt="ov: yt${i}; ratio: ${it.ratio}"></a-entity>`; const f=fit(it.ratio,it.vratio||it.ratio,it.fit||'fit'); return `
       <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}">
         <a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video>
       </a-entity>`; }).join('');
@@ -82,15 +99,15 @@ function start(acc){
     </a-scene>`;
 
   const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd');
-  const vids=acc.items.map((_,i)=>$('#v'+i));
-  vids.forEach(v=>v.muted=true);
+  const vids=acc.items.map((it,i)=>it.yt?null:$('#v'+i)); const yts={}; acc.items.forEach((it,i)=>{ if(it.yt) ytPlayer('yt'+i,it.yt,true).then(p=>{yts[i]=p;}); });
+  vids.forEach(v=>{ if(v) v.muted=true; });
   snd.style.display='block';
-  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>v.muted=false); snd.style.display='none'; },{once:true});
+  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>{ if(v) v.muted=false; }); Object.values(yts).forEach(p=>{ try{p.unMute();}catch(e){} }); snd.style.display='none'; },{once:true});
 
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{
     const i=+t.dataset.i;
-    t.addEventListener('targetFound',()=>{ hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(j!==i) v.pause(); }); vids[i].play().catch(()=>{}); });
-    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>vids[i].pause(),800); });
+    t.addEventListener('targetFound',()=>{ hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){} });
+    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },800); });
     t.addEventListener('targetFound',()=>clearTimeout(lostT));
   });
   scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; if(TUNE) tunePanel(); });

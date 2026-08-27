@@ -238,7 +238,7 @@
 
   <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
     <div class="drop" id="dropVid"><input type="file" id="vidFile" accept="video/mp4,video/*"><div id="vidPrev">Tap to choose a video<br><span class="hint">MP4 · under 200 MB</span></div></div>
-    <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Google Drive or Dropbox share link, or a direct .mp4 link. YouTube / Instagram links do not work.</div></div>
+    <div id="urlBox" style="display:none"><input type="text" id="vidUrl" placeholder="https://…/video.mp4" oninput="checkUrl()"><div class="status" id="urlSt">Google Drive / Dropbox share link or a direct .mp4 (fused onto the photo), or a YouTube link (floating player).</div></div>
     <div class="tiny" style="margin-top:8px"><a href="#" id="vidMode" onclick="toggleVidMode(event)" style="color:var(--b);font-weight:600">Use a video link instead</a></div>
     <div id="fitBox" style="display:none;margin-top:12px">
       <label class="field" style="margin-top:0">How should the video sit on the photo?</label>
@@ -270,6 +270,14 @@
   </div>
 </template>
 
+<div class="modal" id="nameModal">
+  <div class="box" style="text-align:left;max-width:380px">
+    <h3>Name your project</h3>
+    <p>A project is one thing you print — a card, a shop menu, a poster.</p>
+    <input type="text" id="nameInput" placeholder='e.g. "Our wedding", "Shop menu"' onkeydown="if(event.key==='Enter')nameOk()">
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="nameCancel()">Cancel</button><button class="btn" onclick="nameOk()">Create</button></div>
+  </div>
+</div>
 <div class="modal" id="cropModal">
   <div class="box">
     <h3>Crop target image</h3>
@@ -372,9 +380,13 @@ async function logout(){ await post({action:'logout'}).catch(()=>{}); localStora
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
 function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab('dash')); }
 function showTab(t){ $('#nDash').classList.toggle('on',t==='dash'); $('#nAcc').classList.toggle('on',t==='acc'); $('#dash').style.display=t==='dash'?'grid':'none'; $('#app').style.display=t==='acc'?'grid':'none'; if(t==='dash') renderDash(); }
+let _nameRes=null;
+function askName(def){ return new Promise(res=>{ _nameRes=res; $('#nameInput').value=def||''; $('#nameModal').classList.add('open'); setTimeout(()=>$('#nameInput').focus(),80); }); }
+function nameOk(){ const v=$('#nameInput').value.trim(); if(!v){ $('#nameInput').focus(); return; } $('#nameModal').classList.remove('open'); const r=_nameRes; _nameRes=null; r&&r(v); }
+function nameCancel(){ $('#nameModal').classList.remove('open'); const r=_nameRes; _nameRes=null; r&&r(null); }
 async function startFlow(){
   showTab('acc');
-  if(!ACCOUNTS.length){ const name=prompt('Give this project a name (e.g. "Our wedding", "Shop menu"):','My first project'); if(!name) return;
+  if(!ACCOUNTS.length){ const name=await askName('My first project'); if(!name) return;
     const r=await post({action:'account_create',name}); if(!r.ok){ alert(r.error); return; } await loadAccounts(); openAcc(r.code); }
   else openAcc(ACCOUNTS[0].code);
   setTimeout(()=>{ const t=document.getElementById('title'); if(t){ t.scrollIntoView({behavior:'smooth',block:'center'}); t.focus(); } },200);
@@ -565,7 +577,7 @@ function renderItems(){
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
     <div class="item">
       <img src="${it.thumb}" alt="">
-      <div><div class="t">${esc(it.title)}</div><div class="u">photo ${sh(it.ratio)} · video ${sh(it.vratio)}</div>
+      <div><div class="t">${esc(it.title)}</div><div class="u">photo ${sh(it.ratio)} · ${it.yt?'YouTube (floating player)':'video '+sh(it.vratio)}</div>
         <div class="chips" style="margin:6px 0 0"><button class="chip ${(it.fit||'fit')==='fit'?'on':''}" onclick="setFit('${it.id}','fit')">Whole video</button><button class="chip ${it.fit==='fill'?'on':''}" onclick="setFit('${it.id}','fill')">Cover photo</button><button class="chip ${it.fit==='stretch'?'on':''}" onclick="setFit('${it.id}','stretch')">Stretch</button></div></div>
       <button class="btn danger sm" onclick="removeItem('${it.id}')">Remove</button>
     </div>`).join('') : '<div class="empty">No pictures yet. Add one above.</div>';
@@ -598,9 +610,10 @@ function toggleVidMode(e){
 let urlTimer;
 function checkUrl(){
   clearTimeout(urlTimer); vidUrl=$('#vidUrl').value.trim(); vidRatio=1; updSave();
-  const st=$('#urlSt'); st.className='status'; st.textContent='Google Drive or Dropbox share link, or a direct .mp4 link.';
+  const st=$('#urlSt'); st.className='status'; st.textContent='Google Drive / Dropbox link or direct .mp4 (fused), or a YouTube link (floating player).';
   if(!/^https?:\/\//i.test(vidUrl)) return;
-  if(/youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com/i.test(vidUrl)){ st.className='status err'; st.textContent='YouTube, Instagram, Facebook and TikTok links cannot be used — they do not give out video files. Download the clip and upload it, or put it on Google Drive and paste that link.'; return; }
+  if(/youtube\.com|youtu\.be/i.test(vidUrl)){ st.className='status'; st.textContent='YouTube link: the video will float over the photo and follow it (not fused onto the print, shows YouTube controls). For the fused effect, upload the MP4 or a Drive link.'; vidRatio=0.5625; updSteps(); return; }
+  if(/instagram\.com|facebook\.com|fb\.watch|tiktok\.com/i.test(vidUrl)){ st.className='status err'; st.textContent='Instagram, Facebook and TikTok links cannot be used. Download the clip and upload it, put it on Google Drive, or use a YouTube link.'; return; }
   if(/drive\.google\.com|dropbox\.com/i.test(vidUrl)){ st.textContent='Drive/Dropbox link — the server will download it when you save. Make sure sharing is set to "Anyone with the link".'; updSteps(); return; }
   urlTimer=setTimeout(()=>{
     st.textContent='Checking…';

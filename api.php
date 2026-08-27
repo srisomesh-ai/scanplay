@@ -48,6 +48,7 @@ foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE items ADD COLUMN yt TEXT"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
 $db->exec("CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, user_id INTEGER, who TEXT, action TEXT, detail TEXT, ip TEXT)");
@@ -110,6 +111,10 @@ function issueCode($u, $what) {
 }
 function checkCode($u, $code) { return $u['code'] && (int)$u['code_exp'] > now() && password_verify(trim($code), $u['code']); }
 /* Turn share links into direct-download links; reject streaming sites */
+function youtubeId($url) {
+  if (preg_match('#(?:youtu\.be/|youtube\.com/(?:watch\?v=|shorts/|embed/|v/))([\w-]{11})#i', $url, $m)) return $m[1];
+  return null;
+}
 function resolveVideoUrl($url) {
   if (preg_match('#(youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com|vimeo\.com/\d)#i', $url))
     return [null, 'YouTube, Instagram, Facebook, TikTok and Vimeo links cannot be used — those sites do not provide video files. Download the clip and upload it, or put it on Google Drive and paste that link.'];
@@ -317,11 +322,13 @@ switch ($action) {
       out(false, ['error'=>'Photo, a video (file or URL) and compiled file are all required']);
     if (!empty($_FILES['video']) && $_FILES['video']['size'] > MAX_VIDEO_MB*1048576) out(false, ['error'=>"Video must be under ".MAX_VIDEO_MB." MB"]);
     if ($videoUrl!=='' && !preg_match('#^https?://#i', $videoUrl)) out(false, ['error'=>'Video URL must start with http:// or https://']);
-    if ($videoUrl!=='') { [$videoUrl, $vErr] = resolveVideoUrl($videoUrl); if ($vErr) out(false, ['error'=>$vErr]); }
+    $yt = $videoUrl!=='' ? youtubeId($videoUrl) : null;
+    if ($videoUrl!=='' && !$yt) { [$videoUrl, $vErr] = resolveVideoUrl($videoUrl); if ($vErr) out(false, ['error'=>$vErr]); }
 
     $id = substr(bin2hex(random_bytes(5)),0,8); $dir = DATA_DIR."/$code/$id"; mkdir($dir, 0755, true);
     move_uploaded_file($_FILES['target']['tmp_name'], "$dir/target.jpg");
-    if ($upId) { rename($upFile, "$dir/video.mp4"); @unlink(DATA_DIR."/tmp/$upId.json"); }
+    if ($yt) { /* YouTube: no file, floating player */ }
+    elseif ($upId) { rename($upFile, "$dir/video.mp4"); @unlink(DATA_DIR."/tmp/$upId.json"); }
     elseif (!empty($_FILES['video'])) move_uploaded_file($_FILES['video']['tmp_name'], "$dir/video.mp4");
     else {
       set_time_limit(600); $fp=fopen("$dir/video.mp4",'w'); $ch=curl_init($videoUrl);
@@ -338,8 +345,8 @@ switch ($action) {
       if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that link'.($err?" ($err)":'').'. Use a Google Drive / Dropbox share link (set to "Anyone with the link") or a direct .mp4 link.']); }
     }
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
-    q("INSERT INTO items (id,code,title,ratio,vratio,fit,created) VALUES (?,?,?,?,?,?,?)",
-      [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now()]);
+    q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,?)",
+      [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
     logAct($u['id'],'photo_add',"$code/$id");
     $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
     @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], mailTpl("Your AR photo is ready &#127881;", "Hi ".htmlspecialchars($u['name']).", <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and live.", "Open the ScanPlay Scanner, point at the printed photo, and it plays. Print the QR too if you like &mdash; it's optional.<br><span style='font-size:13px;color:#8B84A0'>Tip: matte paper, good light, at least 4&times;6 inches.</span>", "Open the player", $qr));
@@ -371,8 +378,8 @@ switch ($action) {
     $list = [];
     foreach ($accs as $x) {
       if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
-      $items = rows("SELECT id,title,ratio,vratio,fit FROM items WHERE code=? ORDER BY created", [$x['code']]);
-      foreach ($items as &$it) $it['video'] = "data/{$x['code']}/{$it['id']}/video.mp4";
+      $items = rows("SELECT id,title,ratio,vratio,fit,yt FROM items WHERE code=? ORDER BY created", [$x['code']]);
+      foreach ($items as &$it) $it['video'] = $it['yt'] ? null : "data/{$x['code']}/{$it['id']}/video.mp4";
       $p = PLANS[$x['plan']] ?? PLANS['free'];
       $list[] = ['code'=>$x['code'], 'name'=>$x['name'], 'mind'=>"data/{$x['code']}/targets.mind?v=".filemtime(DATA_DIR."/{$x['code']}/targets.mind"), 'items'=>$items,
                  'watermark'=>$p['watermark'], 'logo'=>($p['logo'] && $x['logo']) ? "data/users/{$x['uid']}/logo.png?v={$x['logo']}" : null];
@@ -389,8 +396,8 @@ switch ($action) {
     if (!empty($a['blocked'])) out(false, ['error'=>'This content is unavailable']);
     $state = planState($a);
     if ($state === 'expired') out(false, ['error'=>'This experience has expired']);
-    $items = rows("SELECT id,title,ratio,vratio,fit FROM items WHERE code=? ORDER BY created", [$code]);
-    foreach ($items as &$it) $it['video'] = "data/$code/{$it['id']}/video.mp4";
+    $items = rows("SELECT id,title,ratio,vratio,fit,yt FROM items WHERE code=? ORDER BY created", [$code]);
+    foreach ($items as &$it) $it['video'] = $it['yt'] ? null : "data/$code/{$it['id']}/video.mp4";
     if (!$items) out(false, ['error'=>'This account has no pictures yet']);
     $p = PLANS[$a['plan']] ?? PLANS['free'];
     q("INSERT INTO scans (code,day,n) VALUES (?,?,1) ON CONFLICT(code,day) DO UPDATE SET n=n+1", [$code, date('Y-m-d')]);

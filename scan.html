@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   html,body{margin:0;height:100%;background:#000;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;overflow:hidden}
   #scene{position:fixed;inset:0}
@@ -26,6 +27,8 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .cn{position:fixed;width:34px;height:34px;border:3px solid #22D3EE;z-index:3;opacity:.85;pointer-events:none}
   .c1{left:26px;top:100px;border-right:0;border-bottom:0}.c2{right:26px;top:100px;border-left:0;border-bottom:0}.c3{left:26px;bottom:90px;border-right:0;border-top:0}.c4{right:26px;bottom:90px;border-left:0;border-top:0}
+  .ytov{position:fixed;left:0;top:0;width:200px;height:112px;z-index:4;display:none;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px #22D3EE,0 20px 50px rgba(0,0,0,.6);background:#000;will-change:transform}
+  .ytov iframe{width:100%;height:100%;border:0;display:block}
   .mindar-ui-overlay{display:none!important}
 </style>
 </head>
@@ -43,6 +46,19 @@ import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar
 window.MindCompiler = Compiler;
 </script>
 <script>
+
+/* YouTube floating player: follows the tracked photo on screen (hover, not fused) */
+AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
+  init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; const o=document.getElementById(this.data.ov); if(o) o.style.display='none';}); },
+  tick(){ if(!this.on) return; const o=document.getElementById(this.data.ov); const cam=this.el.sceneEl.camera; if(!o||!cam) return;
+    const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
+    const bw=Math.max(140,Math.min(W-20,maxx-minx)), bh=bw*9/16; const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
+    o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate(${cx-bw/2}px,${cy-bh/2}px)`; }
+});
+function ytPlayer(ovId, vid, muted){ return new Promise(res=>{ const mk=()=>{ if(!window.YT||!YT.Player){ setTimeout(mk,150); return; }
+  const p=new YT.Player(ovId+'_f',{videoId:vid,playerVars:{autoplay:0,controls:0,rel:0,modestbranding:1,playsinline:1,loop:1,playlist:vid,mute:muted?1:0},events:{onReady:()=>res(p)}}); }; mk(); }); }
+
 const $=s=>document.querySelector(s);
 function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
 function fit(R,VR,mode){
@@ -73,23 +89,24 @@ async function init(){
 }
 
 function start(mindUrl,map){
-  const assets=map.map((m,i)=>`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
-  const targets=map.map((m,i)=>{ const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
+  const assets=map.map((m,i)=>m.it.yt?'':`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
+  map.forEach((m,i)=>{ if(m.it.yt){ const d=document.createElement('div'); d.className='ytov'; d.id='yt'+i; d.innerHTML=`<div id="yt${i}_f"></div>`; document.body.appendChild(d); } });
+  const targets=map.map((m,i)=>{ if(m.it.yt) return `<a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" sp-yt="ov: yt${i}; ratio: ${m.it.ratio}"></a-entity>`; const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
       <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
   $('#scene').innerHTML=`
     <a-scene mindar-image="imageTargetSrc: ${mindUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: ${T.cf}; filterBeta: ${T.beta}; missTolerance: ${T.miss}; warmupTolerance: ${T.warm}; maxTrack: 1"
              color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
       <a-assets>${assets}</a-assets><a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${targets}
     </a-scene>`;
-  const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd'), vids=map.map((_,i)=>$('#v'+i));
-  vids.forEach(v=>v.muted=true); snd.style.display='block';
-  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>v.muted=false); snd.style.display='none'; },{once:true});
+  const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd'), vids=map.map((m,i)=>m.it.yt?null:$('#v'+i)); const yts={}; map.forEach((m,i)=>{ if(m.it.yt) ytPlayer('yt'+i,m.it.yt,true).then(p=>{yts[i]=p;}); });
+  vids.forEach(v=>{ if(v) v.muted=true; }); snd.style.display='block';
+  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>{ if(v) v.muted=false; }); Object.values(yts).forEach(p=>{ try{p.unMute();}catch(e){} }); snd.style.display='none'; },{once:true});
   const hits=new Set();
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{ const i=+t.dataset.i, m=map[i]; let lostT;
-    t.addEventListener('targetFound',()=>{ clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(j!==i) v.pause(); }); vids[i].play().catch(()=>{});
+    t.addEventListener('targetFound',()=>{ clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){}
       if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
       const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
-    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>vids[i].pause(),800); });
+    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },800); });
   });
   scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
   scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
