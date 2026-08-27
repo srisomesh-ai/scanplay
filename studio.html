@@ -509,7 +509,45 @@ function updSteps(){ fitPreview();
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
   $('#qrBtn').textContent=has?'Show my QR':'Generate my QR (add a photo first)';
 }
-function shareQr(){ const t=encodeURIComponent(`Scan this QR, then point your phone at the photo: ${CUR.qrUrl}`); window.open('https://wa.me/?text='+t); }
+const loadImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+async function buildShareCard(){
+  const W=1080, pad=56; const photos=CUR.items.slice(0,4);
+  const imgs=await Promise.all(photos.map(it=>loadImgEl(it.thumb+'?v='+Date.now()).catch(()=>null)));
+  const qrHolder=document.createElement('div'); new QRCode(qrHolder,{text:CUR.qrUrl,width:420,height:420,correctLevel:QRCode.CorrectLevel.M});
+  await new Promise(r=>setTimeout(r,80)); const qrC=qrHolder.querySelector('canvas');
+  const n=imgs.length, cols=n>1?2:1, cell=(W-pad*2-(cols-1)*24)/cols, rowsN=Math.ceil(n/cols), cellH=cell*1.05;
+  const H=pad+120+rowsN*(cellH+24)+40+520+pad;
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,'#7C3AED'); g.addColorStop(1,'#FF4D6D'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.fillStyle='#fff'; rr(x,pad-20,pad-20,W-pad*2+40,H-pad*2+40,40); x.fill();
+  x.fillStyle='#0F0A1F'; x.font='800 54px "Plus Jakarta Sans",Arial'; x.fillText('This photo plays a video',pad,pad+56);
+  x.fillStyle='#4B4661'; x.font='600 30px "Plus Jakarta Sans",Arial'; x.fillText(CUR.name,pad,pad+104);
+  let y=pad+150;
+  imgs.forEach((im,i)=>{ const cx=pad+(i%cols)*(cell+24), cy=y+Math.floor(i/cols)*(cellH+24);
+    x.save(); rr(x,cx,cy,cell,cellH,22); x.clip(); x.fillStyle='#eee'; x.fillRect(cx,cy,cell,cellH);
+    if(im){ const s=Math.max(cell/im.width,cellH/im.height); const w=im.width*s,h=im.height*s; x.drawImage(im,cx+(cell-w)/2,cy+(cellH-h)/2,w,h); } x.restore();
+    x.strokeStyle='#22D3EE'; x.lineWidth=10; rr(x,cx+5,cy+5,cell-10,cellH-10,20); x.stroke(); });
+  y+=rowsN*(cellH+24)+30;
+  const qs=420; x.drawImage(qrC,pad,y+20,qs,qs); x.fillStyle='#0F0A1F'; x.font='800 30px "Plus Jakarta Sans",Arial';
+  const tx=pad+qs+40, lines=['1. Scan this QR with your phone camera','2. Allow the camera','3. Point the phone at the photo above','4. Watch the video play on it!'];
+  lines.forEach((l,i)=>{ x.fillStyle=i===3?'#7C3AED':'#0F0A1F'; wrap(x,l,tx,y+70+i*95,W-tx-pad,38); });
+  x.fillStyle='#4B4661'; x.font='600 24px "Plus Jakarta Sans",Arial'; x.fillText('No app needed · '+CUR.qrUrl.replace('https://',''),pad,H-pad-8);
+  x.fillStyle='#7C3AED'; x.font='800 26px "Plus Jakarta Sans",Arial'; x.textAlign='right'; x.fillText('ScanPlay',W-pad,H-pad-8); x.textAlign='left';
+  return new Promise(r=>c.toBlob(b=>r(b),'image/jpeg',0.9));
+  function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+  function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
+}
+async function shareQr(){
+  const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${CUR.qrUrl}`;
+  try{
+    if(!CUR.items.length) throw new Error('no photos');
+    const blob=await buildShareCard(); const file=new File([blob],'scanplay-'+CUR.code+'.jpg',{type:'image/jpeg'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text,title:'ScanPlay — '+CUR.name}); return; }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=file.name; a.click();
+    toast('Share card downloaded — send it on WhatsApp with the message.');
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  window.open('https://wa.me/?text='+encodeURIComponent(text));
+}
 function renderItems(){
   const sh=r=>r>1.05?'portrait':r<0.95?'landscape':'square';
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
