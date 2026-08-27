@@ -77,11 +77,27 @@ function sendMail($to, $subject, $html) {
   $msg = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html));
   $r=$cmd($msg."\r\n."); $cmd('QUIT'); fclose($fp); return strpos($r,'250')===0;
 }
+/* Branded email shell (style A): logo top, centred content, footer with support details */
+function mailTpl($title, $lead, $body='', $ctaText=null, $ctaUrl=null, $code=null) {
+  $logo = baseUrl().'/assets/brand/icon-192.png';
+  $codeBlock = $code ? "<div style='margin:22px auto;background:#F6F3FF;border-radius:14px;padding:18px;font:800 38px Courier New,monospace;letter-spacing:10px;color:#0F0A1F;max-width:320px'>$code</div><div style='font:13px Arial;color:#6B6480'>This code expires in 15 minutes.</div>" : '';
+  $cta = $ctaText ? "<a href='$ctaUrl' style='display:inline-block;margin:22px 0 6px;background:#7C3AED;color:#fff;text-decoration:none;font:700 15px Arial;padding:14px 26px;border-radius:12px'>$ctaText</a>" : '';
+  return "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='margin:0;background:#F3F1FA;padding:24px 12px'>
+<table role='presentation' width='100%' cellspacing='0' cellpadding='0'><tr><td align='center'>
+<table role='presentation' width='100%' style='max-width:520px;background:#fff;border-radius:22px;box-shadow:0 10px 30px rgba(15,10,31,.08)' cellspacing='0' cellpadding='0'>
+<tr><td align='center' style='padding:36px 32px 8px'><img src='$logo' width='64' height='64' style='border-radius:18px;display:block' alt='ScanPlay'><div style='font:800 22px Arial,Helvetica,sans-serif;color:#0F0A1F;margin-top:12px;letter-spacing:-.5px'>Scan<span style=\"color:#7C3AED\">Play</span></div></td></tr>
+<tr><td align='center' style='padding:10px 32px 8px'><div style='font:800 22px Arial,Helvetica,sans-serif;color:#0F0A1F;letter-spacing:-.4px'>$title</div><div style='font:15px/1.6 Arial,Helvetica,sans-serif;color:#4B4661;margin-top:8px'>$lead</div></td></tr>
+<tr><td align='center' style='padding:6px 32px 8px;font:15px/1.6 Arial,Helvetica,sans-serif;color:#4B4661'>$body$codeBlock$cta</td></tr>
+<tr><td style='padding:22px 32px 0'><div style='height:1px;background:#EDE9F7'></div></td></tr>
+<tr><td align='center' style='padding:18px 32px 30px;font:12px/1.7 Arial,Helvetica,sans-serif;color:#8B84A0'>
+<b style='color:#4B4661'>Need help?</b> WhatsApp <a href='https://wa.me/918985849710' style='color:#7C3AED;text-decoration:none'>+91 89858 49710</a> &middot; <a href='mailto:info@scanplay.in' style='color:#7C3AED;text-decoration:none'>info@scanplay.in</a><br>
+<a href='https://scanplay.in' style='color:#7C3AED;text-decoration:none'>scanplay.in</a> &middot; <a href='https://play.google.com/store/apps/details?id=in.scanplay.app' style='color:#7C3AED;text-decoration:none'>Android app</a> &middot; <a href='https://scanplay.in/privacy.html' style='color:#8B84A0'>Privacy</a> &middot; <a href='https://scanplay.in/terms.html' style='color:#8B84A0'>Terms</a><br>
+Made with <span style='color:#FF4D6D'>&hearts;</span> in India &middot; &copy; ScanPlay LLP, Visakhapatnam &middot; All rights reserved.</td></tr>
+</table></td></tr></table></body></html>";
+}
 function codeMail($name, $code, $what) {
-  return "<div style='font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'>
-  <div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div><p>Hi ".htmlspecialchars($name).",</p><p>Your $what code is:</p>
-  <div style='font-size:34px;font-weight:800;letter-spacing:8px;background:#F6F3FF;padding:16px;text-align:center;border-radius:10px'>$code</div>
-  <p style='color:#666;font-size:13px'>It expires in 15 minutes. If you didn't request this, ignore this email.</p></div>";
+  $t = $what==='password reset' ? 'Reset your password' : 'Verify your email';
+  return mailTpl($t, "Hi ".htmlspecialchars($name).", use this code to ".($what==='password reset'?'set a new password.':'finish creating your ScanPlay account.'), "<div style='font:13px Arial;color:#8B84A0'>If you didn't request this, you can ignore this email.</div>", null, null, $code);
 }
 function issueCode($u, $what) {
   $code = str_pad((string)random_int(0,999999), 6, '0', STR_PAD_LEFT);
@@ -321,11 +337,7 @@ switch ($action) {
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now()]);
     logAct($u['id'],'photo_add',"$code/$id");
     $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
-    @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], "<div style='font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'>
-      <div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div><p>Hi ".htmlspecialchars($u['name']).",</p><p>Your photo <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and ready.</p>
-      <p><a href='$qr' style='display:inline-block;background:#7C3AED;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>Open the player</a></p>
-      <p>Get your QR in the studio (Show my QR) and print, stick or share it. Scan it, point at the photo, and it plays.</p>
-      <p style='color:#666;font-size:13px'>Tip: matte paper, good light, at least 4×6 inches.</p></div>");
+    @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], mailTpl("Your AR photo is ready &#127881;", "Hi ".htmlspecialchars($u['name']).", <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and live.", "Open the ScanPlay Scanner, point at the printed photo, and it plays. Print the QR too if you like &mdash; it's optional.<br><span style='font-size:13px;color:#8B84A0'>Tip: matte paper, good light, at least 4&times;6 inches.</span>", "Open the player", $qr));
     out(true, ['id'=>$id]);
   }
   case 'item_update': {
@@ -411,6 +423,9 @@ switch ($action) {
       q("UPDATE payments SET payment_id=?, status='paid' WHERE id=?", [$pid, $pay['id']]);
       if (!empty($pay['promo'])) q("UPDATE promos SET uses=uses+1 WHERE code=?", [$pay['promo']]);
       logAct($u['id'],'payment',"{$pay['plan']} {$pay['period']} ₹".($pay['amount']/100)." $pid");
+      $pn = PLANS[$pay['plan']]['name']; $amt = number_format($pay['amount']/100);
+      @sendMail($u['email'], "Payment received — ScanPlay $pn", mailTpl("Payment received &#9989;", "Hi ".htmlspecialchars($u['name']).", thank you! Your <b>$pn</b> plan (".($pay['period']==='year'?'1 year':'1 month').") is now active.",
+        "<table role='presentation' style='margin:16px auto;font:14px Arial;color:#4B4661;text-align:left' cellpadding='6'><tr><td>Amount</td><td><b>&#8377;$amt</b></td></tr><tr><td>Payment ID</td><td>$pid</td></tr><tr><td>Order ID</td><td>$oid</td></tr><tr><td>Valid until</td><td>".date('d M Y', $base+$add)."</td></tr></table><div style='font:12px Arial;color:#8B84A0'>Keep this email as your receipt. For a GST invoice, reply with your GSTIN.</div>", "Open ScanPlay Studio", baseUrl().'/studio.html'));
       $add = $pay['period']==='year' ? 365*86400 : 30*86400;
       $base = ($u['plan']===$pay['plan'] && (int)$u['plan_until'] > now()) ? (int)$u['plan_until'] : now();   // extend if same plan still active
       q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$pay['plan'], $base+$add, $u['id']]);
@@ -494,7 +509,7 @@ switch ($action) {
     if (!mailConfigured()) out(false, ['error'=>'Email is not configured']);
     $where = ['all'=>"deleted=0 AND verified=1", 'free'=>"deleted=0 AND verified=1 AND plan='free'", 'paid'=>"deleted=0 AND verified=1 AND plan!='free'", 'expired'=>"deleted=0 AND verified=1 AND plan_until < ".now()][$seg] ?? "deleted=0 AND verified=1";
     $users = rows("SELECT id,email,name FROM users WHERE $where"); $sent=0; set_time_limit(600);
-    $html = "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'><div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div>".nl2br(htmlspecialchars($body))."<p style='margin-top:20px'><a href='".baseUrl()."/studio.html' style='display:inline-block;background:#7C3AED;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>Open ScanPlay Studio</a></p><p style='color:#999;font-size:12px'>You receive this because you have a ScanPlay account. Reply to this email to contact us.</p></div>";
+    $html = mailTpl(htmlspecialchars($subj), "Hi {name},", nl2br(htmlspecialchars($body))."<div style='font:12px Arial;color:#8B84A0;margin-top:14px'>You receive this because you have a ScanPlay account.</div>", "Open ScanPlay Studio", baseUrl().'/studio.html');
     foreach ($users as $x) { if (@sendMail($x['email'], $subj, str_replace('{name}', htmlspecialchars($x['name']), $html))) $sent++; }
     logAct(0,'admin_broadcast',"$seg: $subj ($sent/".count($users).")",'admin');
     out(true, ['sent'=>$sent, 'total'=>count($users)]);
