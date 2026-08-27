@@ -348,6 +348,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <script src="i18n.js?v=5"></script>
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
+document.addEventListener('click',e=>{ if(e.target.closest('a.btn,.btn,.gplay,.wa,summary')&&navigator.vibrate) navigator.vibrate(12); },true);
 /* Inside the Android app: hide Google Play badges/links */
 const IN_APP=/ScanPlayApp/.test(navigator.userAgent)||new URLSearchParams(location.search).get('app')==='1';
 if(IN_APP){ sessionStorage.setItem('sp_inapp','1'); document.querySelectorAll('.gplay, a[href*="play.google.com"]').forEach(e=>e.style.display='none'); }

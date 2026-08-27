@@ -85,6 +85,8 @@
   .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:600 12px 'Plus Jakarta Sans';cursor:pointer}
   .chip.on{background:var(--grad);color:#fff;border-color:transparent}
   label.chip{display:inline-block}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:600;font-size:14px;z-index:99;opacity:0;transition:.25s;max-width:90vw;box-shadow:0 12px 30px rgba(15,10,31,.3)}
+  .toast.on{opacity:1;transform:translateX(-50%)}
   #login{max-width:420px;margin:40px auto;padding:0 20px}
   #login .brand{text-align:center;margin-bottom:18px} #login .brand b{font-size:24px;letter-spacing:-.03em} #login .brand b span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent} #login .brand p{color:var(--mute);font-size:13px;margin-top:4px}
   .gbtn{display:flex;justify-content:center;margin:0} .gbtn:not(:empty){margin:12px 0 4px}
@@ -334,6 +336,8 @@ let TOKEN=localStorage.getItem('sp_token')||'', USER=null, ACCOUNTS=[], CUR=null
 let imgFile=null, vidFile=null, vidUrl='', urlMode=false, imgRatio=1, vidRatio=1, cropper=null, UP=null;
 let authMode='in', pendingEmail='', codeMode='verify', CFG={};
 const $=s=>document.querySelector(s);
+document.addEventListener('click',e=>{ if(e.target.closest('button,.btn,.chip,.acc,.accbox,.tabs button')&&navigator.vibrate) navigator.vibrate(12); },true);
+function toast(msg,ms=3500){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('on'); if(navigator.vibrate) navigator.vibrate([30,40,30]); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showView(v){ ['In','Code','Forgot'].forEach(x=>$('#v'+x).style.display='none'); $('#v'+{in:'In',code:'Code',forgot:'Forgot'}[v]).style.display=''; }
 function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up');
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
@@ -616,7 +620,7 @@ async function addItem(){
     else { files.video=vidFile; setProg(87,'Uploading…'); }
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
+    await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
 }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else alert(r.error); }
