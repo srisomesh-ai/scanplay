@@ -252,7 +252,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <nav id="nav"><div class="w">
   <a class="logo" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:30px;height:30px"><span>Scan<b class="grad" style="font-weight:800">Play</b></span></a>
   <div class="links"><a href="#how" data-i18n="nav_how">How it works</a><a href="#uses" data-i18n="nav_uses">Use cases</a><a href="#partners" data-i18n="nav_partners">For printers</a><a href="#pricing" data-i18n="nav_pricing">Pricing</a><a href="#faq" data-i18n="nav_faq">FAQ</a></div>
-  <div style="display:flex;gap:8px;align-items:center"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn w" href="studio.html" style="padding:10px 18px" data-i18n="signin">Sign in</a></div>
+  <div style="display:flex;gap:8px;align-items:center"><select id="lang" class="langsel" aria-label="Language"></select><a class="btn g" href="scan.html" style="padding:10px 16px">📷 Scan</a><a class="btn w" href="studio.html" style="padding:10px 18px" data-i18n="signin">Sign in</a></div>
 </div></nav>
 
 <header class="hero w">
@@ -350,6 +350,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 document.getElementById('yr').textContent=new Date().getFullYear();
 document.addEventListener('click',e=>{ if(e.target.closest('a.btn,.btn,.gplay,.wa,summary')&&navigator.vibrate) navigator.vibrate(12); },true);
 /* Inside the Android app: hide Google Play badges/links */
+
 const IN_APP=/ScanPlayApp/.test(navigator.userAgent)||new URLSearchParams(location.search).get('app')==='1';
 if(IN_APP){ sessionStorage.setItem('sp_inapp','1'); document.querySelectorAll('.gplay, a[href*="play.google.com"]').forEach(e=>e.style.display='none'); }
 /* App: if the user is already signed in, go straight to the studio */

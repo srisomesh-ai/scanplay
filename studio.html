@@ -194,8 +194,8 @@
     <div class="big">
       <div class="bs" id="g1"><span class="n"></span><div class="ic">🖼️</div><h3>1. Upload the photo</h3><p>The picture people will point their phone at.</p></div>
       <div class="bs" id="g2"><span class="n"></span><div class="ic">🎬</div><h3>2. Upload the video</h3><p>The video that should play on that photo.</p></div>
-      <div class="bs" id="g3"><span class="n"></span><div class="ic">🔳</div><h3>3. Generate the QR</h3><p>Print it, stick it, or share it — your choice.</p></div>
-      <div class="bs" id="g4"><span class="n"></span><div class="ic">📱</div><h3>4. Scan &amp; enjoy</h3><p>Scan the QR, point at the photo, watch the video play.</p></div>
+      <div class="bs" id="g3"><span class="n"></span><div class="ic">🔳</div><h3>3. Done — it just works</h3><p>Viewers open the ScanPlay Scanner and point at the photo. QR is optional.</p></div>
+      <div class="bs" id="g4"><span class="n"></span><div class="ic">📱</div><h3>4. Scan &amp; enjoy</h3><p>Open <a href="scan.html" style="color:var(--b);font-weight:700">the Scanner</a>, point at the photo, watch it play.</p></div>
     </div>
     <div class="bigcta"><button class="btn" id="bigBtn" onclick="startFlow()">＋ Make my first AR photo</button></div>
   </section>
@@ -229,6 +229,7 @@
 
 <template id="detailTpl">
   <div class="head"><h2 id="dName"></h2><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div>
+  <label class="tiny" style="display:flex;align-items:center;gap:8px;margin:-4px 0 6px;cursor:pointer"><input type="checkbox" id="pubChk" onchange="setPublic(this.checked)"> <span id="pubTxt">Works with the ScanPlay Scanner — no QR needed (public)</span></label>
   <div class="code" id="dCode" style="display:none"></div>
 
   <div class="stepc" id="st1"><div class="sh"><i><span>1</span></i><b>Upload the photo</b><small>the one you will print</small></div>
@@ -263,7 +264,7 @@
   <div id="stats" style="display:none;margin-top:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
   <h2 style="font-size:14px;margin-top:22px">Photos in this project</h2>
   <div id="items"></div>
-  <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>Generate the QR</b><small>print, stick or share it</small></div>
+  <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>QR code (optional)</b><small>viewers can also just open the Scanner</small></div>
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="shareQr()">Share on WhatsApp</button></div>
   </div>
@@ -477,7 +478,7 @@ function openAcc(code){
   CUR=ACCOUNTS.find(a=>a.code===code); if(!CUR) return;
   document.querySelectorAll('.acc').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
   const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
-  $('#dName').textContent=CUR.name; $('#dCode').textContent=CUR.qrUrl;
+  $('#dName').textContent=CUR.name; $('#dCode').textContent=CUR.qrUrl; $('#pubChk').checked=!!CUR.public; $('#pubTxt').textContent=CUR.public?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code';
   bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false; UP=null; updSteps();
   if(USER.limits.analytics){ $('#stats').style.display=''; $('#kAll').textContent=CUR.scans; $('#k30').textContent=CUR.scans30;
     post({action:'stats',code:CUR.code}).then(r=>{ if(!r.ok) return; const m=new Map(r.days.map(d=>[d.day,d.n])); const bars=[]; let mx=1;
@@ -514,7 +515,7 @@ function updSteps(){ fitPreview(); updSave();
   const has=CUR&&CUR.items.length>0;
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
-  $('#qrBtn').textContent=has?'Show my QR':'Generate my QR (add a photo first)';
+  $('#qrBtn').textContent=has?'Show my QR':'QR (add a photo first)';
 }
 const loadImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
 async function buildShareCard(){
@@ -544,7 +545,8 @@ async function buildShareCard(){
   function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
   function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
 }
-async function shareQr(){
+async async function setPublic(on){ const r=await post({action:'account_public',code:CUR.code,public:on?1:0}); if(!r.ok){ alert(r.error); return; } CUR.public=on?1:0; $('#pubTxt').textContent=on?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code'; toast(on?'Public: viewers can just open the ScanPlay Scanner and point.':'Private: works with your QR only.'); }
+function shareQr(){
   const shareUrl=location.origin+'/s.php?c='+CUR.code;
   const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${shareUrl}`;
   try{

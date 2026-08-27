@@ -47,6 +47,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMEN
 foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
 $db->exec("CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, user_id INTEGER, who TEXT, action TEXT, detail TEXT, ip TEXT)");
@@ -145,7 +146,7 @@ function pubAccount($a) {
   foreach ($items as &$it) $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg";
   $scans = (int)(row("SELECT SUM(n) s FROM scans WHERE code=?", [$a['code']])['s'] ?? 0);
   $scans30 = (int)(row("SELECT SUM(n) s FROM scans WHERE code=? AND day>=?", [$a['code'], date('Y-m-d', now()-30*86400)])['s'] ?? 0);
-  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
+  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
 }
 
 $action = $_REQUEST['action'] ?? '';
@@ -246,6 +247,11 @@ switch ($action) {
     mkdir(DATA_DIR."/$code", 0755, true); logAct($u['id'],'project_create',"$code $name");
     out(true, ['code'=>$code]);
   }
+  case 'account_public': {
+    $u = auth(); $code = clean($_POST['code'] ?? '');
+    if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Project not found']);
+    q("UPDATE accounts SET public=? WHERE code=?", [(int)!!($_POST['public']??1), $code]); logAct($u['id'],'project_public',"$code=".(int)!!($_POST['public']??1)); out(true);
+  }
   case 'account_delete': {
     $u = auth(); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
@@ -339,6 +345,24 @@ switch ($action) {
     elseif (!row("SELECT id FROM items WHERE code=?", [$code]) && file_exists($mind)) unlink($mind);
     logAct($u['id'],'photo_delete',"$code/$id"); out(true);
   }
+
+  /* ---------- universal scanner index (public projects of active users) ---------- */
+  case 'scanner': {
+    $cut = now() - GRACE_DAYS*86400;
+    $accs = rows("SELECT a.code, a.name, u.plan, u.plan_until, u.logo, u.id uid, (SELECT MAX(created) FROM items i WHERE i.code=a.code) last FROM accounts a JOIN users u ON u.id=a.user_id
+                  WHERE a.public=1 AND a.blocked=0 AND u.deleted=0 AND u.plan_until > ? AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
+    $list = [];
+    foreach ($accs as $x) {
+      if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
+      $items = rows("SELECT id,title,ratio,vratio,fit FROM items WHERE code=? ORDER BY created", [$x['code']]);
+      foreach ($items as &$it) $it['video'] = "data/{$x['code']}/{$it['id']}/video.mp4";
+      $p = PLANS[$x['plan']] ?? PLANS['free'];
+      $list[] = ['code'=>$x['code'], 'name'=>$x['name'], 'mind'=>"data/{$x['code']}/targets.mind?v=".filemtime(DATA_DIR."/{$x['code']}/targets.mind"), 'items'=>$items,
+                 'watermark'=>$p['watermark'], 'logo'=>($p['logo'] && $x['logo']) ? "data/users/{$x['uid']}/logo.png?v={$x['logo']}" : null];
+    }
+    out(true, ['projects'=>$list, 'count'=>count($list)]);
+  }
+  case 'scan_hit': { $code = clean($_POST['c'] ?? ''); if ($code) q("INSERT INTO scans (code,day,n) VALUES (?,?,1) ON CONFLICT(code,day) DO UPDATE SET n=n+1", [$code, date('Y-m-d')]); out(true); }
 
   /* ---------- public player ---------- */
   case 'get': {

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ScanPlay Scanner — point at any ScanPlay photo</title>
+<link rel="icon" href="/assets/brand/favicon.ico" sizes="any">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#000;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;overflow:hidden}
+  #scene{position:fixed;inset:0}
+  .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;background:#000;z-index:5;transition:opacity .3s}
+  .ov.hide{opacity:0;pointer-events:none}
+  .ov h1{font-size:22px;letter-spacing:-.02em;margin:0 0 8px;font-weight:800}
+  .ov p{color:#A9B1BA;font-size:14px;margin:0 0 22px;line-height:1.5;max-width:300px}
+  .bar{width:240px;height:6px;background:#222;border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7C3AED,#FF4D6D);transition:width .3s}
+  .btn{background:linear-gradient(135deg,#7C3AED,#FF4D6D);color:#fff;border:0;border-radius:999px;padding:14px 28px;font:600 15px 'Plus Jakarta Sans';cursor:pointer}
+  #snd{position:fixed;top:18px;right:18px;z-index:6;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);color:#fff;border:0;border-radius:999px;padding:9px 14px;font:600 13px 'Plus Jakarta Sans'}
+  #brand{position:fixed;top:18px;left:18px;z-index:6;text-decoration:none;color:#fff;font:800 13px 'Plus Jakarta Sans';background:rgba(16,20,24,.6);backdrop-filter:blur(8px);padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px}
+  #brand img{height:20px}
+  #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(16,20,24,.72);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:4;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+  #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite;flex-shrink:0}
+  #hint.found i{background:#3ED598;animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .cn{position:fixed;width:34px;height:34px;border:3px solid #22D3EE;z-index:3;opacity:.85;pointer-events:none}
+  .c1{left:26px;top:100px;border-right:0;border-bottom:0}.c2{right:26px;top:100px;border-left:0;border-bottom:0}.c3{left:26px;bottom:90px;border-right:0;border-top:0}.c4{right:26px;bottom:90px;border-left:0;border-top:0}
+  .mindar-ui-overlay{display:none!important}
+</style>
+</head>
+<body>
+<div class="ov" id="intro"><img src="/assets/brand/icon-192.png" style="width:72px;border-radius:20px;margin-bottom:16px" alt=""><h1>ScanPlay Scanner</h1><p id="introMsg">Loading photos… point your phone at any ScanPlay photo, poster or card and it plays.</p><div class="bar"><i id="pbar"></i></div></div>
+<div class="ov hide" id="errOv"><h1>Can't start</h1><p id="errMsg"></p><button class="btn" onclick="location.reload()">Try again</button></div>
+<a id="brand" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="">ScanPlay</a>
+<button id="snd" style="display:none">🔇 Tap for sound</button>
+<div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
+<div id="hint" style="display:none"><i></i><span>Point at a ScanPlay photo</span></div>
+<div id="scene"></div>
+
+<script type="module">
+import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
+window.MindCompiler = Compiler;
+</script>
+<script>
+const $=s=>document.querySelector(s);
+function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
+function fit(R,VR,mode){
+  if(mode==='fit')     return VR>R ? {w:R/VR,h:R,rep:'1 1',off:'0 0'} : {w:1,h:VR,rep:'1 1',off:'0 0'};
+  if(mode==='stretch') return {w:1,h:R,rep:'1 1',off:'0 0'};
+  if(VR>R){ const k=R/VR; return {w:1,h:R,rep:`1 ${k.toFixed(4)}`,off:`0 ${((1-k)/2).toFixed(4)}`}; }
+  const k=VR/R; return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
+}
+const T=Object.assign({cf:0.0001,beta:0.5,miss:15,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+
+async function init(){
+  const r=await fetch('api.php?action=scanner',{cache:'no-store'}).then(x=>x.json()).catch(()=>({ok:false}));
+  if(!r.ok) return fail('Could not load the scanner index.');
+  if(!r.projects.length) return fail('No public photos yet.');
+  while(!window.MindCompiler) await new Promise(x=>setTimeout(x,150));
+  // merge all public projects' compiled targets into one index (no recompiling)
+  const comp=new window.MindCompiler(); const merged=[]; const map=[]; let done=0;
+  for(const p of r.projects){
+    try{ const buf=await fetch(p.mind).then(x=>x.arrayBuffer()); const list=comp.importData(buf);
+      list.forEach((d,i)=>{ if(p.items[i]){ merged.push(d); map.push({p,it:p.items[i]}); } });
+    }catch(e){}
+    done++; $('#pbar').style.width=Math.round(done/r.projects.length*100)+'%';
+  }
+  if(!merged.length) return fail('Scanner index is empty.');
+  comp.data=merged; const out=await comp.exportData(); const mindUrl=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
+  $('#introMsg').textContent='Starting camera… allow camera access when asked.';
+  start(mindUrl,map);
+}
+
+function start(mindUrl,map){
+  const assets=map.map((m,i)=>`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
+  const targets=map.map((m,i)=>{ const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
+      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
+  $('#scene').innerHTML=`
+    <a-scene mindar-image="imageTargetSrc: ${mindUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: ${T.cf}; filterBeta: ${T.beta}; missTolerance: ${T.miss}; warmupTolerance: ${T.warm}; maxTrack: 1"
+             color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
+      <a-assets>${assets}</a-assets><a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${targets}
+    </a-scene>`;
+  const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd'), vids=map.map((_,i)=>$('#v'+i));
+  vids.forEach(v=>v.muted=true); snd.style.display='block';
+  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>v.muted=false); snd.style.display='none'; },{once:true});
+  const hits=new Set();
+  document.querySelectorAll('[mindar-image-target]').forEach(t=>{ const i=+t.dataset.i, m=map[i]; let lostT;
+    t.addEventListener('targetFound',()=>{ clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(j!==i) v.pause(); }); vids[i].play().catch(()=>{});
+      if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
+      const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
+    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>vids[i].pause(),800); });
+  });
+  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
+  scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
+}
+init();
+</script>
+</body>
+</html>
