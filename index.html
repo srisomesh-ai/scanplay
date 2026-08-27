@@ -348,6 +348,9 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <script src="i18n.js?v=5"></script>
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
+/* Inside the Android app: hide Google Play badges/links */
+const IN_APP=/ScanPlayApp/.test(navigator.userAgent)||new URLSearchParams(location.search).get('app')==='1';
+if(IN_APP){ sessionStorage.setItem('sp_inapp','1'); document.querySelectorAll('.gplay, a[href*="play.google.com"]').forEach(e=>e.style.display='none'); }
 /* App: if the user is already signed in, go straight to the studio */
 if(new URLSearchParams(location.search).get('app')==='1' && localStorage.getItem('sp_token')) location.replace('studio.html');
 const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('on',scrollY>10),{passive:true});
