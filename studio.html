@@ -282,6 +282,13 @@
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
   </div>
 </div>
+<div class="modal" id="confirmModal">
+  <div class="box" style="text-align:left;max-width:380px">
+    <h3 id="cfTitle">Are you sure?</h3>
+    <p id="cfMsg"></p>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="cfDone(false)">Cancel</button><button class="btn" id="cfOk" onclick="cfDone(true)">OK</button></div>
+  </div>
+</div>
 <div class="modal" id="nameModal">
   <div class="box" style="text-align:left;max-width:380px">
     <h3>Name your project</h3>
@@ -392,6 +399,9 @@ async function logout(){ await post({action:'logout'}).catch(()=>{}); localStora
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
 function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab('dash')); }
 function showTab(t){ $('#nDash').classList.toggle('on',t==='dash'); $('#nAcc').classList.toggle('on',t==='acc'); $('#dash').style.display=t==='dash'?'grid':'none'; $('#app').style.display=t==='acc'?'grid':'none'; if(t==='dash') renderDash(); }
+let _cfRes=null;
+function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
+function cfDone(v){ $('#confirmModal').classList.remove('open'); const r=_cfRes; _cfRes=null; r&&r(v); }
 let _nameRes=null;
 function askName(def){ return new Promise(res=>{ _nameRes=res; $('#nameInput').value=def||''; $('#nameModal').classList.add('open'); setTimeout(()=>$('#nameInput').focus(),80); }); }
 function nameOk(){ const v=$('#nameInput').value.trim(); if(!v){ $('#nameInput').focus(); return; } $('#nameModal').classList.remove('open'); const r=_nameRes; _nameRes=null; r&&r(v); }
@@ -399,7 +409,7 @@ function nameCancel(){ $('#nameModal').classList.remove('open'); const r=_nameRe
 async function startFlow(){
   showTab('acc');
   if(!ACCOUNTS.length){ const name=await askName('My first project'); if(!name) return;
-    const r=await post({action:'account_create',name}); if(!r.ok){ alert(r.error); return; } await loadAccounts(); openAcc(r.code); }
+    const r=await post({action:'account_create',name}); if(!r.ok){ toast(r.error); return; } await loadAccounts(); openAcc(r.code); }
   else openAcc(ACCOUNTS[0].code);
   setTimeout(()=>{ const t=document.getElementById('title'); if(t){ t.scrollIntoView({behavior:'smooth',block:'center'}); t.focus(); } },200);
 }
@@ -466,7 +476,7 @@ async function pay(){
   const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
     prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#7C3AED'},
     handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
-      if(v.ok){ USER=v.user; renderPlan(); closeUp(); alert('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
+      if(v.ok){ USER=v.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
   rz.on('payment.failed',e=>{ $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
 }
 /* settings */
@@ -496,7 +506,7 @@ async function loadAccounts(keep){
 }
 async function createAcc(){
   const name=$('#accName').value.trim(); if(!name) return;
-  const r=await post({action:'account_create',name}); if(!r.ok){alert(r.error);return;}
+  const r=await post({action:'account_create',name}); if(!r.ok){toast(r.error);return;}
   $('#accName').value=''; await loadAccounts(); openAcc(r.code);
 }
 function openAcc(code){
@@ -511,7 +521,7 @@ function openAcc(code){
       $('#statBars').innerHTML=bars.map(n=>`<i style="height:${Math.round(n/mx*100)}%" title="${n}"></i>`).join(''); }); }
 }
 async function deleteAcc(){
-  if(!confirm(`Delete "${CUR.name}" and all its pictures? Its QR will stop working.`)) return;
+  if(!await confirmDlg('Delete project?',`"${CUR.name}" and all its photos will be removed. Its QR and Scanner matches will stop working.`,'Delete project',true)) return;
   await post({action:'account_delete',code:CUR.code}); CUR=null;
   $('#detail').innerHTML='<div class="empty" style="padding:60px 0">Select an account.</div>'; loadAccounts();
 }
@@ -570,7 +580,7 @@ async function buildShareCard(mode='photo',onlyId=null){
   function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
   function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
 }
-async function setPublic(on){ const r=await post({action:'account_public',code:CUR.code,public:on?1:0}); if(!r.ok){ alert(r.error); return; } CUR.public=on?1:0; $('#pubTxt').textContent=on?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code'; toast(on?'Public: viewers can just open the ScanPlay Scanner and point.':'Private: works with your QR only.'); }
+async function setPublic(on){ const r=await post({action:'account_public',code:CUR.code,public:on?1:0}); if(!r.ok){ toast(r.error); return; } CUR.public=on?1:0; $('#pubTxt').textContent=on?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code'; toast(on?'Public: viewers can just open the ScanPlay Scanner and point.':'Private: works with your QR only.'); }
 function openShare(){ const el=$('#sharePhotos'); el.innerHTML=CUR.items.map((it,i)=>`<button class="chip" style="text-align:left;padding:8px 10px;display:flex;gap:10px;align-items:center" onclick="doShare('photo','${it.id}')"><img src="${it.thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><span><b>${esc(it.title)}</b><br><small>This photo + QR + steps</small></span></button>`).join(''); $('#shareModal').classList.add('open'); }
 function closeShare(){ $('#shareModal').classList.remove('open'); }
 async function doShare(mode,id){ closeShare(); await shareQr(mode,id); }
@@ -592,7 +602,7 @@ async function shareQr(mode='photo',onlyId=null){
 function renderItems(){
   const sh=r=>r>1.05?'portrait':r<0.95?'landscape':'square';
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
-    <div class="item">
+    <div class="item" id="item-${it.id}">
       <img src="${it.thumb}" alt="">
       <div><div class="t">${esc(it.title)}</div><div class="u">photo ${sh(it.ratio)} · ${it.yt?'YouTube (floating player)':'video '+sh(it.vratio)}</div>
         <div class="chips" style="margin:6px 0 0"><button class="chip ${(it.fit||'fit')==='fit'?'on':''}" onclick="setFit('${it.id}','fit')">Whole video</button><button class="chip ${it.fit==='fill'?'on':''}" onclick="setFit('${it.id}','fill')">Cover photo</button><button class="chip ${it.fit==='stretch'?'on':''}" onclick="setFit('${it.id}','stretch')">Stretch</button></div></div>
@@ -703,17 +713,18 @@ async function addItem(){
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
 }
-async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else alert(r.error); }
+async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
 async function removeItem(id){
-  if(!confirm('Remove this picture from the account?')) return;
-  const btn=$('#saveBtn'); btn.disabled=true;
+  const it=CUR.items.find(x=>x.id===id); if(!await confirmDlg('Remove this photo?',`"${it?it.title:'This photo'}" and its video will be removed from this project.`,'Remove',true)) return;
+  const btn=$('#saveBtn'); btn.disabled=true; const rowEl=document.getElementById('item-'+id); if(rowEl){ rowEl.style.opacity='.55'; const st=document.createElement('div'); st.className='status'; st.id='rm-'+id; st.style.gridColumn='1/-1'; st.textContent='Removing…'; rowEl.appendChild(st); }
   try{
     const rest=CUR.items.filter(it=>it.id!==id); let files;
-    if(rest.length){ setProg(5,'Re-analysing remaining pictures…'); const imgs=await Promise.all(rest.map(it=>loadImg(it.thumb+'?v='+Date.now()))); files={mind:await compileAll(imgs,10,90)}; }
-    setProg(92,'Saving…');
+    const rs=m=>{ const e=document.getElementById('rm-'+id); if(e) e.textContent=m; };
+    if(rest.length){ rs('Re-analysing remaining photos…'); const imgs=await Promise.all(rest.map(it=>loadImg(it.thumb+'?v='+Date.now()))); const comp=new window.MindCompiler(); await comp.compileImageTargets(imgs,p=>rs(`Re-analysing remaining photos… ${Math.round(p)}%`)); files={mind:new File([await comp.exportData()],'targets.mind')}; }
+    rs('Removing…');
     const r=await post({action:'item_delete',code:CUR.code,id},files); if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true);
-  }catch(e){ setProg(0,'Could not remove: '+e.message,true); btn.disabled=false; }
+    await loadAccounts(true); toast('Photo removed.');
+  }catch(e){ const el=document.getElementById('rm-'+id); if(el){ el.className='status err'; el.textContent='Could not remove: '+e.message; } else toast('Could not remove: '+e.message); const rowEl2=document.getElementById('item-'+id); if(rowEl2) rowEl2.style.opacity=''; btn.disabled=false; }
 }
 
 function showQr(){
