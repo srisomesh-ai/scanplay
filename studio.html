@@ -266,10 +266,22 @@
   <div id="items"></div>
   <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>QR code (optional)</b><small>viewers can also just open the Scanner</small></div>
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
-    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="shareQr()">Share on WhatsApp</button></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
 </template>
 
+<div class="modal" id="shareModal" onclick="if(event.target===this)closeShare()">
+  <div class="box" style="text-align:left">
+    <h3>Share</h3>
+    <p>Choose what to send. The receiver sees exactly what to look for.</p>
+    <div class="chips" style="flex-direction:column;align-items:stretch;gap:8px">
+      <button class="chip" style="text-align:left;padding:12px 14px" onclick="doShare('qr')"><b>QR only</b><br><small>Just the QR with 3 short steps</small></button>
+      <div id="sharePhotos"></div>
+      <button class="chip" style="text-align:left;padding:12px 14px" onclick="doShare('link')"><b>Link only</b><br><small>Text message with the player link</small></button>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
+  </div>
+</div>
 <div class="modal" id="nameModal">
   <div class="box" style="text-align:left;max-width:380px">
     <h3>Name your project</h3>
@@ -329,7 +341,7 @@
     <div class="link" id="qrLink"></div>
     <div class="row">
       <button class="btn" onclick="downloadQr()">Download QR</button>
-      <button class="btn ghost" onclick="shareQr()">WhatsApp</button><button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
+      <button class="btn ghost" onclick="closeQr();openShare()">Share</button><button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
       <button class="btn ghost" onclick="closeQr()">Close</button>
     </div>
   </div>
@@ -531,26 +543,26 @@ function updSteps(){ fitPreview(); updSave();
   $('#qrBtn').textContent=has?'Show my QR':'QR (add a photo first)';
 }
 const loadImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
-async function buildShareCard(){
-  const W=1080, pad=56; const photos=CUR.items.slice(0,4);
+async function buildShareCard(mode='photo',onlyId=null){
+  const W=1080, pad=56; const photos=mode==='qr'?[]:(onlyId?CUR.items.filter(it=>it.id===onlyId):CUR.items.slice(0,1));
   const imgs=await Promise.all(photos.map(it=>loadImgEl(it.thumb+'?v='+Date.now()).catch(()=>null)));
   const qrHolder=document.createElement('div'); new QRCode(qrHolder,{text:CUR.qrUrl,width:420,height:420,correctLevel:QRCode.CorrectLevel.M});
   await new Promise(r=>setTimeout(r,80)); const qrC=qrHolder.querySelector('canvas');
-  const n=imgs.length, cols=n>1?2:1, cell=(W-pad*2-(cols-1)*24)/cols, rowsN=Math.ceil(n/cols), cellH=cell*1.05;
+  const n=imgs.length, cols=1, cell=Math.min(W-pad*2, 560), rowsN=n?1:0, cellH=cell*1.05;
   const H=pad+120+rowsN*(cellH+24)+40+520+pad;
   const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
   const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,'#7C3AED'); g.addColorStop(1,'#FF4D6D'); x.fillStyle=g; x.fillRect(0,0,W,H);
   x.fillStyle='#fff'; rr(x,pad-20,pad-20,W-pad*2+40,H-pad*2+40,40); x.fill();
-  x.fillStyle='#0F0A1F'; x.font='800 54px "Plus Jakarta Sans",Arial'; x.fillText('This photo plays a video',pad,pad+56);
+  x.fillStyle='#0F0A1F'; x.font='800 54px "Plus Jakarta Sans",Arial'; x.fillText(mode==='qr'?'Scan to watch the video':'This photo plays a video',pad,pad+56);
   x.fillStyle='#4B4661'; x.font='600 30px "Plus Jakarta Sans",Arial'; x.fillText(CUR.name,pad,pad+104);
   let y=pad+150;
-  imgs.forEach((im,i)=>{ const cx=pad+(i%cols)*(cell+24), cy=y+Math.floor(i/cols)*(cellH+24);
+  imgs.forEach((im,i)=>{ const cx=(W-cell)/2, cy=y;
     x.save(); rr(x,cx,cy,cell,cellH,22); x.clip(); x.fillStyle='#eee'; x.fillRect(cx,cy,cell,cellH);
     if(im){ const s=Math.max(cell/im.width,cellH/im.height); const w=im.width*s,h=im.height*s; x.drawImage(im,cx+(cell-w)/2,cy+(cellH-h)/2,w,h); } x.restore();
     x.strokeStyle='#22D3EE'; x.lineWidth=10; rr(x,cx+5,cy+5,cell-10,cellH-10,20); x.stroke(); });
   y+=rowsN*(cellH+24)+30;
   const qs=420; x.drawImage(qrC,pad,y+20,qs,qs); x.fillStyle='#0F0A1F'; x.font='800 30px "Plus Jakarta Sans",Arial';
-  const tx=pad+qs+40, lines=['1. Scan this QR with your phone camera','2. Allow the camera','3. Point the phone at the photo above','4. Watch the video play on it!'];
+  const tx=pad+qs+40, lines=mode==='qr'?['1. Scan this QR','2. Allow the camera','3. Point at the photo','4. Watch it play!']:['1. Scan this QR with your phone camera','2. Allow the camera','3. Point the phone at the photo above','4. Watch the video play on it!'];
   lines.forEach((l,i)=>{ x.fillStyle=i===3?'#7C3AED':'#0F0A1F'; wrap(x,l,tx,y+70+i*95,W-tx-pad,38); });
   x.fillStyle='#4B4661'; x.font='600 24px "Plus Jakarta Sans",Arial'; x.fillText('No app needed · '+CUR.qrUrl.replace('https://',''),pad,H-pad-8);
   x.fillStyle='#7C3AED'; x.font='800 26px "Plus Jakarta Sans",Arial'; x.textAlign='right'; x.fillText('ScanPlay',W-pad,H-pad-8); x.textAlign='left';
@@ -559,12 +571,17 @@ async function buildShareCard(){
   function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
 }
 async function setPublic(on){ const r=await post({action:'account_public',code:CUR.code,public:on?1:0}); if(!r.ok){ alert(r.error); return; } CUR.public=on?1:0; $('#pubTxt').textContent=on?'Works with the ScanPlay Scanner — anyone can point at this photo and play it (no QR needed)':'Private — plays only via this project\'s QR code'; toast(on?'Public: viewers can just open the ScanPlay Scanner and point.':'Private: works with your QR only.'); }
-async function shareQr(){
+function openShare(){ const el=$('#sharePhotos'); el.innerHTML=CUR.items.map((it,i)=>`<button class="chip" style="text-align:left;padding:8px 10px;display:flex;gap:10px;align-items:center" onclick="doShare('photo','${it.id}')"><img src="${it.thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><span><b>${esc(it.title)}</b><br><small>This photo + QR + steps</small></span></button>`).join(''); $('#shareModal').classList.add('open'); }
+function closeShare(){ $('#shareModal').classList.remove('open'); }
+async function doShare(mode,id){ closeShare(); await shareQr(mode,id); }
+async function shareQr(mode='photo',onlyId=null){
   const shareUrl=location.origin+'/s.php?c='+CUR.code;
-  const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${shareUrl}`;
+  const it=onlyId?CUR.items.find(x=>x.id===onlyId):null;
+  const text= mode==='qr' ? `${CUR.name}: scan this QR, point your phone at the photo, and watch the video play. No app needed. ${shareUrl}` : `${CUR.name}${it?' — '+it.title:''}: find this photo, scan the QR, point your phone at the photo and watch the video play. No app needed. ${shareUrl}`;
+  if(mode==='link'){ if(navigator.share){ try{ await navigator.share({text,title:'ScanPlay — '+CUR.name}); return; }catch(e){ if(e&&e.name==='AbortError') return; } } window.open('https://wa.me/?text='+encodeURIComponent(text)); return; }
   try{
-    if(!CUR.items.length) throw new Error('no photos');
-    const blob=await buildShareCard(); const file=new File([blob],'scanplay-'+CUR.code+'.jpg',{type:'image/jpeg'});
+    if(mode!=='qr'&&!CUR.items.length) throw new Error('no photos');
+    const blob=await buildShareCard(mode,onlyId); const file=new File([blob],'scanplay-'+CUR.code+'.jpg',{type:'image/jpeg'});
     if(window.ScanPlayApp&&ScanPlayApp.shareImage){ const b64=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result.split(',')[1]); fr.readAsDataURL(blob); }); ScanPlayApp.shareImage(b64,text); return; }
     if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text,title:'ScanPlay — '+CUR.name}); return; }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=file.name; a.click();
