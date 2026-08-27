@@ -50,7 +50,7 @@ async function init(){
   document.title=r.name;
   const b=$('#brand');
   if(r.logo){ b.innerHTML=`<img src="${r.logo}" alt="">`; b.href='#'; b.onclick=e=>e.preventDefault(); b.style.display='flex'; }
-  else if(r.watermark){ b.textContent='Made with ScanPlay · Free trial'; b.classList.add('wm'); b.style.display='flex'; }
+  else if(r.watermark){ b.textContent='Made with ScanPlay · Free'; b.classList.add('wm'); b.style.display='flex'; }
   start(r);
 }
 

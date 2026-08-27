@@ -161,7 +161,7 @@
       <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
       <div class="status err" id="loginErr"></div>
       <button class="btn" style="width:100%;margin-top:12px" id="authBtn" onclick="doAuth()">Sign in</button>
-      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">Free trial · 3 photos · 7 days · no card</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">Free forever · 1 photo + 1 video · no card</span></div>
     </div>
 
     <div id="vCode" style="display:none">
@@ -385,7 +385,7 @@ function renderDash(){
   ['g1','g2','g3','g4'].forEach(g=>$('#'+g).classList.toggle('done',photos>0));
   $('#bigBtn').textContent=photos>0?'＋ Add another photo':'＋ Make my first AR photo';
   const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
-  $('#dashPlan').innerHTML=`<div style="font:800 18px 'Plus Jakarta Sans'">${u.planName}</div><div class="status" style="margin:2px 0 10px">${u.state==='active'?days+' days left':u.state==='grace'?'Ended — data deleted after grace period':'Expired'}</div>
+  $('#dashPlan').innerHTML=`<div style="font:800 18px 'Plus Jakarta Sans'">${u.planName}</div><div class="status" style="margin:2px 0 10px">${u.plan==='free'?'Free forever · one photo at a time':u.state==='active'?days+' days left':u.state==='grace'?'Ended — data deleted after grace period':'Expired'}</div>
     <div class="status">Photos ${u.used.photos} / ${u.limits.photos} · Accounts ${u.used.accounts} / ${u.limits.accounts||'∞'}</div>
     <button class="btn sm" style="margin-top:10px" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
   $('#dashAccs').innerHTML=ACCOUNTS.length?ACCOUNTS.map(a=>`<div class="accbox" onclick="showTab('acc');openAcc('${a.code}')"><b>${esc(a.name)}</b><span>${a.items.length} photo${a.items.length===1?'':'s'} · ${a.scans} scans</span></div>`).join(''):'<div class="status">No accounts yet — start with step 1.</div>';
@@ -403,7 +403,8 @@ function renderPlan(){
   const u=USER, L=u.limits, el=$('#planIn'); const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
   const pct=Math.min(100,Math.round(u.used.photos/L.photos*100));
   let cls='', msg='';
-  if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
+  if(u.plan==='free') { msg='Free forever · 1 photo at a time'; }
+  else if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
   else if(u.state==='expired') { cls='bad'; msg='Plan expired and data removed.'; }
   else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
   el.className='in '+cls;

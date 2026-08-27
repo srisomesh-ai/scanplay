@@ -30,7 +30,7 @@ define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
 
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [
-  'free'     => ['name'=>'Free trial','photos'=>3, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,    'year'=>0,     'watermark'=>true],
+  'free'     => ['name'=>'Free','photos'=>1, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,    'year'=>0,     'watermark'=>true],
   'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,  'year'=>4990,  'watermark'=>false],
   'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>3, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>1999, 'year'=>19990, 'watermark'=>false],
   'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>10,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>2999, 'year'=>29990, 'watermark'=>false],
@@ -132,6 +132,7 @@ function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET t
 
 /* plan state for a user: active | grace | expired */
 function planState($u) {
+  if (($u['plan'] ?? 'free') === 'free') return 'active';   // Free is forever
   $until = (int)$u['plan_until'];
   if (now() <= $until) return 'active';
   if (now() <= $until + GRACE_DAYS*86400) return 'grace';
@@ -304,7 +305,7 @@ switch ($action) {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
     $lim = PLANS[$u['plan']]['photos'] + (int)$u['extra_photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
-    if ($have >= $lim) out(false, ['error'=>"Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
+    if ($have >= $lim) out(false, ['error'=> $u['plan']==='free' ? 'Free plan: one photo at a time. Remove your current photo to add a new one, or upgrade for more.' : "Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
@@ -362,7 +363,7 @@ switch ($action) {
   case 'scanner': {
     $cut = now() - GRACE_DAYS*86400;
     $accs = rows("SELECT a.code, a.name, u.plan, u.plan_until, u.logo, u.id uid, (SELECT MAX(created) FROM items i WHERE i.code=a.code) last FROM accounts a JOIN users u ON u.id=a.user_id
-                  WHERE a.public=1 AND a.blocked=0 AND u.deleted=0 AND u.plan_until > ? AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
+                  WHERE a.public=1 AND a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
     $list = [];
     foreach ($accs as $x) {
       if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
@@ -554,7 +555,7 @@ switch ($action) {
     $old = glob("$bdir/db-*.sqlite"); sort($old); foreach (array_slice($old, 0, max(0, count($old)-30)) as $f) @unlink($f);
     // 2. delete data after grace
     $cut = now() - GRACE_DAYS*86400; $n=0;
-    foreach (rows("SELECT id FROM users WHERE plan_until < ? AND deleted=0", [$cut]) as $u) {
+    foreach (rows("SELECT id FROM users WHERE plan_until < ? AND deleted=0 AND plan!='free'", [$cut]) as $u) {
       foreach (rows("SELECT code FROM accounts WHERE user_id=?", [$u['id']]) as $a) { rrmdir(DATA_DIR."/{$a['code']}"); q("DELETE FROM items WHERE code=?", [$a['code']]); q("DELETE FROM scans WHERE code=?", [$a['code']]); $n++; }
       q("DELETE FROM accounts WHERE user_id=?", [$u['id']]);
     }
