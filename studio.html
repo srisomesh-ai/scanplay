@@ -256,14 +256,15 @@
     <button class="btn" style="width:100%;margin-top:12px" id="saveBtn" onclick="addItem()">Save photo + video</button>
   </div>
 
-  <div class="stepc" id="st3"><div class="sh"><i><span>3</span></i><b>Generate the QR</b><small>print, stick or share it</small></div>
-    <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
-    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="shareQr()">Share on WhatsApp</button></div>
-  </div>
+
 
   <div id="stats" style="display:none;margin-top:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
   <h2 style="font-size:14px;margin-top:22px">Photos in this project</h2>
   <div id="items"></div>
+  <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>Generate the QR</b><small>print, stick or share it</small></div>
+    <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="shareQr()">Share on WhatsApp</button></div>
+  </div>
 </template>
 
 <div class="modal" id="cropModal">
