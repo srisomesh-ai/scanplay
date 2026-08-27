@@ -128,8 +128,8 @@
   .pl{border:1.5px solid var(--line);border-radius:12px;padding:14px;text-align:left;cursor:pointer}
   .pl.on{border-color:var(--teal);background:var(--paper)}
   .pl b{display:block;font-size:15px} .pl .pr{font-size:20px;font-family:'Plus Jakarta Sans';font-weight:800;margin:4px 0} .pl small{color:var(--mute);font-size:12px;display:block}
-  .upiApps{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
-  .upiApp{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;font:700 13px 'Plus Jakarta Sans';cursor:pointer;color:var(--ink)}
+  .upiApps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .upiApp{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:12px;font:700 14px 'Plus Jakarta Sans';cursor:pointer;color:var(--ink)} .upiApp:active{border-color:var(--b)}
   .upiApp .ic{width:28px;height:28px;border-radius:8px;color:#fff;display:grid;place-items:center;font:800 11px 'Plus Jakarta Sans';flex-shrink:0}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;margin-bottom:6px}
   .seg button{border:0;background:transparent;padding:7px 14px;border-radius:999px;font:700 12px 'Plus Jakarta Sans';cursor:pointer;color:var(--mute)}
@@ -285,6 +285,27 @@
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
   </div>
 </div>
+<div class="modal" id="upiModal" onclick="if(event.target===this)closeUpi()">
+  <div class="box" style="max-width:400px;text-align:center">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--mute)">PAY BY UPI</div>
+    <div style="font:800 34px 'Plus Jakarta Sans';margin:4px 0 2px" id="upiAmt">₹499</div>
+    <div class="status" id="upiPlan" style="margin:0 0 14px"></div>
+    <div class="upiApps">
+      <button class="upiApp" onclick="upiOpen('phonepe')"><span class="ic" style="background:#5F259F">Pe</span>PhonePe</button>
+      <button class="upiApp" onclick="upiOpen('gpay')"><span class="ic" style="background:#1A73E8">G</span>Google Pay</button>
+      <button class="upiApp" onclick="upiOpen('paytm')"><span class="ic" style="background:#00BAF2">P</span>Paytm</button>
+      <button class="upiApp" onclick="upiOpen('any')"><span class="ic" style="background:#0F0A1F">UPI</span>Other UPI app</button>
+    </div>
+    <button class="chip" style="margin-top:12px" onclick="upiQr()">Show QR to pay from another phone</button>
+    <div id="upiQrBox" style="display:none;margin-top:12px">
+      <div id="upiQrImg" style="display:inline-block;padding:10px;background:#fff;border:1.5px solid var(--line);border-radius:14px"></div>
+      <div class="status" style="margin-top:6px">Valid for <b id="upiTimer">10:00</b></div>
+    </div>
+    <div class="status" style="margin:14px 0 10px">UPI ID <b>scanplay@ybl</b> · After paying, send the screenshot and we activate your plan within a few hours.</div>
+    <a class="btn" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box" id="upiPaid" href="#" target="_blank" rel="noopener">I have paid — send screenshot</a>
+    <div style="margin-top:10px"><button class="link" onclick="closeUpi()">Back to plans</button></div>
+  </div>
+</div>
 <div class="modal" id="confirmModal">
   <div class="box" style="text-align:left;max-width:380px">
     <h3 id="cfTitle">Are you sure?</h3>
@@ -327,48 +348,6 @@
     <div class="row" style="justify-content:flex-start;margin:4px 0 10px"><input type="text" id="promo" placeholder="Promo code (optional)" style="max-width:220px;text-transform:uppercase" oninput="PROMO=null;renderPlans()"><button class="btn ghost sm" onclick="applyPromoCode()">Apply</button><span class="status" id="promoSt" style="margin:0"></span></div>
     <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="closeUp()">Not now</button><button class="btn ghost" id="upiBtn" onclick="payUpi()">Pay by UPI</button><button class="btn" id="payBtn" onclick="pay()">Pay with Razorpay</button></div>
     <div class="status" style="margin-top:6px">Razorpay: cards, net banking, UPI — instant activation. UPI direct: pay to <b>scanplay@ybl</b>, we activate within a few hours.</div>
-    <div id="upiPanel" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-      <div style="font-weight:800;margin-bottom:8px">Pay <span id="upiAmt"></span> by UPI</div>
-      <div class="upiApps">
-        <button class="upiApp" onclick="upiOpen('phonepe')"><span class="ic" style="background:#5F259F">Pe</span>PhonePe</button>
-        <button class="upiApp" onclick="upiOpen('gpay')"><span class="ic" style="background:#1A73E8">G</span>Google Pay</button>
-        <button class="upiApp" onclick="upiOpen('paytm')"><span class="ic" style="background:#00BAF2">P</span>Paytm</button>
-        <button class="upiApp" onclick="upiOpen('any')"><span class="ic" style="background:#0F0A1F">UPI</span>Any UPI app</button>
-        <button class="upiApp" onclick="upiQr()"><span class="ic" style="background:linear-gradient(135deg,#7C3AED,#FF4D6D)">▦</span>Show QR</button>
-      </div>
-      <div id="upiQrBox" style="display:none;text-align:center;margin-top:12px">
-        <div id="upiQrImg" style="display:inline-block;padding:10px;background:#fff;border:1.5px solid var(--line);border-radius:14px"></div>
-        <div class="status" style="margin-top:6px">Scan with any UPI app from another phone · valid for <b id="upiTimer">10:00</b></div>
-      </div>
-      <div class="status" style="margin-top:10px">UPI ID: <b>scanplay@ybl</b> · After paying, tap below and send the screenshot — we activate your plan within a few hours.</div>
-      <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn sm" id="upiPaid" href="#" target="_blank" rel="noopener">I have paid — send screenshot on WhatsApp</a><button class="btn ghost sm" onclick="$('#upiPanel').style.display='none'">Close</button></div>
-    </div>
-    <div class="status" id="payErr" style="margin-top:8px"></div>
-  </div>
-</div>
-<div class="modal" id="setModal" onclick="if(event.target===this)closeSettings()">
-  <div class="box" style="text-align:left">
-    <h3>Settings</h3>
-    <label class="field">Name</label><input type="text" id="sName">
-    <label class="field">WhatsApp number</label><input type="text" id="sPhone" inputmode="numeric">
-    <label class="field">New password (leave blank to keep)</label><input type="password" id="sPass">
-    <label class="field">Logo on the player <span id="logoLock" style="font-weight:500;color:var(--mute)"></span></label>
-    <div class="logoRow"><img id="sLogo" alt="" style="display:none"><input type="file" id="sLogoFile" accept="image/png,image/jpeg"><button class="btn ghost sm" id="sLogoDel" style="display:none" onclick="delLogo()">Remove</button></div>
-    <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" onclick="closeSettings()">Cancel</button><button class="btn" onclick="saveSettings()">Save</button></div>
-    <div class="status" id="setErr"></div>
-  </div>
-</div>
-
-<div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
-  <div class="box">
-    <h3 id="qrTitle"></h3>
-    <p>Print it, stick it, or share it. This QR recognises every photo in this project, now or later.</p>
-    <div id="qr"></div>
-    <div class="link" id="qrLink"></div>
-    <div class="row">
-      <button class="btn" onclick="downloadQr()">Download QR</button>
-      <button class="btn ghost" onclick="closeQr();openShare()">Share</button><button class="btn ghost" onclick="navigator.clipboard.writeText(CUR.qrUrl)">Copy link</button>
-      <button class="btn ghost" onclick="closeQr()">Close</button>
     </div>
   </div>
 </div>
@@ -467,7 +446,7 @@ function renderPlan(){
 }
 /* upgrade */
 const PLANS_UI=[['personal','Personal','5 photos · 1 project'],['business','Business','15 photos · 3 projects · logo · analytics'],['pro','Pro','30 photos · 10 projects · sub-logins'],['agency','Agency','50 photos · unlimited projects · custom domain']];
-function openUp(msg){ if(msg) $('#upMsg').textContent=msg; $('#upiPanel').style.display='none'; renderPlans(); $('#upModal').classList.add('open'); }
+function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
 function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
 function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
 function renderPlans(){
@@ -486,11 +465,12 @@ function upiOpen(app){ const q=upiParams(); const links={phonepe:'phonepe://pay?
 let upiT=null;
 function upiQr(){ const box=$('#upiQrBox'); box.style.display=''; const q=$('#upiQrImg'); q.innerHTML=''; new QRCode(q,{text:'upi://pay?'+upiParams(),width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
   clearInterval(upiT); let left=600; const tick=()=>{ const m=String(Math.floor(left/60)).padStart(2,'0'), s2=String(left%60).padStart(2,'0'); $('#upiTimer').textContent=m+':'+s2; if(left--<=0){ clearInterval(upiT); q.innerHTML='<div class="status err">Expired — tap Show QR again</div>'; } }; tick(); upiT=setInterval(tick,1000); }
-function payUpi(){ const amt=finalPrice(); $('#upiAmt').textContent='₹'+amt.toLocaleString('en-IN'); $('#upiQrBox').style.display='none'; $('#upiPanel').style.display='';
+function payUpi(){ const amt=finalPrice(); $('#upiAmt').textContent='₹'+amt.toLocaleString('en-IN'); $('#upiPlan').textContent=`${({personal:'Personal',business:'Business',pro:'Pro',agency:'Agency'})[PICK]} · ${PERIOD==='year'?'1 year':'1 month'}${PROMO?' · promo '+PROMO.code:''}`;
+  $('#upiQrBox').style.display='none'; clearInterval(upiT);
   $('#upiPaid').href='https://wa.me/918985849710?text='+encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+')'+(PROMO?' with promo '+PROMO.code:'')+'. My email: '+(USER?USER.email:'')+'. Screenshot attached.');
-  $('#upiPanel').scrollIntoView({behavior:'smooth',block:'nearest'}); return;
-  location.href=upiLink(PICK,PERIOD);
-  setTimeout(()=>{ $('#payErr').className='status'; $('#payErr').innerHTML=`Paid ₹${amt.toLocaleString('en-IN')} to <b>${UPI_ID}</b>? <a href="https://wa.me/918985849710?text=${encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+')'+(PROMO?' with promo '+PROMO.code:'')+'. My email: '+(USER?USER.email:'')+'. Screenshot attached.')}" target="_blank" style="color:var(--b);font-weight:700">Send the screenshot on WhatsApp</a> and we activate your plan within a few hours.`; },1500); }
+  $('#upModal').classList.remove('open'); $('#upiModal').classList.add('open'); }
+function closeUpi(){ $('#upiModal').classList.remove('open'); clearInterval(upiT); $('#upModal').classList.add('open'); }
+
 function finalPrice(){ const p=PRICES[PICK][PERIOD]; return PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD ? PROMO.total : p; }
 async function applyPromoCode(){
   const code=$('#promo').value.trim(); const st=$('#promoSt'); if(!code){ PROMO=null; st.textContent=''; renderPlans(); return; }
