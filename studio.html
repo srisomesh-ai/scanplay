@@ -369,7 +369,7 @@ async function initGoogle(){
 }
 async function logout(){ await post({action:'logout'}).catch(()=>{}); localStorage.removeItem('sp_token'); location.reload(); }
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
-function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab(ACCOUNTS.length?'acc':'dash')); }
+function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab('dash')); }
 function showTab(t){ $('#nDash').classList.toggle('on',t==='dash'); $('#nAcc').classList.toggle('on',t==='acc'); $('#dash').style.display=t==='dash'?'grid':'none'; $('#app').style.display=t==='acc'?'grid':'none'; if(t==='dash') renderDash(); }
 async function startFlow(){
   showTab('acc');
