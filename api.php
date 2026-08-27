@@ -74,12 +74,16 @@ function sendMail($to, $subject, $html) {
   $read(); $cmd('EHLO scanplay.in'); $cmd('AUTH LOGIN'); $cmd(base64_encode(SMTP_USER)); $r=$cmd(base64_encode(SMTP_PASS));
   if (strpos($r,'235')!==0) { fclose($fp); return false; }
   $cmd('MAIL FROM:<'.SMTP_USER.'>'); $cmd('RCPT TO:<'.$to.'>'); $cmd('DATA');
-  $msg = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html));
+  $logoPath = __DIR__.'/assets/brand/icon-192.png'; $bnd = 'sp'.bin2hex(random_bytes(8));
+  $msg = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\"$bnd\"; type=\"text/html\"\r\n\r\n";
+  $msg .= "--$bnd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html))."\r\n";
+  if (file_exists($logoPath)) $msg .= "--$bnd\r\nContent-Type: image/png; name=\"logo.png\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo>\r\nContent-Disposition: inline; filename=\"logo.png\"\r\n\r\n".chunk_split(base64_encode(file_get_contents($logoPath)))."\r\n";
+  $msg .= "--$bnd--";
   $r=$cmd($msg."\r\n."); $cmd('QUIT'); fclose($fp); return strpos($r,'250')===0;
 }
 /* Branded email shell (style A): logo top, centred content, footer with support details */
 function mailTpl($title, $lead, $body='', $ctaText=null, $ctaUrl=null, $code=null) {
-  $logo = baseUrl().'/assets/brand/icon-192.png';
+  $logo = 'cid:logo';
   $codeBlock = $code ? "<div style='margin:22px auto;background:#F6F3FF;border-radius:14px;padding:18px;font:800 38px Courier New,monospace;letter-spacing:10px;color:#0F0A1F;max-width:320px'>$code</div><div style='font:13px Arial;color:#6B6480'>This code expires in 15 minutes.</div>" : '';
   $cta = $ctaText ? "<a href='$ctaUrl' style='display:inline-block;margin:22px 0 6px;background:#7C3AED;color:#fff;text-decoration:none;font:700 15px Arial;padding:14px 26px;border-radius:12px'>$ctaText</a>" : '';
   return "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='margin:0;background:#F3F1FA;padding:24px 12px'>
