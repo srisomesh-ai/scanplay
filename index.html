@@ -235,6 +235,32 @@ details p{color:var(--mute);margin-top:10px;font-weight:500}
 .fin .btn{background:#fff;color:var(--ink)}
 footer{padding:30px 0 40px;font-size:13px;color:var(--mute);font-weight:600}
 footer .w{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+/* how-it-works timeline */
+.tl{position:relative;max-width:720px;margin:auto;padding:10px 0 20px}
+.rail{position:absolute;left:19px;top:0;bottom:0;width:4px;background:#EDE9F7;border-radius:4px}.rail i{display:block;width:100%;height:0;background:linear-gradient(180deg,var(--b),var(--a));border-radius:4px;transition:height .15s linear}
+.item{position:relative;padding-left:64px;margin:0 0 56px;opacity:0;transform:translateY(40px) scale(.96);transition:.7s cubic-bezier(.2,.8,.2,1)}.item.on{opacity:1;transform:none}
+.item .n{position:absolute;left:-1px;top:0;width:44px;height:44px;border-radius:50%;background:#fff;border:4px solid #EDE9F7;display:grid;place-items:center;font-weight:800;color:var(--mute);transition:.4s}
+.item.on .n{border-color:var(--b);color:var(--b);box-shadow:0 0 0 8px rgba(124,58,237,.12)}.item.done .n{background:#22C55E;border-color:#22C55E;color:#fff}
+.item h3{font-size:22px;letter-spacing:-.02em;margin-bottom:6px}.item p{color:var(--mute);font-size:15px;margin-bottom:14px;font-weight:500}
+.vis{border-radius:18px;background:var(--soft);padding:18px;height:190px;position:relative;overflow:hidden}
+.vis .pic{background:#ccc center/cover}
+.v1 .ph{position:absolute;left:50%;top:100%;width:110px;height:140px;margin-left:-55px;background:#fff;border-radius:10px;padding:6px;box-shadow:0 14px 30px rgba(15,10,31,.15);transition:.8s cubic-bezier(.2,.8,.2,1) .2s;transform:rotate(-6deg)}
+.v1 .ph i,.v2 .ph i{display:block;height:100px;border-radius:6px;background:url(assets/demo/1.jpg) center/cover,linear-gradient(140deg,#FFB86C,#FF4D6D 50%,#7C3AED)}
+.item.on .v1 .ph{top:14px}.v1 .zone{position:absolute;inset:14px;border:2px dashed #C9BFF0;border-radius:14px;display:grid;place-items:center;color:var(--b);font-weight:700;font-size:13px;transition:.4s}.item.on .v1 .zone{opacity:0}
+.v2 .ph{position:absolute;left:24px;top:22px;width:90px;height:120px;background:#fff;border-radius:10px;padding:5px;box-shadow:0 10px 24px rgba(15,10,31,.12);transform:rotate(-6deg)}.v2 .ph i{height:88px}
+.v2 .vd{position:absolute;right:24px;top:50px;width:120px;height:70px;border-radius:12px;background:var(--ink);display:grid;place-items:center;transform:translateX(140px);opacity:0;transition:.7s .3s}.item.on .v2 .vd{transform:none;opacity:1}
+.v2 .vd::before{content:"";border-left:18px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:3px}
+.v2 .ln{position:absolute;left:118px;top:84px;width:0;height:5px;background:linear-gradient(90deg,var(--b),var(--a));border-radius:5px;transition:.6s .9s}.item.on .v2 .ln{width:64px}
+.v2 .ok{position:absolute;left:138px;top:60px;background:#22C55E;color:#fff;font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;opacity:0;transform:translateY(6px);transition:.4s 1.5s}.item.on .v2 .ok{opacity:1;transform:none}
+.v3 .pn{position:absolute;left:50%;top:14px;width:100px;height:190px;margin-left:-50px;border-radius:18px;background:var(--ink);padding:6px;transform:translateY(40px);opacity:0;transition:.7s .2s}.item.on .v3 .pn{transform:none;opacity:1}
+.v3 .sc{height:100%;border-radius:14px;background:#1a1530;position:relative;overflow:hidden}
+.v3 .lv{position:absolute;left:12px;top:30px;width:76px;height:100px;border-radius:6px;background:url(assets/demo/1.jpg) center/cover,linear-gradient(140deg,#FFB86C,#FF4D6D 50%,#7C3AED);transform:rotate(-7deg);filter:grayscale(1) brightness(.5);transition:.5s 1s}.item.on .v3 .lv{filter:none;outline:2px solid var(--c);outline-offset:2px}
+.v3 .lv::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:22px;opacity:0;transition:.3s 1.4s;text-shadow:0 2px 8px rgba(0,0,0,.5)}.item.on .v3 .lv::after{opacity:1}
+.v3 .sl{position:absolute;left:0;right:0;height:2px;background:var(--c);box-shadow:0 0 8px var(--c);top:15%;opacity:0}.item.on .v3 .sl{animation:tlsc 1.2s .3s ease-in-out forwards}@keyframes tlsc{0%{top:15%;opacity:1}100%{top:80%;opacity:0}}
+.v3 .pill{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:var(--c);color:var(--ink);font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;opacity:0;transition:.3s 1.5s;white-space:nowrap}.item.on .v3 .pill{opacity:1}
+@media(min-width:760px){.item{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:center}.item .vis{height:210px}.item h3{font-size:26px}}
+
 /* reveal */
 .r{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .r.in{opacity:1;transform:none}.r.d1{transition-delay:.1s}.r.d2{transition-delay:.2s}.r.d3{transition-delay:.3s}
@@ -278,11 +304,11 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 <div class="tick"><div id="tick"></div></div>
 
 <section id="how"><div class="w">
-  <div class="h r"><div class="k" data-i18n="k_how">How it works</div><h2 data-i18n="how_h">Three steps. One QR.</h2><p data-i18n="how_p">Everything happens in your ScanPlay studio, from your phone or laptop. Add more pictures later — the printed QR never changes.</p></div>
-  <div class="steps">
-    <div class="s r"><b class="grad">01</b><h3 data-i18n="s1h">Upload photo &amp; video</h3><p data-i18n="s1p">Any photo, artwork, invitation or label, and any MP4 — straight from your phone or laptop.</p></div>
-    <div class="s r d1"><b class="grad">02</b><h3 data-i18n="s2h">Get your QR</h3><p data-i18n="s2p">The studio links picture and video and gives you a QR to download and print anywhere.</p></div>
-    <div class="s r d2"><b class="grad">03</b><h3 data-i18n="s3h">Scan, point, play</h3><p data-i18n="s3p">The camera opens, recognises the print, and the video plays locked to it — edge to edge, with sound.</p></div>
+  <div class="h r"><div class="k" data-i18n="k_how">How it works</div><h2 data-i18n="how_h">Three steps. Zero hassle.</h2><p data-i18n="how_p">Everything happens in your ScanPlay studio, from your phone or laptop. Viewers just open the Scanner and point — QR is optional.</p></div>
+  <div class="tl" id="tl"><div class="rail"><i id="tlfill"></i></div>
+    <div class="item"><div class="n">1</div><h3 data-i18n="s1h">Upload the photo</h3><p data-i18n="s1p">The picture you will print — a card, a poster, a frame, a pack.</p><div class="vis v1"><div class="zone">Drop photo here</div><div class="ph"><i></i></div></div></div>
+    <div class="item"><div class="n">2</div><h3 data-i18n="s2h">Upload the video</h3><p data-i18n="s2p">ScanPlay links it to the photo automatically. That's the whole setup.</p><div class="vis v2"><div class="ph"><i></i></div><div class="ln"></div><div class="vd"></div><div class="ok">Linked ✓</div></div></div>
+    <div class="item"><div class="n">3</div><h3 data-i18n="s3h">Point &amp; play</h3><p data-i18n="s3p">Open the ScanPlay Scanner, point at the photo. It plays on the print, with sound.</p><div class="vis v3"><div class="pn"><div class="sc"><div class="lv"></div><div class="sl"></div><div class="pill">● PLAYING</div></div></div></div></div>
   </div>
 </div></section>
 
@@ -350,7 +376,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 
 <a class="wa" href="https://wa.me/918985849710?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20ScanPlay" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg></a>
 
-<script src="i18n.js?v=6"></script>
+<script src="i18n.js?v=7"></script>
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
 document.addEventListener('click',e=>{ if(e.target.closest('a.btn,.btn,.gplay,.wa,summary')&&navigator.vibrate) navigator.vibrate(12); },true);
@@ -363,6 +389,12 @@ if(new URLSearchParams(location.search).get('app')==='1' && localStorage.getItem
 const nav=document.getElementById('nav');addEventListener('scroll',()=>nav.classList.toggle('on',scrollY>10),{passive:true});
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
 document.querySelectorAll('.r').forEach(el=>io.observe(el));
+/* how-it-works timeline */
+(()=>{const items=[...document.querySelectorAll('#tl .item')],tl=document.getElementById('tl'),fill=document.getElementById('tlfill'); if(!tl) return;
+  const io2=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');items.forEach(it=>{if(items.indexOf(it)<items.indexOf(e.target))it.classList.add('done')})}}),{threshold:.35});
+  items.forEach(i=>io2.observe(i));
+  const upd=()=>{const r=tl.getBoundingClientRect();const p=Math.min(1,Math.max(0,(innerHeight*.6-r.top)/r.height));fill.style.height=(p*100)+'%';};
+  addEventListener('scroll',upd,{passive:true}); upd();})();
 
 /* ---------- hero demo slides ---------- */
 /* Replace with your own: put photos + short MP4 clips in /assets/demo/ and edit this list */
