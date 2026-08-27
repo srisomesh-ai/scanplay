@@ -255,7 +255,7 @@
       <label class="field">Name for this photo</label><input type="text" id="title" placeholder="e.g. Front page">
     </details>
     <div class="progress" id="prog"><i></i></div><div class="status" id="st"></div>
-    <button class="btn" style="width:100%;margin-top:12px" id="saveBtn" onclick="addItem()">Save photo + video</button>
+    <button class="btn" style="width:100%;margin-top:12px" id="saveBtn" onclick="addItem()" disabled>Choose a photo first</button>
   </div>
 
 
@@ -503,7 +503,14 @@ function fitPreview(){
     mode==='fit' ? 'Video shape differs from the photo: it plays at its own ratio with the photo showing around it.' :
     mode==='fill' ? 'Video shape differs from the photo: the edges of the video will be cropped to cover it.' : 'The video will be squeezed to the photo shape.';
 }
-function updSteps(){ fitPreview();
+function updSave(){
+  const b=$('#saveBtn'); if(!b) return;
+  const vidReady = urlMode ? !!vidUrl : (!!vidFile && UP && UP.done);
+  const ready = !!imgFile && vidReady;
+  b.disabled=!ready;
+  b.textContent = !imgFile ? 'Choose a photo first' : (!vidFile && !(urlMode&&vidUrl)) ? 'Choose a video' : (!urlMode && UP && !UP.done) ? 'Uploading video… please wait' : 'Save photo + video';
+}
+function updSteps(){ fitPreview(); updSave();
   const has=CUR&&CUR.items.length>0;
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
@@ -583,11 +590,11 @@ function bindPickers(){
 function toggleVidMode(e){
   e.preventDefault(); urlMode=!urlMode;
   $('#dropVid').style.display=urlMode?'none':''; $('#urlBox').style.display=urlMode?'':'none';
-  $('#vidMode').textContent=urlMode?'Upload a file instead':'Use a URL instead';
+  $('#vidMode').textContent=urlMode?'Upload a file instead':'Use a URL instead'; updSave();
 }
 let urlTimer;
 function checkUrl(){
-  clearTimeout(urlTimer); vidUrl=$('#vidUrl').value.trim(); vidRatio=1;
+  clearTimeout(urlTimer); vidUrl=$('#vidUrl').value.trim(); vidRatio=1; updSave();
   const st=$('#urlSt'); st.className='status'; st.textContent='Google Drive or Dropbox share link, or a direct .mp4 link.';
   if(!/^https?:\/\//i.test(vidUrl)) return;
   if(/youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com/i.test(vidUrl)){ st.className='status err'; st.textContent='YouTube, Instagram, Facebook and TikTok links cannot be used — they do not give out video files. Download the clip and upload it, or put it on Google Drive and paste that link.'; return; }
@@ -595,7 +602,7 @@ function checkUrl(){
   urlTimer=setTimeout(()=>{
     st.textContent='Checking…';
     const v=document.createElement('video'); v.preload='metadata';
-    v.onloadedmetadata=()=>{ vidRatio=v.videoHeight/v.videoWidth; st.textContent=`OK · ${v.videoWidth}×${v.videoHeight} · ${Math.round(v.duration)}s`; fitPreview(); };
+    v.onloadedmetadata=()=>{ vidRatio=v.videoHeight/v.videoWidth; st.textContent=`OK · ${v.videoWidth}×${v.videoHeight} · ${Math.round(v.duration)}s`; fitPreview(); updSave(); };
     v.onerror=()=>{ st.textContent='Could not read that video in the browser — the server will still try to download it'; };
     v.src=vidUrl;
   },500);
@@ -627,12 +634,12 @@ function startUpload(file){
       tries=0; off=r.received;
       const pct=Math.round(off/file.size*100), mbps=(off/1048576)/((Date.now()-t0)/1000);
       const pr=$('#vprog'), h=$('#vidHint'); if(pr) pr.firstElementChild.style.width=pct+'%';
-      if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploading ${pct}% (${mbps.toFixed(1)} MB/s)`;
+      if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploading ${pct}% (${mbps.toFixed(1)} MB/s)`; updSave();
     }
-    my.done=true; const h=$('#vidHint'); if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploaded ✓`;
+    my.done=true; const h=$('#vidHint'); if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploaded ✓`; updSave(); if(navigator.vibrate) navigator.vibrate(20);
     return my.id;
   })();
-  my.promise.catch(e=>{ const h=$('#vidHint'); if(h&&UP===my) h.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>'; });
+  my.promise.catch(e=>{ const h=$('#vidHint'); if(h&&UP===my) h.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>'; updSave(); });
 }
 function setProg(p,msg,err){ const pr=$('#prog'); if(!pr) return; pr.style.display='block'; pr.firstElementChild.style.width=p+'%'; const s=$('#st'); s.textContent=msg; s.className='status'+(err?' err':''); }
 const loadImg=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not load a stored picture')); i.src=src; });
