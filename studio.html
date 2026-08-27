@@ -480,12 +480,16 @@ async function applyPromoCode(){
 async function pay(){
   $('#payErr').textContent='';
   const link=PAY_LINKS[PICK]&&PAY_LINKS[PICK][PERIOD]; if(link){ window.open(link,'_blank'); $('#payErr').className='status'; $('#payErr').textContent='Payment page opened in a new tab. Your plan activates automatically after payment — refresh this page in a minute.'; return; }
-  const r=await post({action:'pay_create',plan:PICK,period:PERIOD,promo:(PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD)?PROMO.code:''}); if(!r.ok){ $('#payErr').textContent=r.error; return; }
+  const pb=$('#payBtn'); pb.disabled=true; const old=pb.textContent; pb.textContent='Opening Razorpay…';
+  const r=await post({action:'pay_create',plan:PICK,period:PERIOD,promo:(PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD)?PROMO.code:''}).catch(e=>({ok:false,error:'Network error'})); pb.disabled=false; pb.textContent=old;
+  if(!r.ok){ $('#payErr').className='status err'; $('#payErr').textContent=r.error; toast(r.error); return; }
+  if(!window.Razorpay){ $('#payErr').className='status err'; $('#payErr').textContent='Razorpay checkout could not load. Check your connection and try again.'; return; }
   const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
     prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#7C3AED'},
+    modal:{ondismiss:async()=>{ const m=await post({action:'me'}); if(m.ok&&m.user&&m.user.plan!==USER.plan){ USER=m.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } }},
     handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
       if(v.ok){ USER=v.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
-  rz.on('payment.failed',e=>{ $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
+  rz.on('payment.failed',e=>{ $('#payErr').className='status err'; $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
 }
 /* settings */
 function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';

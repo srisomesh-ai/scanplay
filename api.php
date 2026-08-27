@@ -423,7 +423,7 @@ switch ($action) {
       CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
       CURLOPT_POSTFIELDS=>json_encode(['amount'=>$amount,'currency'=>'INR','receipt'=>"u{$u['id']}-".now(),'notes'=>['user'=>$u['id'],'plan'=>$plan,'period'=>$period]])]);
     $res = json_decode(curl_exec($ch), true); curl_close($ch);
-    if (empty($res['id'])) out(false, ['error'=>'Could not start payment: '.($res['error']['description'] ?? 'Razorpay not configured')]);
+    if (empty($res['id'])) { logAct($u['id'],'payment_error',json_encode($res['error'] ?? $res)); out(false, ['error'=>'Could not start payment: '.($res['error']['description'] ?? 'Razorpay did not respond. Check that the Razorpay account is activated and the live keys are in config.php.')]); }
     q("INSERT INTO payments (user_id,order_id,plan,period,amount,status,created,promo,discount) VALUES (?,?,?,?,?,'created',?,?,?)", [$u['id'], $res['id'], $plan, $period, $amount, now(), $promo ? $promo['code'] : null, $disc*100]);
     out(true, ['order_id'=>$res['id'], 'amount'=>$amount, 'key'=>RZP_KEY_ID, 'name'=>$u['name'], 'email'=>$u['email'], 'phone'=>$u['phone'], 'label'=>PLANS[$plan]['name'].' · '.($period==='year'?'1 year':'1 month')]);
   }
@@ -443,6 +443,25 @@ switch ($action) {
       q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$pay['plan'], $base+$add, $u['id']]);
     }
     out(true, ['user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
+  }
+
+  /* ---------- Razorpay webhook (backup activation: payment.captured / order.paid) ---------- */
+  case 'rzp_webhook': {
+    $raw = file_get_contents('php://input'); $sig = $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ?? '';
+    if (!RZP_WEBHOOK_SECRET || !hash_equals(hash_hmac('sha256', $raw, RZP_WEBHOOK_SECRET), $sig)) { http_response_code(400); out(false, ['error'=>'bad signature']); }
+    $ev = json_decode($raw, true); $pmt = $ev['payload']['payment']['entity'] ?? null;
+    if ($pmt && in_array($ev['event'] ?? '', ['payment.captured','order.paid'])) {
+      $pay = row("SELECT * FROM payments WHERE order_id=?", [$pmt['order_id'] ?? '']);
+      if ($pay && $pay['status'] !== 'paid') {
+        q("UPDATE payments SET payment_id=?, status='paid' WHERE id=?", [$pmt['id'], $pay['id']]);
+        $u = row("SELECT * FROM users WHERE id=?", [$pay['user_id']]);
+        $add = $pay['period']==='year' ? 365*86400 : 30*86400; $base = ($u['plan']===$pay['plan'] && (int)$u['plan_until'] > now()) ? (int)$u['plan_until'] : now();
+        q("UPDATE users SET plan=?, plan_until=? WHERE id=?", [$pay['plan'], $base+$add, $u['id']]);
+        if (!empty($pay['promo'])) q("UPDATE promos SET uses=uses+1 WHERE code=?", [$pay['promo']]);
+        logAct($u['id'],'payment_webhook',"{$pay['plan']} {$pay['period']} {$pmt['id']}");
+      }
+    }
+    out(true);
   }
 
   /* ---------- analytics ---------- */
