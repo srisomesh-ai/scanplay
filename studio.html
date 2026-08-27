@@ -538,10 +538,12 @@ async function buildShareCard(){
   function wrap(x,t,X,Y,mw,lh){ const words=t.split(' '); let line='',yy=Y; for(const w of words){ const test=line+w+' '; if(x.measureText(test).width>mw&&line){ x.fillText(line,X,yy); line=w+' '; yy+=lh; } else line=test; } x.fillText(line,X,yy); }
 }
 async function shareQr(){
-  const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${CUR.qrUrl}`;
+  const shareUrl=location.origin+'/s.php?c='+CUR.code;
+  const text=`${CUR.name}: find this photo, scan the QR on the picture, point your phone at the photo and watch the video play. No app needed. ${shareUrl}`;
   try{
     if(!CUR.items.length) throw new Error('no photos');
     const blob=await buildShareCard(); const file=new File([blob],'scanplay-'+CUR.code+'.jpg',{type:'image/jpeg'});
+    if(window.ScanPlayApp&&ScanPlayApp.shareImage){ const b64=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result.split(',')[1]); fr.readAsDataURL(blob); }); ScanPlayApp.shareImage(b64,text); return; }
     if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],text,title:'ScanPlay — '+CUR.name}); return; }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=file.name; a.click();
     toast('Share card downloaded — send it on WhatsApp with the message.');
