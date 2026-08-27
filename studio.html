@@ -185,7 +185,7 @@
 <div style="text-align:center;margin:-30px auto 20px;font-size:13px;color:var(--mute)" id="appHint">Prefer an app? <a href="https://play.google.com/store/apps/details?id=in.scanplay.app" target="_blank" rel="noopener" style="color:var(--b);font-weight:700">Get ScanPlay on Google Play</a></div>
 <div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
-<div class="subnav" id="subnav" style="display:none"><button class="on" id="nDash" onclick="showTab('dash')">Dashboard</button><button id="nAcc" onclick="showTab('acc')">Accounts &amp; QRs</button></div>
+<div class="subnav" id="subnav" style="display:none"><button class="on" id="nDash" onclick="showTab('dash')">Dashboard</button><button id="nAcc" onclick="showTab('acc')">Projects</button></div>
 
 <div id="dash" style="display:none">
   <section class="card">
@@ -420,7 +420,7 @@ function renderDash(){
   $('#bigBtn').textContent=photos>0?'＋ Add another photo':'＋ Make my first AR photo';
   const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
   $('#dashPlan').innerHTML=`<div style="font:800 18px 'Plus Jakarta Sans'">${u.planName}</div><div class="status" style="margin:2px 0 10px">${u.plan==='free'?'Free forever · one photo at a time':u.state==='active'?days+' days left':u.state==='grace'?'Ended — data deleted after grace period':'Expired'}</div>
-    <div class="status">Photos ${u.used.photos} / ${u.limits.photos} · Accounts ${u.used.accounts} / ${u.limits.accounts||'∞'}</div>
+    <div class="status">Photos ${u.used.photos} / ${u.limits.photos} · Projects ${u.used.accounts} / ${u.limits.accounts||'∞'}</div>
     <button class="btn sm" style="margin-top:10px" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
   $('#dashAccs').innerHTML=ACCOUNTS.length?ACCOUNTS.map(a=>`<div class="accbox" onclick="showTab('acc');openAcc('${a.code}')"><b>${esc(a.name)}</b><span>${a.items.length} photo${a.items.length===1?'':'s'} · ${a.scans} scans</span></div>`).join(''):'<div class="status">No accounts yet — start with step 1.</div>';
 }
@@ -443,11 +443,11 @@ function renderPlan(){
   else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
   el.className='in '+cls;
   el.innerHTML=`<div><b>${u.planName}</b> <span>· ${msg||`${days} days left`}</span></div>
-    <div><span>Photos ${u.used.photos}/${L.photos}</span><span class="meter"><i style="width:${pct}%"></i></span><span>Accounts ${u.used.accounts}/${L.accounts||'∞'}</span></div>
+    <div><span>Photos ${u.used.photos}/${L.photos}</span><span class="meter"><i style="width:${pct}%"></i></span><span>Projects ${u.used.accounts}/${L.accounts||'∞'}</span></div>
     <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
 }
 /* upgrade */
-const PLANS_UI=[['personal','Personal','5 photos · 1 QR'],['business','Business','15 photos · 3 QRs · logo · analytics'],['pro','Pro','30 photos · 10 QRs · sub-logins'],['agency','Agency','50 photos · unlimited QRs · custom domain']];
+const PLANS_UI=[['personal','Personal','5 photos · 1 project'],['business','Business','15 photos · 3 projects · logo · analytics'],['pro','Pro','30 photos · 10 projects · sub-logins'],['agency','Agency','50 photos · unlimited projects · custom domain']];
 function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
 function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
 function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
