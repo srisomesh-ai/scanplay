@@ -57,13 +57,8 @@ AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
       const d=Math.hypot(tx-this.sx,ty-this.sy); const a=Math.min(.6,Math.max(.06,d/60)); this.sx+=(tx-this.sx)*a; this.sy+=(ty-this.sy)*a; this.sw+=(tw-this.sw)*Math.min(.4,Math.max(.05,Math.abs(tw-this.sw)/80)); }
     const bw=Math.round(this.sw), bh=Math.round(bw*9/16);
     o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate3d(${Math.round(this.sx-bw/2)}px,${Math.round(this.sy-bh/2)}px,0)`; }
-}); this.el.addEventListener('targetLost',()=>{this.on=false; const o=document.getElementById(this.data.ov); if(o) o.style.display='none';}); },
-  tick(){ if(!this.on) return; const o=document.getElementById(this.data.ov); const cam=this.el.sceneEl.camera; if(!o||!cam) return;
-    const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
-    for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
-    const bw=Math.max(140,Math.min(W-20,maxx-minx)), bh=bw*9/16; const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
-    o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate(${cx-bw/2}px,${cy-bh/2}px)`; }
 });
+
 function ytPlayer(ovId, vid, muted){ return new Promise(res=>{ const mk=()=>{ if(!window.YT||!YT.Player){ setTimeout(mk,150); return; }
   const p=new YT.Player(ovId+'_f',{videoId:vid,playerVars:{autoplay:0,controls:0,rel:0,modestbranding:1,playsinline:1,loop:1,playlist:vid,mute:muted?1:0},events:{onReady:()=>res(p)}}); }; mk(); }); }
 
