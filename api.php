@@ -313,7 +313,14 @@ switch ($action) {
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created) VALUES (?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now()]);
-    logAct($u['id'],'photo_add',"$code/$id"); out(true, ['id'=>$id]);
+    logAct($u['id'],'photo_add',"$code/$id");
+    $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
+    @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], "<div style='font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'>
+      <div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div><p>Hi ".htmlspecialchars($u['name']).",</p><p>Your photo <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and ready.</p>
+      <p><a href='$qr' style='display:inline-block;background:#7C3AED;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>Open the player</a></p>
+      <p>Get your QR in the studio (Show my QR) and print, stick or share it. Scan it, point at the photo, and it plays.</p>
+      <p style='color:#666;font-size:13px'>Tip: matte paper, good light, at least 4×6 inches.</p></div>");
+    out(true, ['id'=>$id]);
   }
   case 'item_update': {
     $u = auth(); $code = clean($_POST['code'] ?? ''); $id = clean($_POST['id'] ?? '');
@@ -454,6 +461,19 @@ switch ($action) {
                : rows("SELECT a.*, u.email FROM activity a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 200");
     $sus = rows("SELECT ip, COUNT(*) n FROM activity WHERE action='login_failed' AND ts>? GROUP BY ip HAVING n>=5 ORDER BY n DESC", [now()-86400]);
     out(true, ['activity'=>$rows, 'suspicious'=>$sus]);
+  }
+
+  /* ---------- announcements (admin) ---------- */
+  case 'admin_broadcast': {
+    ownerAuth(); $subj = trim($_POST['subject'] ?? ''); $body = trim($_POST['body'] ?? ''); $seg = $_POST['segment'] ?? 'all';
+    if ($subj==='' || $body==='') out(false, ['error'=>'Subject and message are required']);
+    if (!mailConfigured()) out(false, ['error'=>'Email is not configured']);
+    $where = ['all'=>"deleted=0 AND verified=1", 'free'=>"deleted=0 AND verified=1 AND plan='free'", 'paid'=>"deleted=0 AND verified=1 AND plan!='free'", 'expired'=>"deleted=0 AND verified=1 AND plan_until < ".now()][$seg] ?? "deleted=0 AND verified=1";
+    $users = rows("SELECT id,email,name FROM users WHERE $where"); $sent=0; set_time_limit(600);
+    $html = "<div style='font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:28px;border:1px solid #eee;border-radius:14px'><div style='font-size:20px;font-weight:700;color:#7C3AED'>ScanPlay</div>".nl2br(htmlspecialchars($body))."<p style='margin-top:20px'><a href='".baseUrl()."/studio.html' style='display:inline-block;background:#7C3AED;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700'>Open ScanPlay Studio</a></p><p style='color:#999;font-size:12px'>You receive this because you have a ScanPlay account. Reply to this email to contact us.</p></div>";
+    foreach ($users as $x) { if (@sendMail($x['email'], $subj, str_replace('{name}', htmlspecialchars($x['name']), $html))) $sent++; }
+    logAct(0,'admin_broadcast',"$seg: $subj ($sent/".count($users).")",'admin');
+    out(true, ['sent'=>$sent, 'total'=>count($users)]);
   }
 
   /* ---------- promo codes (admin) ---------- */
