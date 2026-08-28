@@ -44,7 +44,7 @@ catch (Exception $e) { echo json_encode(['ok'=>false,'error'=>'Database unavaila
 $db->exec("PRAGMA journal_mode=WAL");
 $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, pass TEXT, name TEXT, phone TEXT,
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
-foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
+foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT','referral_code TEXT','referrer_id INTEGER','ref_awarded INTEGER DEFAULT 0'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
@@ -194,6 +194,7 @@ switch ($action) {
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
     else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
+    $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
     logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
@@ -232,12 +233,19 @@ switch ($action) {
     $info = json_decode(@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token='.urlencode($cred)), true);
     if (!$info || ($info['aud'] ?? '') !== GOOGLE_CLIENT_ID || empty($info['email']) || ($info['email_verified'] ?? 'false') !== 'true') out(false, ['error'=>'Google sign-in could not be verified']);
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
-    if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]); }
+    if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
+      $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); } }
     else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'logout': { $u = auth(); q("UPDATE users SET token=NULL WHERE id=?", [$u['id']]); out(true); }
+  case 'referral': {
+    $u = auth();
+    if (empty($u['referral_code'])) { $c = strtoupper(substr(bin2hex(random_bytes(5)),0,8)); q("UPDATE users SET referral_code=? WHERE id=?", [$c, $u['id']]); $u['referral_code'] = $c; }
+    $earned = (int)(row("SELECT COUNT(*) c FROM users WHERE referrer_id=? AND ref_awarded=1", [$u['id']])['c'] ?? 0);
+    out(true, ['code'=>$u['referral_code'], 'earned'=>$earned, 'link'=>'https://scanplay.in/studio.html?ref='.$u['referral_code']]);
+  }
   case 'me': { $u = auth(); out(true, ['user'=>userInfo($u)]); }
   case 'profile': {
     $u = auth(); $name = trim(strip_tags($_POST['name'] ?? $u['name'])); $phone = preg_replace('/\D/','',$_POST['phone'] ?? $u['phone']);
@@ -348,6 +356,14 @@ switch ($action) {
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
     logAct($u['id'],'photo_add',"$code/$id");
+    /* referral reward: when a referred user adds their first photo, referrer gets +1 photo and +1 project */
+    if (!empty($u['referrer_id']) && !(int)($u['ref_awarded'] ?? 0)) {
+      q("UPDATE users SET ref_awarded=1 WHERE id=?", [$u['id']]);
+      q("UPDATE users SET extra_photos=COALESCE(extra_photos,0)+1, extra_accounts=COALESCE(extra_accounts,0)+1 WHERE id=?", [$u['referrer_id']]);
+      $rf = row("SELECT * FROM users WHERE id=?", [$u['referrer_id']]);
+      if ($rf) @sendMail($rf['email'], "You earned a free project on ScanPlay", mailTpl("Referral reward &#127873;", "Hi ".htmlspecialchars($rf['name']).", your friend just created their first AR photo. You earned <b>+1 photo and +1 project</b> on your plan.", "Keep sharing your link to earn more.", "Open Studio", baseUrl()."/studio.html"));
+      logAct($u['referrer_id'],'referral_reward','from user '.$u['id']);
+    }
     $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
     @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], mailTpl("Your AR photo is ready &#127881;", "Hi ".htmlspecialchars($u['name']).", <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and live.", "Open the ScanPlay Scanner, point at the printed photo, and it plays. Print the QR too if you like &mdash; it's optional.<br><span style='font-size:13px;color:#8B84A0'>Tip: matte paper, good light, at least 4&times;6 inches.</span>", "Open the player", $qr));
     out(true, ['id'=>$id]);
