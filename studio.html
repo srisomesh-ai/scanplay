@@ -370,7 +370,7 @@ function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $(
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
-  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); }
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
   finishAuth(r);
@@ -386,7 +386,7 @@ async function doForgot(){
   const email=$('#fEmail').value.trim(); const r=await post({action:'forgot',email}); if(!r.ok){ $('#forgotErr').textContent=r.error; return; }
   pendingEmail=email; codeMode='reset'; $('#codeEmail').textContent=email; $('#resetFields').style.display=''; $('#aCode').value=''; showView('code');
 }
-async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
+async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||''}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
 async function initGoogle(){
   CFG=await post({action:'config'}); if(!CFG.google) return;
   const tryRender=()=>{ if(!window.google||!google.accounts){ setTimeout(tryRender,300); return; }
@@ -723,7 +723,7 @@ async function addItem(){
     else { files.video=vidFile; setProg(87,'Uploading…'); }
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
-    await loadAccounts(true); trackProjectCreation(); setProg(100,'Saved. Now generate your QR (step 3).'); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
+    await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(offerReferral,2500); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
 }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
@@ -748,32 +748,21 @@ function showQr(){
 function closeQr(){ $('#qrModal').classList.remove('open'); }
 function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.createElement('a'); a.download=CUR.name.replace(/\s+/g,'-')+'-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }
 
-initGoogle();
-if(TOKEN) post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; boot(); 
-  // Initialize referral system after user loads
-  setTimeout(()=>{
-    if(window.CUR && window.TOKEN){
-      window.referralPopup = new ReferralPopup({
-        userId: USER.id,
-        projectCount: (CUR.items||[]).length,
-        apiUrl: '/referral-api.php',
-        autoInit: true
-      });
-    }
-  }, 500);
-} });
-
-// Track when project is created to award referral bonus
-async function trackProjectCreation(){
-  if(window.referralPopup && USER){
-    const fd = new FormData();
-    fd.append('action', 'mark_referral_completed');
-    fd.append('user_id', USER.id);
-    fetch('/referral-api.php', { method: 'POST', body: fd }).catch(e=>console.log('Referral tracking:', e));
-  }
+/* referral: capture ?ref= for signup, offer share after first save (uses existing confirmDlg + toast) */
+(function(){ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('sp_ref',r); })();
+async function offerReferral(){
+  if(localStorage.getItem('sp_ref_offered')) return;
+  const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok) return;
+  localStorage.setItem('sp_ref_offered','1');
+  if(await confirmDlg('Refer a friend, get a free project 🎁','Share your link. When a friend joins and creates their first AR photo, you get +1 photo and +1 project — free.','Share on WhatsApp')){
+    const msg='Make your printed photos play videos! Try ScanPlay with my link: '+r.link;
+    window.open('https://wa.me/?text='+encodeURIComponent(msg));
+  } else { toast('Find your referral link anytime — just ask on WhatsApp support.'); }
 }
+
+initGoogle();
+if(TOKEN) post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; boot(); } });
 </script>
 <div style="text-align:center;font-size:12px;color:var(--mute);padding:26px 16px 30px">Made with <span style="color:#FF4D6D">♥</span> in India · © ScanPlay LLP. All rights reserved.</div>
-<script src="/assets/referral-popup.js"></script>
 </body>
 </html>
