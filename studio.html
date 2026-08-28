@@ -232,7 +232,7 @@
 </main>
 
 <template id="detailTpl">
-  <div class="head"><h2 id="dName"></h2><div class="r"><button class="btn sm" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D)" onclick="showReferral()">🎁 Refer &amp; earn</button><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div></div>
+  <div class="head"><h2 id="dName"></h2><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div>
   <label class="tiny" style="display:flex;align-items:center;gap:8px;margin:-4px 0 6px;cursor:pointer"><input type="checkbox" id="pubChk" onchange="setPublic(this.checked)"> <span id="pubTxt">Works with the ScanPlay Scanner — no QR needed (public)</span></label>
   <div class="code" id="dCode" style="display:none"></div>
 
@@ -272,6 +272,7 @@
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
+  <button class="btn qrbig" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D);box-shadow:0 8px 20px rgba(255,154,61,.3)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
 </template>
 
 <div class="modal" id="shareModal" onclick="if(event.target===this)closeShare()">
