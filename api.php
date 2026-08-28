@@ -193,8 +193,11 @@ switch ($action) {
     if ($ex && $ex['verified']) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
     else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
+    $isNew = !$ex;
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
-    $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
+    /* referral: only brand-new accounts count; linked once at creation, self-referral blocked */
+    $ref = clean($_POST['ref'] ?? '');
+    if ($isNew && $ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
     logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
