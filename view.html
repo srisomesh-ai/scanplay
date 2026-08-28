@@ -147,5 +147,12 @@ function tunePanel(){
 }
 init();
 </script>
+<script>
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  const k=(e.key||'').toUpperCase();
+  if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&(k==='I'||k==='J'||k==='C'))||(e.ctrlKey&&(k==='U'||k==='S'))){ e.preventDefault(); e.stopPropagation(); }
+},true);
+</script>
 </body>
 </html>
