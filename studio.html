@@ -205,6 +205,7 @@
   <div style="display:grid;gap:16px;align-content:start">
     <section class="card"><h2>Your plan</h2><div id="dashPlan"></div></section>
     <section class="card"><h2>Quick actions</h2><div class="quick">
+      <button class="btn" id="refBtn" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
       <button class="btn" onclick="showTab('acc');setTimeout(()=>document.getElementById('accName')&&document.getElementById('accName').focus(),50)">＋ New account &amp; QR</button>
       <button class="btn ghost" onclick="showTab('acc')">Open my accounts</button>
       <button class="btn ghost" onclick="openSettings()">Settings, logo &amp; password</button>
@@ -217,7 +218,7 @@
 
 <main id="app" style="display:none">
   <section class="card" id="accCard">
-    <h2>Projects</h2>
+    <div class="head"><h2 style="margin:0">Projects</h2><button class="btn sm" id="refBtn2" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D)" onclick="showReferral()">🎁 Refer &amp; earn</button></div>
     <div class="newacc">
       <input type="text" id="accName" placeholder="New project name" onkeydown="if(event.key==='Enter')createAcc()">
       <button class="btn" onclick="createAcc()">Add</button>
@@ -513,6 +514,7 @@ async function loadAccounts(keep){
       <div><div class="n">${esc(a.name)}</div><div class="c">${a.code}</div></div>
       <span class="k">${a.items.length} pic${a.items.length===1?'':'s'}</span>
     </div>`).join('') : '<div class="empty">No accounts yet</div>';
+  updRefBtns();
   if(keep&&CUR) openAcc(CUR.code);
   const single=USER&&USER.limits.accounts===1&&ACCOUNTS.length>=1; $('#accCard').style.display=single?'none':''; if(single&&!CUR) openAcc(ACCOUNTS[0].code);
   document.getElementById('app').style.gridTemplateColumns=single?'1fr':'';
@@ -750,14 +752,24 @@ function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.
 
 /* referral: capture ?ref= for signup, offer share after first save (uses existing confirmDlg + toast) */
 (function(){ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('sp_ref',r); })();
-async function offerReferral(){
-  if(localStorage.getItem('sp_ref_offered')) return;
-  const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok) return;
-  localStorage.setItem('sp_ref_offered','1');
-  if(await confirmDlg('Refer a friend, get a free project 🎁','Share your link. When a friend joins and creates their first AR photo, you get +1 photo and +1 project — free.','Share on WhatsApp')){
+async function showReferral(){
+  const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok){ toast('Could not load your referral link — try again.'); return; }
+  const earned=r.earned?` You have earned ${r.earned} so far.`:'';
+  if(await confirmDlg('Refer a friend, get a free project 🎁',`Share your link. When a friend joins and creates their first AR photo, you get +1 photo and +1 project — free. Refer more, earn more!${earned}`,'Share on WhatsApp')){
     const msg='Make your printed photos play videos! Try ScanPlay with my link: '+r.link;
     window.open('https://wa.me/?text='+encodeURIComponent(msg));
-  } else { toast('Find your referral link anytime — just ask on WhatsApp support.'); }
+  }
+}
+async function offerReferral(){
+  if(localStorage.getItem('sp_ref_offered')) return;
+  localStorage.setItem('sp_ref_offered','1');
+  showReferral();
+}
+function updRefBtns(){
+  const photos=ACCOUNTS.reduce((n,a)=>n+a.items.length,0);
+  const b1=$('#refBtn'), b2=$('#refBtn2');
+  if(b1) b1.style.display=photos>0?'':'none';
+  if(b2) b2.style.display=photos>0?'':'none';
 }
 
 initGoogle();
