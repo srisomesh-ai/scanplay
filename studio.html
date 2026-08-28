@@ -232,7 +232,7 @@
 </main>
 
 <template id="detailTpl">
-  <div class="head"><h2 id="dName"></h2><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div>
+  <div class="head"><h2 id="dName"></h2><div class="r"><button class="btn sm" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D)" onclick="showReferral()">🎁 Refer &amp; earn</button><span class="tiny"><button onclick="deleteAcc()">Delete project</button></span></div></div>
   <label class="tiny" style="display:flex;align-items:center;gap:8px;margin:-4px 0 6px;cursor:pointer"><input type="checkbox" id="pubChk" onchange="setPublic(this.checked)"> <span id="pubTxt">Works with the ScanPlay Scanner — no QR needed (public)</span></label>
   <div class="code" id="dCode" style="display:none"></div>
 
@@ -562,6 +562,7 @@ function updSave(){
   b.textContent = !imgFile ? 'Choose a photo first' : (!vidFile && !(urlMode&&vidUrl)) ? 'Choose a video' : (!urlMode && UP && !UP.done) ? 'Uploading video… please wait' : 'Save photo + video';
 }
 function updSteps(){ fitPreview(); updSave();
+  const rb3=$('#refBtn3'); if(rb3) rb3.style.display=ACCOUNTS.reduce((n,a)=>n+a.items.length,0)>0?'':'none';
   const has=CUR&&CUR.items.length>0;
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
@@ -694,7 +695,7 @@ function startUpload(file){
       const pr=$('#vprog'), h=$('#vidHint'); if(pr) pr.firstElementChild.style.width=pct+'%';
       if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploading ${pct}% (${mbps.toFixed(1)} MB/s)`; updSave();
     }
-    my.done=true; const h=$('#vidHint'); if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploaded ✓`; updSave(); if(navigator.vibrate) navigator.vibrate(20);
+    my.done=true; const h=$('#vidHint'); if(h) h.textContent=`${file.name} · ${(file.size/1048576).toFixed(1)} MB · uploaded ✓`; const vp=$('#vprog'); if(vp) vp.style.display='none'; updSave(); if(navigator.vibrate) navigator.vibrate(20);
     return my.id;
   })();
   my.promise.catch(e=>{ const h=$('#vidHint'); if(h&&UP===my) h.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>'; updSave(); });
@@ -776,5 +777,13 @@ initGoogle();
 if(TOKEN) post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; boot(); } });
 </script>
 <div style="text-align:center;font-size:12px;color:var(--mute);padding:26px 16px 30px">Made with <span style="color:#FF4D6D">♥</span> in India · © ScanPlay LLP. All rights reserved.</div>
+<script>
+/* deterrents: disable right-click and devtools shortcuts */
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  const k=(e.key||'').toUpperCase();
+  if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&(k==='I'||k==='J'||k==='C'))||(e.ctrlKey&&(k==='U'||k==='S'))){ e.preventDefault(); e.stopPropagation(); }
+},true);
+</script>
 </body>
 </html>
