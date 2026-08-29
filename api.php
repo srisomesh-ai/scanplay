@@ -31,9 +31,9 @@ define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [
   'free'     => ['name'=>'Free','photos'=>1, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,    'year'=>0,     'watermark'=>true],
-  'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,  'year'=>4990,  'watermark'=>false],
-  'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>3, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>1999, 'year'=>19990, 'watermark'=>false],
-  'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>10,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>2999, 'year'=>29990, 'watermark'=>false],
+  'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>5, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,  'year'=>4990,  'watermark'=>false],
+  'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>15, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>1999, 'year'=>19990, 'watermark'=>false],
+  'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>30,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>2999, 'year'=>29990, 'watermark'=>false],
   'agency'   => ['name'=>'Agency',    'photos'=>50,'accounts'=>0, 'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>true, 'month'=>5999, 'year'=>59990, 'watermark'=>false],
 ];
 
@@ -325,8 +325,9 @@ switch ($action) {
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
+    if ((int)row("SELECT COUNT(*) c FROM items WHERE code=?", [$code])['c'] >= 1) out(false, ['error'=>'This project already has its photo. 1 photo + 1 video = 1 project — create a new project for another photo.']);
     $lim = PLANS[$u['plan']]['photos'] + (int)$u['extra_photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
-    if ($have >= $lim) out(false, ['error'=> $u['plan']==='free' ? 'Free plan: one photo at a time. Remove your current photo to add a new one, or upgrade for more.' : "Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
+    if ($have >= $lim) out(false, ['error'=> $u['plan']==='free' ? 'Free plan limit reached. Refer a friend to earn a free project, or upgrade for more.' : "Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
