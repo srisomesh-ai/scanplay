@@ -48,6 +48,7 @@ foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
+try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE items ADD COLUMN yt TEXT"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
@@ -393,7 +394,7 @@ switch ($action) {
   case 'scanner': {
     $cut = now() - GRACE_DAYS*86400;
     $accs = rows("SELECT a.code, a.name, u.plan, u.plan_until, u.logo, u.id uid, (SELECT MAX(created) FROM items i WHERE i.code=a.code) last FROM accounts a JOIN users u ON u.id=a.user_id
-                  WHERE a.public=1 AND a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
+                  WHERE a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
     $list = [];
     foreach ($accs as $x) {
       if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
