@@ -199,7 +199,7 @@
 <main id="app" style="display:none">
   <div class="pchips" id="accList"></div>
   <section class="card" id="detail">
-    <div class="empty" style="padding:60px 0">Tap ＋ New project to start.<br>1 photo + 1 video = 1 project, with its own QR.</div>
+    <div class="empty" style="padding:60px 0">Tap ＋ New project to start.<br>Each project gets one QR — add its photos and videos inside.</div>
   </section>
 </main>
 
@@ -238,7 +238,7 @@
 
 
   <div id="stats" style="display:none;margin-top:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
-  <h2 style="font-size:14px;margin-top:22px" id="itemsHead">Your photo</h2>
+  <h2 style="font-size:14px;margin-top:22px" id="itemsHead">Photos in this project</h2>
   <div id="items"></div>
   <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>QR code (optional)</b><small>viewers can also just open the Scanner</small></div>
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
@@ -412,7 +412,7 @@ function renderPlan(){
     <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
 }
 /* upgrade */
-const PLANS_UI=[['personal','Personal','5 projects'],['business','Business','15 projects · logo · analytics'],['pro','Pro','30 projects · sub-logins'],['agency','Agency','50 projects · custom domain']];
+const PLANS_UI=[['personal','Personal','2 projects · 3 photos each'],['business','Business','6 projects · 5 photos each · logo · analytics'],['pro','Pro','10 projects · 10 photos each · sub-logins'],['agency','Gold','15 projects · 20 photos each · custom domain']];
 function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
 function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
 function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
@@ -474,7 +474,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 
 async function loadAccounts(keep){
   const r=await post({action:'accounts'}); ACCOUNTS=r.accounts||[]; if(r.user){ USER=r.user; renderPlan(); }
-  $('#accList').innerHTML = ACCOUNTS.map(a=>`<button class="pchip ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">${esc(a.name)}<small>${a.items.length?'ready ✓':'add photo & video'}</small></button>`).join('')
+  $('#accList').innerHTML = ACCOUNTS.map(a=>`<button class="pchip ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">${esc(a.name)}<small>${a.items.length?a.items.length+' photo'+(a.items.length>1?'s':''):'empty'}</small></button>`).join('')
     + `<button class="pchip newp" onclick="newProject()">＋ New project</button>`;
   updRefBtns();
   if(keep&&CUR) openAcc(CUR.code);
@@ -524,9 +524,9 @@ function updSave(){
 function updSteps(){ fitPreview(); updSave();
   const rb3=$('#refBtn3'); if(rb3) rb3.style.display=ACCOUNTS.reduce((n,a)=>n+a.items.length,0)>0?'':'none';
   const has=CUR&&CUR.items.length>0;
-  /* 1 project = 1 photo + 1 video: hide the upload form once done */
-  $('#st1').style.display=has?'none':''; $('#st2').style.display=has?'none':'';
-  const ih=$('#itemsHead'); if(ih) ih.style.display=has?'':'none';
+  const ppp=(USER&&USER.limits&&USER.limits.ppp)||1, full=CUR&&CUR.items.length>=ppp;
+  $('#st1').style.display=full?'none':''; $('#st2').style.display=full?'none':'';
+  const ih=$('#itemsHead'); if(ih){ ih.style.display=has?'':'none'; ih.textContent=`Photos in this project (${CUR?CUR.items.length:0} / ${ppp})`; }
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
   $('#qrBtn').textContent=has?'Show my QR':'QR (add your photo first)';
@@ -718,7 +718,7 @@ function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.
 async function showReferral(){
   const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok){ toast('Could not load your referral link — try again.'); return; }
   const earned=r.earned?` You have earned ${r.earned} so far.`:'';
-  if(await confirmDlg('Refer a friend, get a free project 🎁',`Share your link. When a friend joins and creates their first AR photo, you get +1 photo and +1 project — free. Refer more, earn more!${earned}`,'Share on WhatsApp')){
+  if(await confirmDlg('Refer a friend, get a free project 🎁',`Share your link. When a friend joins and creates their first AR photo, you get +1 free project. Refer more, earn more!${earned}`,'Share on WhatsApp')){
     const msg='Make your printed photos play videos! Try ScanPlay with my link: '+r.link;
     window.open('https://wa.me/?text='+encodeURIComponent(msg));
   }
