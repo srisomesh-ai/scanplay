@@ -48,6 +48,14 @@
   .acc .n{font-weight:600;font-size:14px} .acc .c{font-size:11px;color:var(--mute)}
   .acc .k{font-size:12px;color:var(--mute);background:var(--paper);border-radius:999px;padding:3px 9px}
   .newacc{display:flex;gap:8px;margin-bottom:12px} .newacc input{flex:1}
+  .pchips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .pchips::-webkit-scrollbar{display:none}
+  .pchip{flex:0 0 auto;border:1.5px solid var(--line);background:var(--card,#fff);border-radius:999px;padding:9px 16px;font:600 14px 'Plus Jakarta Sans',sans-serif;color:inherit;display:flex;gap:7px;align-items:center;cursor:pointer}
+  .pchip small{color:var(--mute);font-size:12px;font-weight:600}
+  .pchip.on{background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;border-color:transparent}
+  .pchip.on small{color:#fff9}
+  .pchip.newp{border-style:dashed;color:var(--b,#7C3AED)}
+  #app{grid-template-columns:1fr !important}
   .head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .head h2{margin:0} a{color:var(--teal)} .head .r{display:flex;gap:8px}
   .code{font-size:12px;color:var(--mute);margin-bottom:18px;word-break:break-all}
@@ -188,46 +196,10 @@
 <div style="text-align:center;margin:-30px auto 20px;font-size:13px;color:var(--mute)" id="appHint">Prefer an app? <a href="https://play.google.com/store/apps/details?id=in.scanplay.app" target="_blank" rel="noopener" style="color:var(--b);font-weight:700">Get ScanPlay on Google Play</a></div>
 <div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
-<div class="subnav" id="subnav" style="display:none"><button class="on" id="nDash" onclick="showTab('dash')">Dashboard</button><button id="nAcc" onclick="showTab('acc')">Projects</button></div>
-
-<div id="dash" style="display:none">
-  <section class="card">
-    <h2 id="hello">Welcome</h2>
-    <p class="status" style="margin:2px 0 14px">Make a photo play a video. Four easy steps:</p>
-    <div class="big">
-      <div class="bs" id="g1"><span class="n"></span><div class="ic">🖼️</div><h3>1. Upload the photo</h3><p>The picture people will point their phone at.</p></div>
-      <div class="bs" id="g2"><span class="n"></span><div class="ic">🎬</div><h3>2. Upload the video</h3><p>The video that should play on that photo.</p></div>
-      <div class="bs" id="g3"><span class="n"></span><div class="ic">🔳</div><h3>3. Done — it just works</h3><p>Viewers open the ScanPlay Scanner and point at the photo. QR is optional.</p></div>
-      <div class="bs" id="g4"><span class="n"></span><div class="ic">📱</div><h3>4. Scan &amp; enjoy</h3><p>Open <a href="scan.html" style="color:var(--b);font-weight:700">the Scanner</a>, point at the photo, watch it play.</p></div>
-    </div>
-    <div class="bigcta"><button class="btn" id="bigBtn" onclick="startFlow()">＋ Make my first AR photo</button></div>
-  </section>
-  <div style="display:grid;gap:16px;align-content:start">
-    <section class="card"><h2>Your plan</h2><div id="dashPlan"></div></section>
-    <section class="card"><h2>Quick actions</h2><div class="quick">
-      <button class="btn" id="refBtn" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
-      <button class="btn" onclick="showTab('acc');setTimeout(()=>document.getElementById('accName')&&document.getElementById('accName').focus(),50)">＋ New account &amp; QR</button>
-      <button class="btn ghost" onclick="showTab('acc')">Open my accounts</button>
-      <button class="btn ghost" onclick="openSettings()">Settings, logo &amp; password</button>
-      <a class="btn ghost" href="https://wa.me/918985849710?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a>
-    </div></section>
-    <section class="card"><h2>Tips</h2><div class="tipbox"><b>Best results:</b> print at least 4×6 inches on matte paper · video shape should match the photo (use the Fill option) · keep videos under 30 seconds and 60 MB · good light when scanning.</div></section>
-  </div>
-  <section class="card" style="grid-column:1/-1"><h2>Your accounts</h2><div id="dashAccs" class="accgrid"></div></section>
-</div>
-
 <main id="app" style="display:none">
-  <section class="card" id="accCard">
-    <h2>Projects</h2>
-    <div class="newacc">
-      <input type="text" id="accName" placeholder="New project name" onkeydown="if(event.key==='Enter')createAcc()">
-      <button class="btn" onclick="createAcc()">Add</button>
-    </div>
-    <div id="accList"><div class="empty">Loading…</div></div>
-  </section>
-
+  <div class="pchips" id="accList"></div>
   <section class="card" id="detail">
-    <div class="empty" style="padding:60px 0">Create a project to start.<br>Each project gets one QR that recognises all of its photos.</div>
+    <div class="empty" style="padding:60px 0">Tap ＋ New project to start.<br>1 photo + 1 video = 1 project, with its own QR.</div>
   </section>
 </main>
 
@@ -266,13 +238,14 @@
 
 
   <div id="stats" style="display:none;margin-top:16px"><div class="kpi"><span><b id="kAll">0</b> total scans</span><span><b id="k30">0</b> last 30 days</span></div><div class="stat" id="statBars"></div></div>
-  <h2 style="font-size:14px;margin-top:22px">Photos in this project</h2>
+  <h2 style="font-size:14px;margin-top:22px" id="itemsHead">Your photo</h2>
   <div id="items"></div>
   <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>QR code (optional)</b><small>viewers can also just open the Scanner</small></div>
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
   <button class="btn qrbig" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D);box-shadow:0 8px 20px rgba(255,154,61,.3)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
+  <div class="row" style="justify-content:center;margin-top:12px;gap:8px"><a class="btn ghost sm" href="https://wa.me/918985849710?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a><button class="btn ghost sm" onclick="openSettings()">Settings &amp; logo</button></div>
 </template>
 
 <div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
@@ -407,8 +380,7 @@ async function initGoogle(){
 }
 async function logout(){ await post({action:'logout'}).catch(()=>{}); localStorage.removeItem('sp_token'); location.reload(); }
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
-function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; $('#subnav').style.display='flex'; loadAccounts().then(()=>showTab('dash')); }
-function showTab(t){ $('#nDash').classList.toggle('on',t==='dash'); $('#nAcc').classList.toggle('on',t==='acc'); $('#dash').style.display=t==='dash'?'grid':'none'; $('#app').style.display=t==='acc'?'grid':'none'; if(t==='dash') renderDash(); }
+function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts().then(()=>{ $('#app').style.display='grid'; if(!CUR&&ACCOUNTS.length) openAcc(ACCOUNTS[0].code); }); }
 let _cfRes=null;
 function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
 function cfDone(v){ $('#confirmModal').classList.remove('open'); const r=_cfRes; _cfRes=null; r&&r(v); }
@@ -416,24 +388,6 @@ let _nameRes=null;
 function askName(def){ return new Promise(res=>{ _nameRes=res; $('#nameInput').value=def||''; $('#nameModal').classList.add('open'); setTimeout(()=>$('#nameInput').focus(),80); }); }
 function nameOk(){ const v=$('#nameInput').value.trim(); if(!v){ $('#nameInput').focus(); return; } $('#nameModal').classList.remove('open'); const r=_nameRes; _nameRes=null; r&&r(v); }
 function nameCancel(){ $('#nameModal').classList.remove('open'); const r=_nameRes; _nameRes=null; r&&r(null); }
-async function startFlow(){
-  showTab('acc');
-  if(!ACCOUNTS.length){ const name=await askName('My first project'); if(!name) return;
-    const r=await post({action:'account_create',name}); if(!r.ok){ toast(r.error); return; } await loadAccounts(); openAcc(r.code); }
-  else openAcc(ACCOUNTS[0].code);
-  setTimeout(()=>{ const t=document.getElementById('title'); if(t){ t.scrollIntoView({behavior:'smooth',block:'center'}); t.focus(); } },200);
-}
-function renderDash(){
-  const u=USER; $('#hello').textContent='Welcome, '+(u.name||'').split(' ')[0];
-  const photos=ACCOUNTS.reduce((n,a)=>n+a.items.length,0);
-  ['g1','g2','g3','g4'].forEach(g=>$('#'+g).classList.toggle('done',photos>0));
-  $('#bigBtn').textContent=photos>0?'＋ Add another photo':'＋ Make my first AR photo';
-  const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
-  $('#dashPlan').innerHTML=`<div style="font:800 18px 'Plus Jakarta Sans'">${u.planName}</div><div class="status" style="margin:2px 0 10px">${u.plan==='free'?'Free forever · one photo at a time':u.state==='active'?days+' days left':u.state==='grace'?'Ended — data deleted after grace period':'Expired'}</div>
-    <div class="status">Photos ${u.used.photos} / ${u.limits.photos} · Projects ${u.used.accounts} / ${u.limits.accounts||'∞'}</div>
-    <button class="btn sm" style="margin-top:10px" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
-  $('#dashAccs').innerHTML=ACCOUNTS.length?ACCOUNTS.map(a=>`<div class="accbox" onclick="showTab('acc');openAcc('${a.code}')"><b>${esc(a.name)}</b><span>${a.items.length} photo${a.items.length===1?'':'s'} · ${a.scans} scans</span></div>`).join(''):'<div class="status">No accounts yet — start with step 1.</div>';
-}
 async function post(fields,files){
   const fd=new FormData(); Object.entries(fields).forEach(([k,v])=>fd.append(k,v));
   if(files) Object.entries(files).forEach(([k,v])=>fd.append(k,v,v.name||k));
@@ -447,17 +401,18 @@ function renderPlan(){
   const u=USER, L=u.limits, el=$('#planIn'); const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
   const pct=Math.min(100,Math.round(u.used.photos/L.photos*100));
   let cls='', msg='';
-  if(u.plan==='free') { msg='Free forever · 1 photo at a time'; }
+  if(u.plan==='free') { msg='Free forever'; }
   else if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
   else if(u.state==='expired') { cls='bad'; msg='Plan expired and data removed.'; }
   else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
   el.className='in '+cls;
+  const projLim=Math.min(L.photos, L.accounts||L.photos), projPct=Math.min(100,Math.round(u.used.accounts/(projLim||1)*100));
   el.innerHTML=`<div><b>${u.planName}</b> <span>· ${msg||`${days} days left`}</span></div>
-    <div><span>Photos ${u.used.photos}/${L.photos}</span><span class="meter"><i style="width:${pct}%"></i></span><span>Projects ${u.used.accounts}/${L.accounts||'∞'}</span></div>
+    <div><span>Projects ${u.used.accounts} / ${projLim}</span><span class="meter"><i style="width:${projPct}%"></i></span></div>
     <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
 }
 /* upgrade */
-const PLANS_UI=[['personal','Personal','5 photos · 1 project'],['business','Business','15 photos · 3 projects · logo · analytics'],['pro','Pro','30 photos · 10 projects · sub-logins'],['agency','Agency','50 photos · unlimited projects · custom domain']];
+const PLANS_UI=[['personal','Personal','5 projects'],['business','Business','15 projects · logo · analytics'],['pro','Pro','30 projects · sub-logins'],['agency','Agency','50 projects · custom domain']];
 function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
 function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
 function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
@@ -519,24 +474,19 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 
 async function loadAccounts(keep){
   const r=await post({action:'accounts'}); ACCOUNTS=r.accounts||[]; if(r.user){ USER=r.user; renderPlan(); }
-  $('#accList').innerHTML = ACCOUNTS.length ? ACCOUNTS.map(a=>`
-    <div class="acc ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">
-      <div><div class="n">${esc(a.name)}</div><div class="c">${a.code}</div></div>
-      <span class="k">${a.items.length} pic${a.items.length===1?'':'s'}</span>
-    </div>`).join('') : '<div class="empty">No accounts yet</div>';
+  $('#accList').innerHTML = ACCOUNTS.map(a=>`<button class="pchip ${CUR&&CUR.code===a.code?'on':''}" data-code="${a.code}" onclick="openAcc('${a.code}')">${esc(a.name)}<small>${a.items.length?'ready ✓':'add photo & video'}</small></button>`).join('')
+    + `<button class="pchip newp" onclick="newProject()">＋ New project</button>`;
   updRefBtns();
   if(keep&&CUR) openAcc(CUR.code);
-  const single=USER&&USER.limits.accounts===1&&ACCOUNTS.length>=1; $('#accCard').style.display=single?'none':''; if(single&&!CUR) openAcc(ACCOUNTS[0].code);
-  document.getElementById('app').style.gridTemplateColumns=single?'1fr':'';
 }
-async function createAcc(){
-  const name=$('#accName').value.trim(); if(!name) return;
+async function newProject(){
+  const name=await askName('My project'); if(!name) return;
   const r=await post({action:'account_create',name}); if(!r.ok){toast(r.error);return;}
-  $('#accName').value=''; await loadAccounts(); openAcc(r.code);
+  await loadAccounts(); openAcc(r.code);
 }
 function openAcc(code){
   CUR=ACCOUNTS.find(a=>a.code===code); if(!CUR) return;
-  document.querySelectorAll('.acc').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
+  document.querySelectorAll('.pchip').forEach(d=>d.classList.toggle('on',d.dataset.code===code));
   const d=$('#detail'); d.innerHTML=''; d.appendChild($('#detailTpl').content.cloneNode(true));
   $('#dName').textContent=CUR.name; $('#dCode').textContent=CUR.qrUrl; 
   bindPickers(); renderItems(); imgFile=vidFile=null; vidUrl=''; urlMode=false; UP=null; updSteps();
@@ -574,9 +524,12 @@ function updSave(){
 function updSteps(){ fitPreview(); updSave();
   const rb3=$('#refBtn3'); if(rb3) rb3.style.display=ACCOUNTS.reduce((n,a)=>n+a.items.length,0)>0?'':'none';
   const has=CUR&&CUR.items.length>0;
+  /* 1 project = 1 photo + 1 video: hide the upload form once done */
+  $('#st1').style.display=has?'none':''; $('#st2').style.display=has?'none':'';
+  const ih=$('#itemsHead'); if(ih) ih.style.display=has?'':'none';
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
-  $('#qrBtn').textContent=has?'Show my QR':'QR (add a photo first)';
+  $('#qrBtn').textContent=has?'Show my QR':'QR (add your photo first)';
 }
 const loadImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
 async function buildShareCard(mode='photo',onlyId=null){
