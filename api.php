@@ -30,11 +30,11 @@ define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
 
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [
-  'free'     => ['name'=>'Free','photos'=>1, 'accounts'=>1, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,    'year'=>0,     'watermark'=>true],
-  'personal' => ['name'=>'Personal',  'photos'=>5, 'accounts'=>5, 'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,  'year'=>4990,  'watermark'=>false],
-  'business' => ['name'=>'Business',  'photos'=>15,'accounts'=>15, 'logo'=>true, 'analytics'=>true, 'sub'=>false,'domain'=>false,'month'=>1999, 'year'=>19990, 'watermark'=>false],
-  'pro'      => ['name'=>'Pro',       'photos'=>30,'accounts'=>30,'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>false,'month'=>2999, 'year'=>29990, 'watermark'=>false],
-  'agency'   => ['name'=>'Agency',    'photos'=>50,'accounts'=>0, 'logo'=>true, 'analytics'=>true, 'sub'=>true, 'domain'=>true, 'month'=>5999, 'year'=>59990, 'watermark'=>false],
+  'free' => ['name'=>'Free','photos'=>1,'accounts'=>1,'ppp'=>1,'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>0,'year'=>0,'watermark'=>true],
+  'personal' => ['name'=>'Personal','photos'=>6,'accounts'=>2,'ppp'=>3,'logo'=>false,'analytics'=>false,'sub'=>false,'domain'=>false,'month'=>499,'year'=>4990,'watermark'=>false],
+  'business' => ['name'=>'Business','photos'=>30,'accounts'=>6,'ppp'=>5,'logo'=>true,'analytics'=>true,'sub'=>false,'domain'=>false,'month'=>1999,'year'=>19990,'watermark'=>false],
+  'pro' => ['name'=>'Pro','photos'=>100,'accounts'=>10,'ppp'=>10,'logo'=>true,'analytics'=>true,'sub'=>true,'domain'=>false,'month'=>2999,'year'=>29990,'watermark'=>false],
+  'agency' => ['name'=>'Gold','photos'=>300,'accounts'=>15,'ppp'=>20,'logo'=>true,'analytics'=>true,'sub'=>true,'domain'=>true,'month'=>5999,'year'=>59990,'watermark'=>false],
 ];
 
 /* ---------------- DB ---------------- */
@@ -279,7 +279,7 @@ switch ($action) {
     $u = auth(); requireWritable($u);
     $name = trim(strip_tags($_POST['name'] ?? '')); if ($name==='') out(false, ['error'=>'Account name is required']);
     $lim = PLANS[$u['plan']]['accounts'] ? PLANS[$u['plan']]['accounts'] + (int)$u['extra_accounts'] : 0; $have = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
-    if ($lim && $have >= $lim) out(false, ['error'=>"Your plan allows $lim account".($lim>1?'s':'').". Upgrade for more.", 'upgrade'=>true]);
+    if ($lim && $have >= $lim) out(false, ['error'=>"Your plan allows $lim project".($lim>1?'s':'').". Refer a friend for a free project, or upgrade for more.", 'upgrade'=>true]);
     $code = substr(bin2hex(random_bytes(4)),0,8);
     q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $u['id'], $name, now()]);
     mkdir(DATA_DIR."/$code", 0755, true); logAct($u['id'],'project_create',"$code $name");
@@ -325,9 +325,8 @@ switch ($action) {
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
-    if ((int)row("SELECT COUNT(*) c FROM items WHERE code=?", [$code])['c'] >= 1) out(false, ['error'=>'This project already has its photo. 1 photo + 1 video = 1 project — create a new project for another photo.']);
-    $lim = PLANS[$u['plan']]['photos'] + (int)$u['extra_photos']; $have = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
-    if ($have >= $lim) out(false, ['error'=> $u['plan']==='free' ? 'Free plan limit reached. Refer a friend to earn a free project, or upgrade for more.' : "Your plan allows $lim photos. Upgrade to add more.", 'upgrade'=>true]);
+    $ppp = PLANS[$u['plan']]['ppp'] ?? 1; $inProj = (int)row("SELECT COUNT(*) c FROM items WHERE code=?", [$code])['c'];
+    if ($inProj >= $ppp) out(false, ['error'=> $u['plan']==='free' ? 'Free plan: 1 photo in this project. Refer a friend to earn another project, or upgrade for more photos per project.' : "Your plan allows $ppp photos per project. Create a new project or upgrade.", 'upgrade'=>true]);
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
@@ -364,9 +363,9 @@ switch ($action) {
     /* referral reward: when a referred user adds their first photo, referrer gets +1 photo and +1 project */
     if (!empty($u['referrer_id']) && !(int)($u['ref_awarded'] ?? 0)) {
       q("UPDATE users SET ref_awarded=1 WHERE id=?", [$u['id']]);
-      q("UPDATE users SET extra_photos=COALESCE(extra_photos,0)+1, extra_accounts=COALESCE(extra_accounts,0)+1 WHERE id=?", [$u['referrer_id']]);
+      q("UPDATE users SET extra_accounts=COALESCE(extra_accounts,0)+1 WHERE id=?", [$u['referrer_id']]);
       $rf = row("SELECT * FROM users WHERE id=?", [$u['referrer_id']]);
-      if ($rf) @sendMail($rf['email'], "You earned a free project on ScanPlay", mailTpl("Referral reward &#127873;", "Hi ".htmlspecialchars($rf['name']).", your friend just created their first AR photo. You earned <b>+1 photo and +1 project</b> on your plan.", "Keep sharing your link to earn more.", "Open Studio", baseUrl()."/studio.html"));
+      if ($rf) @sendMail($rf['email'], "You earned a free project on ScanPlay", mailTpl("Referral reward &#127873;", "Hi ".htmlspecialchars($rf['name']).", your friend just created their first AR photo. You earned <b>+1 free project</b> on your plan.", "Keep sharing your link to earn more.", "Open Studio", baseUrl()."/studio.html"));
       logAct($u['referrer_id'],'referral_reward','from user '.$u['id']);
     }
     $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
