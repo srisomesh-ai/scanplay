@@ -275,6 +275,15 @@
   <button class="btn qrbig" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D);box-shadow:0 8px 20px rgba(255,154,61,.3)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
 </template>
 
+<div class="modal" id="qrModal" onclick="if(event.target===this)closeQr()">
+  <div class="box">
+    <h3 id="qrTitle" style="margin:0 0 4px"></h3>
+    <div id="qr" style="display:flex;justify-content:center;padding:14px 0"></div>
+    <p id="qrLink" style="word-break:break-all;color:var(--mute);font-size:12px;margin:0 0 8px;text-align:center"></p>
+    <p style="font-size:13px;color:var(--mute);margin:0 0 14px;text-align:center">1. Scan this QR &nbsp;·&nbsp; 2. Point at the printed photo &nbsp;·&nbsp; 3. Video plays</p>
+    <div class="row" style="justify-content:center;gap:8px"><button class="btn ghost" onclick="closeQr()">Close</button><button class="btn" onclick="downloadQr()">Download QR</button></div>
+  </div>
+</div>
 <div class="modal" id="shareModal" onclick="if(event.target===this)closeShare()">
   <div class="box" style="text-align:left">
     <h3>Share</h3>
