@@ -309,19 +309,18 @@
 </div>
 <div class="modal" id="cropModal">
   <div class="box">
-    <h3>Your photo</h3>
-    <p>We selected the <b>full photo</b> — usually that is correct. Adjust the corners only if you need to cut off a frame, hand or background.</p>
+    <h3>Crop target image</h3>
+    <p>Crop to exactly the printed area — <b>remove hands, frame edges and background</b>. Keep the photo straight, not at an angle.</p>
     <div id="cropWrap"><img id="cropImg" alt=""></div>
     <div class="chips" id="chips">
       <button class="chip on" data-r="0">Free</button><button class="chip" data-r="1">1:1</button>
       <button class="chip" data-r="0.75">4:3</button><button class="chip" data-r="1.3333">3:4</button>
       <button class="chip" data-r="0.5625">16:9</button><button class="chip" data-r="1.7778">9:16</button>
     </div>
-    <div class="row" style="justify-content:flex-end;flex-wrap:wrap;gap:8px">
+    <div class="row" style="justify-content:flex-end">
       <button class="btn ghost" onclick="rotateCrop()">Rotate</button>
       <button class="btn ghost" onclick="cancelCrop()">Cancel</button>
-      <button class="btn" onclick="fullCrop()">✓ Use full photo</button>
-      <button class="btn ghost" onclick="applyCrop()">Use adjusted crop</button>
+      <button class="btn" onclick="applyCrop()">Use crop</button>
     </div>
   </div>
 </div>
@@ -597,7 +596,7 @@ function bindPickers(){
     const f=e.target.files[0]; if(!f) return;
     const im=$('#cropImg'); if(cropper){cropper.destroy();cropper=null;}
     im.src=URL.createObjectURL(f); $('#cropModal').classList.add('open');
-    im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'move',autoCropArea:1,background:false,responsive:true,zoomable:true,zoomOnWheel:true,zoomOnTouch:true,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
+    im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'move',autoCropArea:0.9,background:false,responsive:true,zoomable:true,zoomOnWheel:true,zoomOnTouch:true,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
     document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.r==='0'));
   };
   $('#vidFile').onchange=e=>{
@@ -655,10 +654,6 @@ function photoIssues(c){
     if(varc<250) issues.push('looks blurry or plain — scanning needs a sharp photo with details');
   }catch(e){}
   return issues;
-}
-function fullCrop(){
-  if(cropper){ const d=cropper.getContainerData&&cropper.getCanvasData(); try{ cropper.setCropBoxData({left:d.left,top:d.top,width:d.width,height:d.height}); }catch(e){} }
-  applyCrop();
 }
 function applyCrop(){
   const c=cropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'});
