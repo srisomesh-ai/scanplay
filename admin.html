@@ -257,18 +257,30 @@ function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value, s=$('#s
     <td><span class="tag p">${u.plan}</span>${u.extra_photos>0?'<br><span style="font-size:11px">+'+u.extra_photos+' photos</span>':''}</td><td>${d(u.plan_until)}<br><span class="tag ${u.state==='active'?'a':u.state==='grace'?'g':'x'}">${u.state}</span></td>
     <td>${u.accs} proj · ${u.photos} photos</td><td>${u.scans||0}</td><td>${u.paid?inr(u.paid/100):'—'}</td><td>${d(u.created)}</td></tr>`).join(''); }
 async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok) return alert(r.error); const u=r.user, i=r.info, L=i.limits, opts=Object.keys(DATA.plans).map(k=>`<option value="${k}" ${u.plan===k?'selected':''}>${DATA.plans[k].name}</option>`).join('');
-  $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><div><h2>${u.name}</h2><div style="color:var(--mute);font-size:13px">${u.email} · ${u.phone||'no phone'} · joined ${d(u.created)}${u.google_id?' · Google':''}</div></div><button class="btn g s" onclick="closeUser()">Close</button></div>
-  <div class="grid">
-    <div class="card"><h3 style="margin-top:0">Plan</h3><div class="st">Now: <b>${i.planName}</b> · ${i.state} · until ${d(u.plan_until)}</div>
-      <label class="field">Set plan</label><div class="row"><select id="pl">${opts}</select><input id="pd" type="number" value="30" style="width:80px"> days <button class="btn s" onclick="act('admin_setplan',{id:${id},plan:$('#pl').value,days:$('#pd').value})">Apply</button></div>
-      <label class="field">Extend current plan</label><div class="row"><input id="ed" type="number" value="30" style="width:80px"> days <button class="btn g s" onclick="act('admin_extend',{id:${id},days:$('#ed').value})">Extend</button></div></div>
-    <div class="card"><h3 style="margin-top:0">Credits (on top of plan)</h3><div class="st">Plan gives ${(DATA.plans[u.plan]||{}).photos??'?'} photos / ${(DATA.plans[u.plan]||{}).accounts||'∞'} projects. Used ${i.used.photos} / ${i.used.accounts}.</div>
-      <label class="field">Extra photos</label><div class="row"><input id="xp" type="number" value="${u.extra_photos||0}" style="width:90px"><label class="field" style="margin:0 0 0 8px">Extra projects</label><input id="xa" type="number" value="${u.extra_accounts||0}" style="width:90px"></div>
-      <label class="field">Admin note</label><input id="nt" value="${(u.note||'').replace(/"/g,'&quot;')}" style="width:100%" placeholder="e.g. paid cash 15 Aug">
-      <div class="row" style="margin-top:8px"><button class="btn s" onclick="act('admin_credit',{id:${id},photos:$('#xp').value,accounts:$('#xa').value,note:$('#nt').value})">Save credits</button></div></div>
-    <div class="card"><h3 style="margin-top:0">Account</h3><div class="row">${u.verified?'':`<button class="btn g s" onclick="act('admin_verify',{id:${id}})">Mark verified</button>`}<button class="btn g s" onclick="const p=prompt('New password (min 6)');if(p)act('admin_setpass',{id:${id},pass:p})">Set password</button><button class="btn d s" onclick="if(confirm('Delete this user and ALL their projects, photos and videos? Cannot be undone.'))act('admin_user_delete',{id:${id}},true)">Delete user</button></div>
-      <h3>Activity (latest 100)</h3><div style="font-size:12px;max-height:220px;overflow:auto">${(r.activity||[]).map(actLine).join('')||'<div class="st">None</div>'}</div>
-      <h3>Payments</h3>${r.payments.length?r.payments.map(p=>`<div class="st">${d(p.created)} · ${p.plan} ${p.period} · ${inr(p.amount/100)} · <b>${p.status}</b>${p.payment_id?' · '+p.payment_id:''}</div>`).join(''):'<div class="st">None</div>'}</div>
+  $('#mb').innerHTML=`
+  <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+    <div><h2 style="margin:0">${u.name}</h2><div style="color:var(--mute);font-size:13px;margin-top:2px">${u.email} · ${u.phone||'no phone'} · joined ${d(u.created)}${u.google_id?' · Google':''}</div></div>
+    <span class="row" style="gap:6px">${u.verified?'':`<button class="btn g s" onclick="act('admin_verify',{id:${id}})">Mark verified</button>`}<button class="btn g s" onclick="const p=prompt('New password (min 6)');if(p)act('admin_setpass',{id:${id},pass:p})">Set password</button><button class="btn d s" onclick="if(confirm('Delete this user and ALL their projects, photos and videos? Cannot be undone.'))act('admin_user_delete',{id:${id}},true)">Delete user</button><button class="btn g s" onclick="closeUser()">Close</button></span>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+    <div class="card" style="margin:0">
+      <h3 style="margin:0 0 6px">Plan</h3>
+      <div class="st" style="margin-bottom:10px">Now <b>${i.planName}</b> · ${i.state} · until ${d(u.plan_until)}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><select id="pl">${opts}</select><input id="pd" type="number" value="30" style="width:64px"><span style="font-size:13px;color:var(--mute)">days</span><button class="btn s" onclick="act('admin_setplan',{id:${id},plan:$('#pl').value,days:$('#pd').value})">Apply</button></div>
+      <div class="row" style="gap:6px;margin-top:8px"><span style="font-size:13px;color:var(--mute)">Extend by</span><input id="ed" type="number" value="30" style="width:64px"><span style="font-size:13px;color:var(--mute)">days</span><button class="btn g s" onclick="act('admin_extend',{id:${id},days:$('#ed').value})">Extend</button></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="margin:0 0 6px">Credits</h3>
+      <div class="st" style="margin-bottom:10px">Plan: ${(DATA.plans[u.plan]||{}).accounts||'∞'} projects × ${(DATA.plans[u.plan]||{}).ppp??'?'} photos · used ${i.used.accounts} projects, ${i.used.photos} photos</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><span style="font-size:13px;color:var(--mute)">+ photos</span><input id="xp" type="number" value="${u.extra_photos||0}" style="width:64px"><span style="font-size:13px;color:var(--mute)">+ projects</span><input id="xa" type="number" value="${u.extra_accounts||0}" style="width:64px"></div>
+      <div class="row" style="gap:6px;margin-top:8px"><input id="nt" value="${(u.note||'').replace(/"/g,'&quot;')}" style="flex:1" placeholder="Admin note, e.g. PROMOTER"><button class="btn s" onclick="act('admin_credit',{id:${id},photos:$('#xp').value,accounts:$('#xa').value,note:$('#nt').value})">Save</button></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin:0 0 6px">Payments</h3>
+    ${r.payments.length?r.payments.map(p=>`<div class="st">${d(p.created)} · ${p.plan} ${p.period} · ${inr(p.amount/100)} · <b>${p.status}</b>${p.payment_id?' · '+p.payment_id:''}</div>`).join(''):'<div class="st">None</div>'}
+    <h3 style="cursor:pointer;margin:12px 0 4px" onclick="const b=$('#uAct');const o=b.style.display==='none';b.style.display=o?'':'none';$('#uActA').textContent=o?'▾ hide':'▸ show'">Activity <span id="uActA" style="font-weight:400;color:var(--mute);font-size:13px">▸ show</span></h3>
+    <div id="uAct" style="display:none;font-size:12px;max-height:260px;overflow-y:auto;word-break:break-word">${(r.activity||[]).map(actLine).join('')||'<div class="st">None</div>'}</div>
   </div>
   <h3>Projects &amp; photos</h3>${r.accounts.length?r.accounts.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${a.name}</b> ${a.blocked?'<span class="tag x">BLOCKED</span>':''} <span style="color:var(--mute);font-size:12px">${a.code} · ${a.scans} scans</span><br><a href="${a.qrUrl}" target="_blank" style="font-size:12px;color:var(--b)">${a.qrUrl}</a></div><span class="row"><button class="btn g s" onclick="act('admin_block',{code:'${a.code}',blocked:${a.blocked?0:1}},false,${id})">${a.blocked?'Unblock':'Block'}</button><button class="btn d s" onclick="if(confirm('Delete project ${a.name}?'))act('admin_account_delete',{code:'${a.code}'},false,${id})">Delete project</button></span></div>
     ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${it.title}</b><div style="font-size:12px;color:var(--mute)">${it.id} · fit: ${it.fit||'fit'} · <a href="data/${a.code}/${it.id}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${a.code}',id:'${it.id}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
