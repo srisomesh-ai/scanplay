@@ -36,3 +36,9 @@ AddType application/octet-stream .mind
 <FilesMatch "\.(sqlite|db)$">
   Require all denied
 </FilesMatch>
+
+# No directory listings
+Options -Indexes
+
+# Backups folder never served
+RedirectMatch 404 ^/backups/
