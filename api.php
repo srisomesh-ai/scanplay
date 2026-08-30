@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 /* ---------------- CONFIG ----------------
    Secrets live in config.php (NOT in git). Copy config.sample.php to config.php on the server and fill it in. */
 $cfg = file_exists(__DIR__.'/config.php') ? include __DIR__.'/config.php' : [];
-$cfg += [ 'owner_pass'=>'arAdmin@2026', 'cron_key'=>'sp-cron-7c1e9a', 'rzp_key_id'=>'rzp_test_Svq7brYQvxA6kz', 'rzp_key_secret'=>'vHNYS7qh04Fyklra0YbzB6Iy',
+$cfg += [ 'owner_pass'=>'', 'cron_key'=>'', 'rzp_key_id'=>'', 'rzp_key_secret'=>'',
           'smtp_host'=>'smtp.hostinger.com', 'smtp_port'=>465, 'smtp_user'=>'info@scanplay.in', 'smtp_pass'=>'CHANGE_ME', 'mail_from_name'=>'ScanPlay',
           'google_client_id'=>'CHANGE_ME.apps.googleusercontent.com', 'rzp_webhook_secret'=>'' ];
 define('OWNER_PASS', $cfg['owner_pass']); define('CRON_KEY', $cfg['cron_key']);
@@ -167,7 +167,18 @@ function requireWritable($u) {
   $s = planState($u);
   if ($s !== 'active') out(false, ['error'=> $s==='grace' ? 'Your plan has ended. Renew to add or change pictures.' : 'Your plan expired and data was removed. Choose a plan to start again.', 'upgrade'=>true]);
 }
-function ownerAuth() { if (($_SERVER['HTTP_X_ADMIN_PASS'] ?? '') !== OWNER_PASS) out(false, ['error'=>'Not allowed']); }
+function ownerAuth() {
+  if (OWNER_PASS === '') out(false, ['error'=>'Admin disabled: set owner_pass in config.php']);
+  $ip = $_SERVER['REMOTE_ADDR'] ?? '?'; $ff = DATA_DIR.'/admin_fails.json';
+  $fails = @json_decode(@file_get_contents($ff), true) ?: [];
+  $rec = $fails[$ip] ?? ['n'=>0,'t'=>0];
+  if ($rec['n'] >= 10 && now() - $rec['t'] < 900) out(false, ['error'=>'Too many attempts. Try again in 15 minutes.']);
+  if (!hash_equals(OWNER_PASS, $_SERVER['HTTP_X_ADMIN_PASS'] ?? '')) {
+    $rec['n'] = (now() - $rec['t'] < 900) ? $rec['n'] + 1 : 1; $rec['t'] = now(); $fails[$ip] = $rec;
+    @file_put_contents($ff, json_encode($fails)); out(false, ['error'=>'Not allowed']);
+  }
+  if (isset($fails[$ip])) { unset($fails[$ip]); @file_put_contents($ff, json_encode($fails)); }
+}
 function pubAccount($a) {
   $items = rows("SELECT * FROM items WHERE code=? ORDER BY created", [$a['code']]);
   foreach ($items as &$it) $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg";
@@ -598,7 +609,7 @@ switch ($action) {
 
   /* ---------- cron: daily backup + delete data after grace ---------- */
   case 'cron': {
-    if (($_GET['key'] ?? '') !== CRON_KEY) out(false, ['error'=>'Bad key']);
+    if (CRON_KEY === '' || ($_GET['key'] ?? '') !== CRON_KEY) out(false, ['error'=>'Bad key']);
     // 1. daily DB backup (keeps 30)
     $bdir = DATA_DIR.'/backups'; if (!is_dir($bdir)) mkdir($bdir, 0755, true);
     $bfile = "$bdir/db-".date('Ymd').".sqlite"; if (!file_exists($bfile)) $db->exec("VACUUM INTO '$bfile'");
