@@ -43,8 +43,8 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
     <div class="row" style="margin-top:8px"><select id="bseg"><option value="all">All users</option><option value="free">Free-trial users</option><option value="paid">Paying users</option><option value="expired">Expired users</option></select><input id="bsub" placeholder="Subject" style="flex:1;min-width:200px"></div>
     <textarea id="bbody" rows="10" style="width:100%;margin-top:8px;font:500 14px 'Plus Jakarta Sans';padding:10px;border:1.5px solid var(--line);border-radius:10px" placeholder="Message. Use {name} for the user's name."></textarea>
     <div class="row" style="margin-top:8px"><button class="btn s" onclick="broadcast()">Send email</button><span class="st" id="bst"></span></div></div>
-  <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Recent activity</b><span class="row"><input id="aq" placeholder="Search action, email, IP" style="width:220px" onkeydown="if(event.key==='Enter')loadActivity()"><button class="btn g s" onclick="loadActivity()">Search / refresh</button></span></div>
-    <div class="st" id="asus"></div><div id="alog" style="font-size:12px;max-height:280px;overflow:auto;margin-top:8px"></div></div>
+  <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b style="cursor:pointer" onclick="toggleAct()">Recent activity <span id="actArrow" style="font-weight:400;color:var(--mute)">▸ show</span></b><span class="row" id="actTools" style="display:none"><input id="aq" placeholder="Search action, email, IP" style="width:220px" onkeydown="if(event.key==='Enter')loadActivity()"><button class="btn g s" onclick="loadActivity()">Search / refresh</button></span></div>
+    <div id="actBody" style="display:none"><div class="st" id="asus"></div><div id="alog" style="font-size:12px;max-height:280px;overflow:auto;margin-top:8px"></div></div></div>
   <h3 style="margin:18px 0 0;font-size:15px">Users</h3>
   <table><thead><tr><th>User</th><th>Plan</th><th>Until</th><th>Usage</th><th>Scans</th><th>Paid</th><th>Joined</th></tr></thead><tbody id="tb"></tbody></table>
 </div>
@@ -55,6 +55,9 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 let P=sessionStorage.getItem('sp_admin')||'', DATA=null; const $=s=>document.querySelector(s);
 const dt=t=>new Date(t*1000).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 function actLine(x){ const bad=/failed|delete|admin_/.test(x.action); return `<div style="padding:4px 0;border-bottom:1px solid var(--line)"><span style="color:var(--mute)">${dt(x.ts)}</span> · <b style="color:${x.who==='admin'?'#B45309':bad?'#B91C1C':'inherit'}">${x.action}</b>${x.email?' · '+x.email:''} <span style="color:var(--mute)">${x.detail||''}</span> <span style="color:var(--mute)">${x.ip||''}</span></div>`; }
+function toggleAct(){ const b=$('#actBody'), t=$('#actTools'), open=b.style.display==='none';
+  b.style.display=open?'':'none'; t.style.display=open?'':'none';
+  $('#actArrow').textContent=open?'▾ hide':'▸ show'; if(open&&!$('#alog').innerHTML) loadActivity(); }
 async function loadActivity(){ const r=await api('admin_activity',{q:$('#aq').value}); if(!r.ok) return;
   $('#asus').innerHTML=r.suspicious.length?'<span class="tag x">Suspicious</span> '+r.suspicious.map(s=>`${s.ip}: ${s.n} failed logins in 24h`).join(' · '):'No suspicious login activity in the last 24h.';
   $('#alog').innerHTML=r.activity.map(actLine).join('')||'<div class="st">No activity yet</div>'; }
