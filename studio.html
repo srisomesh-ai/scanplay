@@ -210,11 +210,7 @@
 
   <div class="stepc" id="st1"><div class="sh"><i><span>1</span></i><b>Upload the photo</b><small>the one you will print</small></div>
     <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*"><div id="imgPrev">Tap to choose a photo</div></div>
-    <div class="tiny" style="margin-top:8px;line-height:1.7;color:var(--mute)">
-      <span style="color:#16A34A;font-weight:700">✓ Use:</span> the original flat design file — straight, full, clear · సరిగ్గా ఉన్న ఒరిజినల్ డిజైన్ ఫోటో<br>
-      <span style="color:#DC2626;font-weight:700">✗ Avoid:</span> photo of a frame at an angle · hand holding it · glare / shadows · part of a poster<br>
-      <b>Why:</b> the print must match this upload exactly — that is how scanning finds your photo.
-    </div>
+    <div class="tiny" style="margin-top:8px;color:var(--mute)">Original flat design works best · <a href="#" onclick="photoTips(event)" style="color:var(--b);font-weight:600">Photo tips</a></div>
   </div>
 
   <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
@@ -638,6 +634,9 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
   const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
 function rotateCrop(){ cropper&&cropper.rotate(90); }
 function cancelCrop(){ $('#cropModal').classList.remove('open'); $('#imgFile').value=''; }
+function photoTips(e){ e.preventDefault();
+  confirmDlg('Which photo works best?','Upload the original flat design — the exact artwork you will print. Avoid: a framed picture shot at an angle, a hand holding the photo, glare or shadows, or a small piece of a poster. Scanning matches the print to this upload — they must look identical.','Got it');
+}
 function photoIssues(c){
   const issues=[];
   if(Math.min(c.width,c.height)<450) issues.push('very small — it may not scan well (use a bigger / original file)');
