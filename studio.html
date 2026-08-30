@@ -210,6 +210,11 @@
 
   <div class="stepc" id="st1"><div class="sh"><i><span>1</span></i><b>Upload the photo</b><small>the one you will print</small></div>
     <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*"><div id="imgPrev">Tap to choose a photo</div></div>
+    <div class="tiny" style="margin-top:8px;line-height:1.7;color:var(--mute)">
+      <span style="color:#16A34A;font-weight:700">✓ Use:</span> the original flat design file — straight, full, clear · సరిగ్గా ఉన్న ఒరిజినల్ డిజైన్ ఫోటో<br>
+      <span style="color:#DC2626;font-weight:700">✗ Avoid:</span> photo of a frame at an angle · hand holding it · glare / shadows · part of a poster<br>
+      <b>Why:</b> the print must match this upload exactly — that is how scanning finds your photo.
+    </div>
   </div>
 
   <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
@@ -308,7 +313,7 @@
 <div class="modal" id="cropModal">
   <div class="box">
     <h3>Crop target image</h3>
-    <p>Crop to exactly the printed area.</p>
+    <p>Crop to exactly the printed area — <b>remove hands, frame edges and background</b>. Keep the photo straight, not at an angle.</p>
     <div id="cropWrap"><img id="cropImg" alt=""></div>
     <div class="chips" id="chips">
       <button class="chip on" data-r="0">Free</button><button class="chip" data-r="1">1:1</button>
@@ -633,11 +638,32 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
   const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
 function rotateCrop(){ cropper&&cropper.rotate(90); }
 function cancelCrop(){ $('#cropModal').classList.remove('open'); $('#imgFile').value=''; }
+function photoIssues(c){
+  const issues=[];
+  if(Math.min(c.width,c.height)<450) issues.push('very small — it may not scan well (use a bigger / original file)');
+  const ar=Math.max(c.width,c.height)/Math.min(c.width,c.height);
+  if(ar>3) issues.push('very long strip shape — crop to just the main design');
+  try{
+    const w=Math.min(300,c.width), h=Math.round(c.height*w/c.width);
+    const t=document.createElement('canvas'); t.width=w; t.height=h;
+    t.getContext('2d').drawImage(c,0,0,w,h);
+    const d=t.getContext('2d').getImageData(0,0,w,h).data;
+    let sum=0,sum2=0,n=0;
+    for(let i=0;i<d.length;i+=16){ const g=d[i]*.299+d[i+1]*.587+d[i+2]*.114; sum+=g; sum2+=g*g; n++; }
+    const varc=sum2/n-(sum/n)**2;
+    if(varc<250) issues.push('looks blurry or plain — scanning needs a sharp photo with details');
+  }catch(e){}
+  return issues;
+}
 function applyCrop(){
   const c=cropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'});
-  c.toBlob(b=>{ imgFile=new File([b],'target.jpg',{type:'image/jpeg'}); imgRatio=c.height/c.width;
+  const finish=()=>c.toBlob(b=>{ imgFile=new File([b],'target.jpg',{type:'image/jpeg'}); imgRatio=c.height/c.width;
     $('#imgPrev').innerHTML=`<img src="${URL.createObjectURL(b)}"><span class="hint">${c.width}×${c.height} · tap to change</span>`;
     $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); updSteps(); },'image/jpeg',0.92);
+  const issues=photoIssues(c);
+  if(issues.length){
+    confirmDlg('⚠️ This photo may not scan well','This photo is '+issues.join('; ')+'. For best results upload the original flat design (no frame, no hand, no angle).','Use it anyway').then(ok=>{ if(ok) finish(); });
+  } else finish();
 }
 
 /* background chunked upload */
