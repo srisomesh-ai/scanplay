@@ -49,6 +49,16 @@ $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id I
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
+
+/* self-running daily backup: first request of each day snapshots the DB (keeps 30) — no cron needed */
+$_bdir = DATA_DIR.'/backups'; $_bfile = "$_bdir/db-".date('Ymd').".sqlite";
+if (!file_exists($_bfile)) {
+  if (!is_dir($_bdir)) @mkdir($_bdir, 0755, true);
+  try { $db->exec("VACUUM INTO '$_bfile'");
+    $_old = glob("$_bdir/db-*.sqlite"); sort($_old);
+    foreach (array_slice($_old, 0, max(0, count($_old)-30)) as $_f) @unlink($_f);
+  } catch (Exception $e) { @unlink($_bfile); }
+}
 try { $db->exec("ALTER TABLE items ADD COLUMN yt TEXT"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
