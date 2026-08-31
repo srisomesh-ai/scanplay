@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>ScanPlay self-test</title>
+<style>body{font:15px/1.6 system-ui;padding:16px;background:#f7f6fb;color:#191527}div{background:#fff;border-radius:12px;padding:10px 14px;margin:8px 0;border:1px solid #e9e6f2}.ok{border-left:5px solid #16a34a}.bad{border-left:5px solid #dc2626}.wait{border-left:5px solid #f59e0b}h2{font-size:18px}button{font:600 15px system-ui;padding:12px 18px;border:0;border-radius:10px;background:#7c3aed;color:#fff}</style></head><body>
+<h2>ScanPlay self-test</h2><p>Screenshot this page and send it.</p>
+<div id="r1" class="wait">1. Page served with security headers…</div>
+<div id="r2" class="wait">2. A-Frame library…</div>
+<div id="r3" class="wait">3. MindAR library…</div>
+<div id="r4" class="wait">4. Camera permission… <button onclick="cam()">Test camera</button></div>
+<div id="r5" class="wait">5. API reachable…</div>
+<div id="r6" class="wait">6. Player page loads…</div>
+<script src="/assets/vendor/aframe-v1.5.0.min.js" onerror="set('r2','bad','2. A-Frame FAILED to load from /assets/vendor/ — deploy did not copy vendor files')"></script>
+<script src="/assets/vendor/mindar-image-aframe.prod.js" onerror="set('r3','bad','3. MindAR FAILED to load from /assets/vendor/ — deploy did not copy vendor files')"></script>
+<script>
+function set(id,c,t){const e=document.getElementById(id);e.className=c;e.textContent=t;}
+set('r1','ok','1. Page loaded · '+location.protocol+' · UA: '+navigator.userAgent.slice(0,60));
+setTimeout(()=>{
+  if(window.AFRAME) set('r2','ok','2. A-Frame '+AFRAME.version+' loaded ✓'); else if(document.getElementById('r2').className==='wait') set('r2','bad','2. A-Frame not available (blocked or wrong file)');
+  if(window.AFRAME&&AFRAME.components['mindar-image']) set('r3','ok','3. MindAR loaded ✓'); else if(document.getElementById('r3').className==='wait') set('r3','bad','3. MindAR not registered — file loaded but did not run (check integrity/cache)');
+},1500);
+fetch('/api.php',{method:'POST',body:new URLSearchParams({action:'config'})}).then(r=>r.json()).then(j=>set('r5','ok','5. API ok ✓ (mail '+(j.mail?'on':'off')+')')).catch(e=>set('r5','bad','5. API error: '+e.message));
+fetch('/view.html',{cache:'no-store'}).then(r=>r.text()).then(t=>{const v=t.includes('/assets/vendor/aframe'), i=t.includes('integrity=');set('r6',v&&!i?'ok':'bad','6. view.html: '+(v?'self-hosted ✓':'OLD version (CDN)')+(i?' · still has integrity tags (old cached)':''))}).catch(e=>set('r6','bad','6. '+e.message));
+async function cam(){try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});s.getTracks().forEach(t=>t.stop());set('r4','ok','4. Camera works ✓');}catch(e){set('r4','bad','4. Camera error: '+e.name+' — '+e.message);}}
+</script></body></html>
