@@ -177,15 +177,6 @@ function requireWritable($u) {
   $s = planState($u);
   if ($s !== 'active') out(false, ['error'=> $s==='grace' ? 'Your plan has ended. Renew to add or change pictures.' : 'Your plan expired and data was removed. Choose a plan to start again.', 'upgrade'=>true]);
 }
-/* per-IP rate limit: $max hits per $win seconds for a named bucket */
-function rateLimit($bucket, $max, $win = 900) {
-  $ip = $_SERVER['REMOTE_ADDR'] ?? '?'; $f = DATA_DIR.'/ratelimit.json'; $t = now();
-  $all = @json_decode(@file_get_contents($f), true) ?: [];
-  foreach ($all as $k => $v) if ($t - ($v['t'] ?? 0) > $win) unset($all[$k]);
-  $k = $bucket.'|'.$ip; $rec = $all[$k] ?? ['n'=>0,'t'=>$t];
-  $rec['n']++; $all[$k] = $rec; @file_put_contents($f, json_encode($all), LOCK_EX);
-  if ($rec['n'] > $max) out(false, ['error'=>'Too many attempts. Please wait 15 minutes and try again.']);
-}
 function ownerAuth() {
   if (OWNER_PASS === '') out(false, ['error'=>'Admin disabled: set owner_pass in config.php']);
   $ip = $_SERVER['REMOTE_ADDR'] ?? '?'; $ff = DATA_DIR.'/admin_fails.json';
@@ -215,7 +206,7 @@ switch ($action) {
   /* ---------- auth ---------- */
   case 'config': out(true, ['google'=> GOOGLE_CLIENT_ID !== 'CHANGE_ME.apps.googleusercontent.com' ? GOOGLE_CLIENT_ID : null, 'mail'=>mailConfigured()]);
 
-  case 'signup': { rateLimit('signup', 5);
+  case 'signup': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? ''; $name = trim(strip_tags($_POST['name'] ?? '')); $phone = preg_replace('/\D/','',$_POST['phone'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
@@ -233,36 +224,36 @@ switch ($action) {
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
   }
-  case 'verify': { rateLimit('verify', 10);
+  case 'verify': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
     q("UPDATE users SET verified=1, plan_until=MAX(plan_until, ?) WHERE id=?", [now()+7*86400, $u['id']]); logAct($u['id'],'verified');
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
-  case 'resend': { rateLimit('resend', 3);
+  case 'resend': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if ($u) issueCode($u, isset($_POST['reset']) ? 'password reset' : 'verification'); out(true);
   }
-  case 'login': { rateLimit('login', 10);
+  case 'login': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? '';
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) { if ($u) logAct($u['id'],'login_failed'); out(false, ['error'=>'Wrong email or password']); }
     if (!$u['verified'] && mailConfigured()) { issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]); }
     logAct($u['id'],'login'); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
   }
-  case 'forgot': { rateLimit('forgot', 5);
+  case 'forgot': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!mailConfigured()) out(false, ['error'=>'Password reset by email is not set up yet. Message us on WhatsApp.']);
     if ($u) issueCode($u, 'password reset'); out(true);   // same answer whether or not the email exists
   }
-  case 'reset': { rateLimit('reset', 5);
+  case 'reset': {
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
     if (strlen($_POST['newpass'] ?? '') < 6) out(false, ['error'=>'Password must be at least 6 characters']);
     q("UPDATE users SET pass=?, verified=1 WHERE id=?", [password_hash($_POST['newpass'], PASSWORD_DEFAULT), $u['id']]); logAct($u['id'],'password_reset');
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
-  case 'google': { rateLimit('google', 20);
+  case 'google': {
     $cred = $_POST['credential'] ?? ''; if (!$cred) out(false, ['error'=>'No Google credential']);
     $info = json_decode(@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token='.urlencode($cred)), true);
     if (!$info || ($info['aud'] ?? '') !== GOOGLE_CLIENT_ID || empty($info['email']) || ($info['email_verified'] ?? 'false') !== 'true') out(false, ['error'=>'Google sign-in could not be verified']);
