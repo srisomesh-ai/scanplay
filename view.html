@@ -52,7 +52,7 @@ AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
   init(){ this.p=new THREE.Vector3(); this.q=new THREE.Quaternion(); this.s=new THREE.Vector3(1,1,1); this.tp=new THREE.Vector3(); this.tq=new THREE.Quaternion(); this.ts=new THREE.Vector3(); this.pv=new THREE.Vector3(); this.has=false; this.on=false; this.lostAt=0; this.stableMs=0; this.lastScr=null; this.el.object3D.visible=false;
     this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
   tick(t,dt){ const tgt=this.data.target.object3D, cam=this.el.sceneEl.camera; if(!tgt||!cam) return;
-    if(!this.on){ if(this.has && t-this.lostAt>0){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
+    if(!this.on){ if(this.has && t-this.lostAt>300){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
     tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
     if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stableMs=0; }
     // movement measured on screen (pixels) so it behaves the same near and far
@@ -67,7 +67,7 @@ AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
   init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.sx=null; this.lostAt=0;
     this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
   tick(t){ const o=document.getElementById(this.data.ov); if(!o) return;
-    if(!this.on){ if(this.sx!==null && t-this.lostAt>0){ o.style.display='none'; this.sx=null; } return; }
+    if(!this.on){ if(this.sx!==null && t-this.lostAt>300){ o.style.display='none'; this.sx=null; } return; }
     const cam=this.el.sceneEl.camera; if(!cam) return;
     const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
     for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
@@ -108,7 +108,7 @@ function fit(R,VR,mode){
 }
 
 /* Tracking filter settings (tracker's built-in one-euro filter). ?tune=1 shows a live panel; values persist on this phone. */
-const T=Object.assign({cf:0.001,beta:1,miss:2,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+const T=Object.assign({cf:0.001,beta:1,miss:5,warm:2}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
 const TUNE=new URLSearchParams(location.search).get('tune')==='1';
 function start(acc){
   const assets=acc.items.map((it,i)=>it.yt?'':`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
@@ -134,7 +134,7 @@ function start(acc){
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{
     const i=+t.dataset.i;
     t.addEventListener('targetFound',()=>{ hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){} });
-    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },0); });
+    let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
     t.addEventListener('targetFound',()=>clearTimeout(lostT));
   });
   scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; if(TUNE) tunePanel(); });
