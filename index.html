@@ -407,15 +407,15 @@ const SLIDES=[
 ];
 const FALLBACK=['https://picsum.photos/seed/scanplay1/400/560','https://picsum.photos/seed/scanplay2/400/560','https://picsum.photos/seed/scanplay3/400/560'];
 const cardPic=document.getElementById('cardPic'), live=document.getElementById('live');
-SLIDES.forEach((sl,i)=>{
+function buildSlides(){ SLIDES.forEach((sl,i)=>{
   const a=new Image(); a.onerror=()=>{a.src=FALLBACK[i];}; a.src=sl.img; a.alt=''; cardPic.appendChild(a);
   const b=new Image(); b.onerror=()=>{b.src=FALLBACK[i];}; b.src=sl.img; b.alt=''; live.appendChild(b);
   const v=document.createElement('video'); v.src=sl.video; v.muted=true; v.loop=true; v.playsInline=true; v.preload='metadata'; v.onerror=()=>v.remove(); live.appendChild(v);
-});
+}); }
 let cur=-1, CYCLE=4500;   // must match the CSS animation length
 function showSlide(){
   cur=(cur+1)%SLIDES.length; const sl=SLIDES[cur];
-  document.getElementById('cardT').innerHTML=sl.title; document.getElementById('cardD').innerHTML=sl.sub;
+  document.getElementById('cardT').innerHTML=sl.img.startsWith('data/')?sl.title.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])):sl.title; document.getElementById('cardD').innerHTML=sl.img.startsWith('data/')?sl.sub.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])):sl.sub;
   [...cardPic.children].forEach((im,i)=>im.classList.toggle('on',i===cur));
   const imgs=live.querySelectorAll('img'), vids=live.querySelectorAll('video');
   imgs.forEach((im,i)=>im.classList.toggle('on',i===cur));
@@ -426,7 +426,8 @@ function showSlide(){
   const v=[...vids].find(x=>x.src.endsWith(sl.video.split('/').pop()));
   setTimeout(()=>{ if(v){ v.currentTime=0; v.play().then(()=>live.classList.add('playing')).catch(()=>{}); } }, CYCLE*0.45);
 }
-showSlide(); setInterval(showSlide,CYCLE*2);
+/* Real customer work marked "Show on homepage" in admin; demo/stock slides only if none are marked */
+fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r.items.length){ SLIDES.length=0; r.items.forEach(x=>SLIDES.push(x)); } }).catch(()=>{}).finally(()=>{ buildSlides(); showSlide(); setInterval(showSlide,CYCLE*2); });
 
 /* ---------- language ---------- */
 const D=window.SP_I18N, SUP=Object.keys(D), FONTS={te:'Noto+Sans+Telugu',ta:'Noto+Sans+Tamil',hi:'Noto+Sans+Devanagari',kn:'Noto+Sans+Kannada',ml:'Noto+Sans+Malayalam'};
