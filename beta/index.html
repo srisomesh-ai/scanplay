@@ -215,6 +215,13 @@ section{padding:96px 0}
 .p ul{list-style:none;display:grid;gap:8px;margin-bottom:22px}
 .p li{font-size:14.5px;color:var(--mute);font-weight:500}.p li::before{content:"✓ ";color:var(--b);font-weight:800}
 .p .btn{margin-top:auto;justify-content:center}
+.nearbar{display:flex;gap:10px;justify-content:center;align-items:stretch;flex-wrap:wrap;margin-bottom:10px}
+.nearq{display:flex;gap:6px;flex:1;min-width:260px;max-width:520px}
+.nearq input{flex:1;padding:12px 16px;border:2px solid var(--line);border-radius:14px;font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--ink);background:#fff;min-width:0}
+.nearq input:focus{outline:0;border-color:var(--b)}
+.nearq .btn{padding:12px 18px}
+.nearst{text-align:center;font-size:13px;color:var(--mute);min-height:18px;margin-bottom:12px}
+.nearst.err{color:#DC2626}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
 .faq{max-width:760px;margin:auto}
@@ -336,7 +343,11 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 
 <section id="retailers" style="padding-top:0"><div class="w">
   <div class="h r"><div class="k">Get started</div><h2>Buy tokens from a ScanPlay partner</h2><p>ScanPlay runs on tokens — <b>1 token = 1 photo + 1 video</b>. Tokens never expire. You buy them from an authorised retailer or distributor near you, then create as many AR prints as you have tokens.</p></div>
-  <div class="row" style="gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap"><button class="btn sm" onclick="nearMe()">📍 Find partners near me</button><span id="nearSt" style="font-size:13px;color:var(--mute)"></span></div>
+  <div class="nearbar">
+    <button class="btn g" onclick="nearMe()" id="nearBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-7.1 7-12a7 7 0 1 0-14 0c0 4.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Partners near me</button>
+    <div class="nearq"><input type="text" id="nearQ" placeholder="or type your area — e.g. Gajuwaka, Visakhapatnam" onkeydown="if(event.key==='Enter')nearArea()"><button class="btn w" onclick="nearArea()">Search</button></div>
+  </div>
+  <div id="nearSt" class="nearst"></div>
   <div id="retMap" style="height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px;display:none"></div>
   <div id="retList" class="pr" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="note">Loading partners…</div></div>
   <div class="note" id="retNote" style="margin-top:14px"></div>
@@ -437,8 +448,23 @@ function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t
     if(lat) L.circleMarker([lat,lng],{radius:7,color:'#7C3AED',fillColor:'#7C3AED',fillOpacity:.9}).bindPopup('You are here').addTo(RMAP);
     RMAP.fitBounds(g.getBounds().pad(0.3)); setTimeout(()=>RMAP.invalidateSize(),200);
   }).catch(()=>{ el.innerHTML=''; }); }
-function nearMe(){ const st=document.getElementById('nearSt'); if(!navigator.geolocation){ st.textContent='Location not available on this device'; return; } st.textContent='Finding you…';
-  navigator.geolocation.getCurrentPosition(p=>{ st.textContent='Sorted by distance from you'; loadPartners(p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5)); },()=>{ st.textContent='Could not get your location'; },{enableHighAccuracy:true,timeout:8000}); }
+function nearMe(){ const st=document.getElementById('nearSt'), b=document.getElementById('nearBtn'); st.className='nearst';
+  if(!navigator.geolocation){ st.textContent='This browser has no location support — type your area instead.'; return; }
+  if(location.protocol!=='https:'){ st.className='nearst err'; st.textContent='Location needs a secure (https) connection.'; return; }
+  st.textContent='Finding your location…'; b.disabled=true;
+  const ok=p=>{ b.disabled=false; st.textContent='Sorted by distance from you'; loadPartners(p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5)); };
+  const fail=e=>{ b.disabled=false; st.className='nearst err';
+    if(e&&e.code===1) st.textContent='Location is blocked for this site. Tap the lock icon in the address bar → Permissions → Location → Allow, then try again. Or type your area above.';
+    else if(e&&e.code===2) st.textContent='Your phone could not determine its position (GPS off?). Turn on Location, or type your area above.';
+    else st.textContent='Location took too long. Try again outdoors, or type your area above.'; };
+  /* fast, network-based fix first (works indoors); fall back to GPS-accurate if that fails */
+  navigator.geolocation.getCurrentPosition(ok, e=>{ if(e.code===1) return fail(e); navigator.geolocation.getCurrentPosition(ok, fail, {enableHighAccuracy:true,timeout:20000,maximumAge:0}); }, {enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+}
+async function nearArea(){ const q=document.getElementById('nearQ').value.trim(), st=document.getElementById('nearSt'); if(!q) return; st.className='nearst'; st.textContent='Searching…';
+  try{ const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q='+encodeURIComponent(q)).then(x=>x.json());
+    if(!r.length){ st.className='nearst err'; st.textContent='Place not found — try a bigger area or city name.'; return; }
+    st.textContent='Partners near '+r[0].display_name.split(',').slice(0,2).join(','); loadPartners((+r[0].lat).toFixed(5),(+r[0].lon).toFixed(5));
+  }catch(e){ st.className='nearst err'; st.textContent='Search failed — check your connection.'; } }
 loadPartners();
 /* ---------- language ---------- */
 const D=window.SP_I18N, SUP=Object.keys(D), FONTS={te:'Noto+Sans+Telugu',ta:'Noto+Sans+Tamil',hi:'Noto+Sans+Devanagari',kn:'Noto+Sans+Kannada',ml:'Noto+Sans+Malayalam'};
