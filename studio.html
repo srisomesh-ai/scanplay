@@ -81,17 +81,12 @@
   html,body{overscroll-behavior-y:none}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal{touch-action:none;overscroll-behavior:none}
-  #cropModal .box{max-width:560px;text-align:left;max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
-  #cropWrap{height:52vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none;padding:20px;box-sizing:border-box} #cropWrap > img{max-width:100%;display:block}
-  .cropper-point{width:30px!important;height:30px!important;opacity:1!important;background:#fff!important;border:4px solid #7C3AED;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)}
-  .cropper-point.point-ne{top:-15px!important;right:-15px!important} .cropper-point.point-nw{top:-15px!important;left:-15px!important}
-  .cropper-point.point-se{bottom:-15px!important;right:-15px!important} .cropper-point.point-sw{bottom:-15px!important;left:-15px!important}
-  .cropper-point.point-n,.cropper-point.point-s,.cropper-point.point-e,.cropper-point.point-w{display:none!important}
-  .cropper-line{background:transparent!important}
-  .cropper-line.line-e,.cropper-line.line-w{width:36px!important} .cropper-line.line-e{right:-18px!important} .cropper-line.line-w{left:-18px!important}
-  .cropper-line.line-n,.cropper-line.line-s{height:36px!important} .cropper-line.line-n{top:-18px!important} .cropper-line.line-s{bottom:-18px!important}
-  .cropper-view-box{outline:3px solid #7C3AED!important} .cropper-modal{opacity:.6!important}
-  .cropper-face{cursor:move} .cropper-point,.cropper-line{touch-action:none;z-index:5}
+  #cropModal .box{max-width:560px;text-align:left}
+  #cropWrap{height:60vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none} #cropWrap > img{max-width:100%;display:block}
+  .cropper-point{width:14px!important;height:14px!important;opacity:.9!important}
+  .cropper-point.point-n,.cropper-point.point-s{margin-left:-7px!important} .cropper-point.point-e,.cropper-point.point-w{margin-top:-7px!important}
+  .cropper-line{background:#7C3AED!important} .cropper-point{background:#7C3AED!important}
+  .cropper-view-box{outline:2px solid #7C3AED!important}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
   .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:600 12px 'Plus Jakarta Sans';cursor:pointer}
   .chip.on{background:var(--grad);color:#fff;border-color:transparent}
@@ -317,7 +312,6 @@
     </div>
     <div class="row" style="justify-content:flex-end">
       <button class="btn ghost" onclick="rotateCrop()">Rotate</button>
-      <button class="btn ghost" onclick="resetCrop()">Reset</button>
       <button class="btn ghost" onclick="cancelCrop()">Cancel</button>
       <button class="btn" onclick="applyCrop()">Use crop</button>
     </div>
@@ -594,7 +588,7 @@ function bindPickers(){
     const f=e.target.files[0]; if(!f) return;
     const im=$('#cropImg'); if(cropper){cropper.destroy();cropper=null;}
     im.src=URL.createObjectURL(f); lockPage(true); $('#cropModal').classList.add('open');
-    im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'none',autoCropArea:1,background:false,responsive:true,zoomable:false,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
+    im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'move',autoCropArea:0.9,background:false,responsive:true,zoomable:true,zoomOnWheel:true,zoomOnTouch:true,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
     document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.r==='0'));
   };
   $('#vidFile').onchange=e=>{
@@ -632,10 +626,9 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
   document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on');
   const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
 function rotateCrop(){ cropper&&cropper.rotate(90); }
-function resetCrop(){ if(!cropper) return; cropper.reset(); const d=cropper.getCanvasData(); cropper.setCropBoxData({left:d.left,top:d.top,width:d.width,height:d.height}); }
 let _scrollY=0;
 function lockPage(on){ if(on){ _scrollY=window.scrollY; document.body.classList.add('noscroll'); document.body.style.top=(-_scrollY)+'px'; } else { document.body.classList.remove('noscroll'); document.body.style.top=''; window.scrollTo(0,_scrollY); } }
-document.getElementById('cropModal').addEventListener('touchmove',e=>{ if(!e.target.closest('.box')) e.preventDefault(); },{passive:false});
+document.getElementById('cropModal').addEventListener('touchmove',e=>{ if(!e.target.closest('#cropWrap')) e.preventDefault(); },{passive:false});
 function cancelCrop(){ $('#cropModal').classList.remove('open'); lockPage(false); $('#imgFile').value=''; }
 function photoTips(e){ e.preventDefault();
   confirmDlg('Which photo works best?','Upload the original flat design — the exact artwork you will print. Avoid: a framed picture shot at an angle, a hand holding the photo, glare or shadows, or a small piece of a poster. Scanning matches the print to this upload — they must look identical.','Got it');
