@@ -81,7 +81,25 @@
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior:none}
   .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
-  .krow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee} .krow.sub{background:#FAFAFF;border-bottom:1px dashed #e5e5f0;padding-top:8px;padding-bottom:8px} .pcard{background:#F6F4FF;border-radius:12px;padding:12px 14px;margin:6px 0 10px} #ptBody h4{margin:16px 0 6px;font-size:14px} #ptBody .tag{font-size:10px;background:#EEE9FF;color:var(--b);border-radius:6px;padding:2px 6px;font-weight:700;text-transform:uppercase}
+  .pp-wallet{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#F3EEFF,#FFF0F3);border-radius:14px;padding:14px 16px;margin-top:8px}
+  .pp-big{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .pp-sec{margin-top:18px;padding-top:14px;border-top:1px solid #EEECF5}
+  .pp-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .pp-count{background:#EEE9FF;color:var(--b);border-radius:999px;padding:1px 8px;font-size:11px}
+  .pp-link{display:flex;gap:6px} .pp-link input{flex:1;min-width:0;margin:0;font-size:13px}
+  .pp-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:8px}
+  .pp-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #F1EFF7;background:#fff} .pp-row:last-child{border-bottom:0}
+  .pp-row[style*="padding-left:28px"],.pp-row[style*="padding-left:44px"]{background:#FAFAFE}
+  .pp-who b{font-size:14px} .pp-who .tiny{margin-top:1px}
+  .pp-role{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--b);background:#EEE9FF;border-radius:6px;padding:2px 6px;vertical-align:middle}
+  .pp-tok{text-align:center;line-height:1} .pp-tok b{font-size:16px;display:block} .pp-tok span{font-size:10px;color:var(--mute)}
+  .pp-give{display:flex;gap:4px;align-items:center;min-width:104px;justify-content:flex-end} .pp-give input{width:52px;margin:0;padding:7px 8px;border:1px solid var(--line);border-radius:8px;font:600 13px 'Plus Jakarta Sans';text-align:center}
+  .pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px} @media(max-width:420px){.pp-grid{grid-template-columns:1fr}}
+  #ptBody textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:500 14px 'Plus Jakarta Sans';background:#fff;resize:vertical;box-sizing:border-box}
+  #ptBody input[type=number]{-moz-appearance:textfield} #ptBody input::-webkit-outer-spin-button,#ptBody input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .pp-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:12px;cursor:pointer}
+  .pp-h{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1EFF7;font-size:13px} .pp-h span:first-child{color:var(--mute);width:52px;flex:none} .pp-h span:nth-child(2){flex:1} .pp-h b.in{color:#059669}
+  #ptBody label.field{margin:12px 0 5px}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
@@ -419,42 +437,57 @@ function openBuy(){ const p=USER.parent, who=p.business||p.name;
 /* partner panel */
 async function openPartner(){
   const r=await post({action:'partner_children'}); if(!r.ok){ toast(r.error); return; } USER=r.user;
-  const kids=r.children, u=USER;
-  const roleTag=r=>`<span class="tag">${r}</span>`;
-  const subRows=(list,lvl)=>list.map(c=>`<div class="krow sub" style="padding-left:${lvl*18}px"><div><span style="color:var(--mute)">↳</span> <b>${esc(c.business||c.name)}</b> ${roleTag(c.role)}<br><span class="tiny">${esc(c.email)}${c.phone?' · '+esc(c.phone):''}${c.address?' · '+esc(c.address):''} · ${c.tokens} left · ${c.tokens_used} used</span></div><div class="tiny" style="color:var(--mute);white-space:nowrap">via ${esc(c._via)}</div></div>${subRows(c.subs.map(x=>({...x,_via:c.business||c.name})),lvl+1)}`).join('');
-  const rows=kids.length?kids.map(k=>`<div class="krow"><div><b>${esc(k.business||k.name)}</b> ${roleTag(k.role)}<br><span class="tiny">${esc(k.email)}${k.phone?' · '+esc(k.phone):''}${k.address?' · '+esc(k.address):''} · ${k.tokens} left · ${k.tokens_used} used${k.subCount?' · '+k.subCount+' under them':''}</span></div>
-      <div class="row" style="gap:6px"><input type="number" min="1" placeholder="qty" id="q${k.id}" style="width:64px;margin:0"><button class="btn sm" onclick="giveTokens(${k.id})">Give</button></div></div>${subRows(k.subs.map(x=>({...x,_via:k.business||k.name})),1)}`).join('')
-    : '<p class="tiny" style="color:var(--mute)">No accounts under you yet. Share your invite link, or link an existing account by email.</p>';
-  const led=r.ledger.slice(0,20).map(l=>`<div class="tiny" style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN')} · ${l.kind==='spent'?'used on a photo':l.kind==='grant'?'from ScanPlay':l.kind==='remove'?'removed by ScanPlay':(l.from_id==u.id?'to '+esc(l.tname||'?'):'from '+esc(l.fname||'?'))}${l.note?' · '+esc(l.note):''}</span><b>${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<p class="tiny" style="color:var(--mute)">No token movements yet.</p>';
+  const kids=r.children, u=USER, isP=['distributor','promoter'].includes(u.role), joinAs=u.role==='distributor'?'promoter':'user';
+  const person=(c,lvl)=>`<div class="pp-row" style="padding-left:${12+lvl*16}px">
+      <div class="pp-who"><b>${esc(c.business||c.name)}</b><span class="pp-role">${c.role}</span><div class="tiny">${esc(c.email)}${c.phone?' · '+esc(c.phone):''}</div></div>
+      <div class="pp-tok"><b>${c.tokens}</b><span>left</span></div>
+      ${lvl===0?`<div class="pp-give"><input type="number" min="1" placeholder="0" id="q${c.id}"><button class="btn sm" onclick="giveTokens(${c.id})">Give</button></div>`:'<div class="pp-give"></div>'}
+    </div>`+ (c.subs||[]).map(x=>person(x,lvl+1)).join('');
+  const hist=r.ledger.slice(0,15).map(l=>`<div class="pp-h"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span><span>${l.kind==='spent'?'Used on a photo':l.kind==='grant'?'From ScanPlay':l.kind==='remove'?'Removed by ScanPlay':(l.from_id==u.id?'To '+esc(l.tname||'—'):'From '+esc(l.fname||'—'))}</span><b class="${l.to_id==u.id?'in':''}">${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<div class="tiny" style="padding:8px 0">Nothing yet</div>';
   $('#ptBody').innerHTML=`
-    <div class="pcard"><b>${u.tokens} tokens</b> in your wallet · ${u.tokensUsed} used<br><span class="tiny">Give tokens to the accounts under you. Tokens only move down; only ScanPlay can remove them.</span></div>
-    <h4>Your invite link</h4>
-    <div class="row" style="gap:6px"><input type="text" readonly value="${u.inviteLink}" id="invLink" style="margin:0;font-size:12px"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Copied'))">Copy</button><button class="btn sm ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">WhatsApp</button></div>
-    <p class="tiny" style="color:var(--mute)">Anyone who signs up through this link is placed under you as a ${u.role==='distributor'?'promoter':'user'}.</p>
-    <h4>Accounts under you (${kids.length} direct · ${countAll(kids)} total)</h4><p class="tiny" style="color:var(--mute);margin:0 0 6px">You give tokens to your direct accounts; they pass them on to theirs. Everyone below you is shown so you can see the full chain.</p>${rows}
-    <div class="row" style="gap:6px;margin-top:8px"><input type="text" id="linkEmail" placeholder="Link an existing account by email" style="margin:0"><button class="btn sm ghost" onclick="linkAcc()">Link</button></div>
-    <h4>Your details <span class="tiny" style="font-weight:400;color:var(--mute)">— what your accounts see under "Buy tokens"</span></h4>
-    <label class="field">Business name</label><input type="text" id="pBiz" value="${esc(u.business||'')}">
-    <label class="field">WhatsApp number</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX">
-    <label class="field">Payment details (UPI ID, bank, price per token…)</label><textarea id="pPay" rows="3">${esc(u.pay_details||'')}</textarea>
-    <label class="field">Area / city you serve</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="e.g. Visakhapatnam">
-    ${['distributor','promoter'].includes(u.role)?`<label class="field">Business location on the map</label>
-    <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()">📍</button></div>
-    <div id="pLocMap" style="height:180px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="color:var(--mute);margin-top:6px">${u.lat?esc(u.address||'Pinned'):'No location set'}</div>
-    <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">`:`<input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">`}
-    ${['distributor','promoter'].includes(u.role)?`<label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show my business in "Partners near me" on the website</label>`:'<input type="checkbox" id="pListed" style="display:none">'}
-    <button class="btn" style="width:100%" onclick="savePartner()">Save details</button>
-    <h4>Recent token movements</h4>${led}`;
+    <div class="pp-wallet"><div><div class="pp-big">${u.tokens}</div><div class="tiny">tokens available · ${u.tokensUsed} used</div></div><button class="btn sm ghost" onclick="openBuy()">Buy more</button></div>
+
+    <div class="pp-sec"><div class="pp-title">Invite</div>
+      <div class="pp-link"><input type="text" readonly value="${u.inviteLink}" id="invLink"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Link copied'))">Copy</button><button class="btn sm" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">Share</button></div>
+      <div class="tiny">New sign-ups through this link join under you as a ${joinAs}.</div>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">Your accounts <span class="pp-count">${countAll(kids)}</span></div>
+      ${kids.length?`<div class="pp-list">${kids.map(k=>person(k,0)).join('')}</div>`:'<div class="tiny" style="padding:6px 0 10px">No one yet — share your invite link.</div>'}
+      <div class="pp-link"><input type="text" id="linkEmail" placeholder="Add an existing account by email"><button class="btn sm ghost" onclick="linkAcc()">Add</button></div>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">Your details</div>
+      <div class="pp-grid">
+        <div><label class="field">Business name</label><input type="text" id="pBiz" value="${esc(u.business||'')}"></div>
+        <div><label class="field">WhatsApp</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX"></div>
+      </div>
+      <label class="field">How to pay you <span style="font-weight:400">(UPI, bank, price per token)</span></label><textarea id="pPay" rows="2">${esc(u.pay_details||'')}</textarea>
+      ${isP?`<div class="pp-grid"><div><label class="field">City / area</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="Visakhapatnam"></div></div>
+      <label class="field">Location on map</label>
+      <div class="pp-link" style="margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn sm ghost" onclick="geoSearch()">Search</button><button type="button" class="btn sm ghost" onclick="geoMe()">📍</button></div>
+      <div id="pLocMap" style="height:170px;border-radius:12px;overflow:hidden;border:1px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="margin-top:6px">${u.lat?esc(u.address||'Pinned'):'Not set'}</div>
+      <label class="pp-check"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show me in "Partners near me"</label>`
+      :`<input type="hidden" id="pArea" value="${esc(u.area||'')}"><input type="checkbox" id="pListed" style="display:none">`}
+      <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">
+      <button class="btn" style="width:100%;margin-top:12px" onclick="savePartner()">Save</button>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">History</div>${hist}</div>`;
   $('#ptModal').classList.add('open'); if($('#pLocMap')) setTimeout(()=>initLocMap('p','pLocMap'),80);
 }
-function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
 async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
-  const k=[...document.querySelectorAll('.krow')].find(r=>r.querySelector('#q'+id)); const who=k?k.querySelector('b').textContent:'this account';
-  if(!await confirmDlg('Give tokens?',`Send ${q} token${q>1?'s':''} to ${who}? You will have ${USER.tokens-q} left. Tokens cannot be taken back.`,`Give ${q}`)) return;
-  const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Sent ${q} token${q>1?'s':''}`); openPartner(); }
-async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Linked'); openPartner(); }
+  const k=[...document.querySelectorAll('.pp-row')].find(r=>r.querySelector('#q'+id)); const who=k?k.querySelector('b').textContent:'this account';
+  if(!await confirmDlg('Give tokens?',`Give ${q} token${q>1?'s':''} to ${who}? You will have ${USER.tokens-q} left. This cannot be undone.`,`Give ${q}`)) return;
+  const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Gave ${q} token${q>1?'s':''} to ${who}`); openPartner(); }
+async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Added'); openPartner(); }
 async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0,lat:$('#pLat').value,lng:$('#pLng').value,address:$('#pAddr').value}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
+function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
+
+
+
+
 function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';
   $('#logoLock').textContent=''; $('#sLogoFile').disabled=false;
   $('#sLogo').style.display=USER.logo?'':'none'; $('#sLogoDel').style.display=USER.logo?'':'none'; if(USER.logo) $('#sLogo').src=USER.logo;
