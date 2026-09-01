@@ -14,7 +14,11 @@ if (!file_exists($ff)) {
 }
 echo "ffmpeg present: ".(file_exists($ff)?'yes':'no')." · executable: ".(is_executable($ff)?'yes':'no')."\n";
 echo shell_exec(escapeshellarg($ff)." -version 2>&1 | head -1");
-$t = "$bin/test.mp4"; @unlink($t);
-$o = shell_exec(escapeshellarg($ff)." -y -f lavfi -i testsrc=size=1280x720:rate=25 -t 1 -c:v libx264 -preset veryfast -pix_fmt yuv420p ".escapeshellarg($t)." 2>&1 | tail -3");
-echo "\ntest encode: ".(file_exists($t)&&filesize($t)>1000 ? "OK (".filesize($t)." bytes)" : "FAILED\n$o")."\n"; @unlink($t);
+$t = "$bin/test.mp4"; @unlink($t); $src = __DIR__.'/assets/sample-test.mp4';
+echo "\nTest 1 — transcode a real file to 720p, single thread:\n";
+$cmd = escapeshellarg($ff)." -y -nostdin -threads 1 -i ".escapeshellarg($src)." -vf \"scale='min(1280,iw)':-2\" -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ".escapeshellarg($t)." 2>&1";
+$o = shell_exec($cmd); echo (file_exists($t)&&filesize($t)>1000 ? "OK (".filesize($t)." bytes)" : "FAILED"), "\n"; echo "--- ffmpeg said:\n".$o."\n";
+if (!file_exists($t)||filesize($t)<1000) { echo "\nTest 2 — copy without re-encoding (checks file I/O only):\n"; $o=shell_exec(escapeshellarg($ff)." -y -nostdin -i ".escapeshellarg($src)." -c copy ".escapeshellarg($t)." 2>&1"); echo (file_exists($t)&&filesize($t)>1000?"OK":"FAILED"),"\n$o\n";
+  echo "\nTest 3 — limits:\n"; echo shell_exec("ulimit -a 2>&1"); }
+@unlink($t);
 echo "\nIf you see 'test encode: OK', compression is ready. Delete ffsetup.php now.\n";
