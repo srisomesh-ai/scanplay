@@ -47,6 +47,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMEN
 foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT','referral_code TEXT','referrer_id INTEGER','ref_awarded INTEGER DEFAULT 0'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
 
@@ -194,7 +195,7 @@ function pubAccount($a) {
   foreach ($items as &$it) $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg";
   $scans = (int)(row("SELECT SUM(n) s FROM scans WHERE code=?", [$a['code']])['s'] ?? 0);
   $scans30 = (int)(row("SELECT SUM(n) s FROM scans WHERE code=? AND day>=?", [$a['code'], date('Y-m-d', now()-30*86400)])['s'] ?? 0);
-  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
+  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'showcase'=>(int)($a['showcase']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
 }
 
 $action = $_REQUEST['action'] ?? '';
@@ -427,6 +428,16 @@ switch ($action) {
     }
     out(true, ['projects'=>$list, 'count'=>count($list)]);
   }
+  /* homepage showcase: only projects an admin has explicitly marked, owner plan still active, uploaded (non-YouTube) videos only */
+  case 'showcase': {
+    $cut = now() - GRACE_DAYS*86400;
+    $rows = rows("SELECT a.code, a.name, i.id iid, i.title, i.ratio FROM accounts a JOIN users u ON u.id=a.user_id JOIN items i ON i.code=a.code
+                  WHERE a.showcase=1 AND a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND (i.yt IS NULL OR i.yt='') ORDER BY RANDOM() LIMIT 6", [$cut]);
+    $list = [];
+    foreach ($rows as $r) { $d = DATA_DIR."/{$r['code']}/{$r['iid']}"; if (!file_exists("$d/target.jpg") || !file_exists("$d/video.mp4")) continue;
+      $list[] = ['img'=>"data/{$r['code']}/{$r['iid']}/target.jpg", 'video'=>"data/{$r['code']}/{$r['iid']}/video.mp4", 'title'=>$r['name'], 'sub'=>$r['title']]; }
+    header('Cache-Control: no-store'); out(true, ['items'=>$list]);
+  }
   case 'scan_hit': { $code = clean($_POST['c'] ?? ''); if ($code) q("INSERT INTO scans (code,day,n) VALUES (?,?,1) ON CONFLICT(code,day) DO UPDATE SET n=n+1", [$code, date('Y-m-d')]); out(true); }
 
   /* ---------- public player ---------- */
@@ -554,6 +565,7 @@ switch ($action) {
     if (!row("SELECT id FROM items WHERE code=?", [$code])) @unlink(DATA_DIR."/$code/targets.mind");
     out(true, ['note'=>'Removed. The owner must open the studio once so remaining photos are recompiled.']);
   }
+  case 'admin_showcase': { ownerAuth(); $code=clean($_POST['code']??''); q("UPDATE accounts SET showcase=? WHERE code=?", [(int)!!($_POST['showcase']??0), $code]); out(true); }
   case 'admin_block': { ownerAuth(); logAct(0,'admin_block',json_encode($_POST),'admin'); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
   case 'admin_account_delete': {
     ownerAuth(); logAct(0,'admin_account_delete',json_encode($_POST),'admin'); $code=clean($_POST['code']??'');
