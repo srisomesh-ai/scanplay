@@ -80,6 +80,7 @@
   .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior:none}
+  .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
   .krow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee} .pcard{background:#F6F4FF;border-radius:12px;padding:12px 14px;margin:6px 0 10px} #ptBody h4{margin:16px 0 6px;font-size:14px} #ptBody .tag{font-size:10px;background:#EEE9FF;color:var(--b);border-radius:6px;padding:2px 6px;font-weight:700;text-transform:uppercase}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
@@ -339,13 +340,14 @@ async function doAuth(){
 }
 /* ---- location picker (OpenStreetMap, no API key) ---- */
 let LMAP=null, LMARK=null, LPREFIX='a';
-if(window.L){ L.Icon.Default.mergeOptions({iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'}); }
+function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
+if(window.L){ }
 function setLoc(lat,lng,addr){ $('#'+LPREFIX+'Lat').value=lat.toFixed(6); $('#'+LPREFIX+'Lng').value=lng.toFixed(6); if(addr!==undefined) $('#'+LPREFIX+'Addr').value=addr; const t=$('#'+(LPREFIX==='a'?'locTxt':'pLocTxt')); if(t) t.textContent=($('#'+LPREFIX+'Addr').value||'Pinned')+' · '+lat.toFixed(4)+', '+lng.toFixed(4); }
 function initLocMap(prefix='a', elId='locMap'){ LPREFIX=prefix; const el=$('#'+elId); if(!el||!window.L) return; if(LMAP){ LMAP.remove(); LMAP=null; }
   const lat=+$('#'+prefix+'Lat').value||17.6868, lng=+$('#'+prefix+'Lng').value||83.2185, has=!!$('#'+prefix+'Lat').value;
   LMAP=L.map(el,{zoomControl:true,attributionControl:false}).setView([lat,lng],has?15:11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(LMAP);
-  LMARK=L.marker([lat,lng],{draggable:true}).addTo(LMAP); if(has) setLoc(lat,lng);
+  LMARK=L.marker([lat,lng],{draggable:true,icon:spIcon()}).addTo(LMAP); if(has) setLoc(lat,lng);
   LMARK.on('dragend',()=>{ const p=LMARK.getLatLng(); setLoc(p.lat,p.lng); revGeo(p.lat,p.lng); });
   LMAP.on('click',e=>{ LMARK.setLatLng(e.latlng); setLoc(e.latlng.lat,e.latlng.lng); revGeo(e.latlng.lat,e.latlng.lng); });
   setTimeout(()=>LMAP.invalidateSize(),200); }

@@ -222,6 +222,7 @@ section{padding:96px 0}
 .nearq .btn{padding:12px 18px}
 .nearst{text-align:center;font-size:13px;color:var(--mute);min-height:18px;margin-bottom:12px}
 .nearst.err{color:#DC2626}
+.spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
 .faq{max-width:760px;margin:auto}
@@ -433,6 +434,7 @@ fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r
 
 /* ---------- partners ---------- */
 let RMAP=null;
+function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
 function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
     const L_=(r.ok&&r.retailers)||[]; const wa=r.admin&&r.admin.whatsapp;
@@ -443,8 +445,7 @@ function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t
     const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
-    L.Icon.Default.mergeOptions({iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'});
-    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng]).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
+    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
     if(lat) L.circleMarker([lat,lng],{radius:7,color:'#7C3AED',fillColor:'#7C3AED',fillOpacity:.9}).bindPopup('You are here').addTo(RMAP);
     RMAP.fitBounds(g.getBounds().pad(0.3)); setTimeout(()=>RMAP.invalidateSize(),200);
   }).catch(()=>{ el.innerHTML=''; }); }
