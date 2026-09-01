@@ -57,7 +57,7 @@ function childRole($parentRole) { return $parentRole==='distributor' ? 'retailer
 function partnerCode($u) { if (empty($u['partner_code'])) { $c = strtoupper(substr(bin2hex(random_bytes(4)),0,6)); q("UPDATE users SET partner_code=? WHERE id=?", [$c, $u['id']]); $u['partner_code']=$c; } return $u['partner_code']; }
 function linkParent($childId, $parentCode) {
   $p = row("SELECT * FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($parentCode)]); if (!$p || (int)$p['id']===(int)$childId) return;
-  q("UPDATE users SET parent_id=?, role=? WHERE id=? AND parent_id IS NULL", [$p['id'], childRole($p['role']), $childId]);
+  $cr = childRole($p['role']); q("UPDATE users SET parent_id=?, role=?, listed=? WHERE id=? AND parent_id IS NULL", [$p['id'], $cr, $cr==='user'?0:1, $childId]);
 }
 function saveLocation($id) {
   $lat=(float)($_POST['lat']??0); $lng=(float)($_POST['lng']??0); if (!$lat || !$lng || abs($lat)>90 || abs($lng)>180) return;
@@ -578,7 +578,7 @@ switch ($action) {
     $c = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]); if (!$c) out(false, ['error'=>'No account with that email. Ask them to sign up with your invite link.']);
     if ((int)$c['id']===(int)$u['id']) out(false, ['error'=>'That is you']);
     if (!empty($c['parent_id'])) out(false, ['error'=>'That account is already linked to another partner']);
-    q("UPDATE users SET parent_id=?, role=? WHERE id=?", [$u['id'], childRole($u['role']), $c['id']]); logAct($u['id'],'partner_link',$email); out(true);
+    $cr = childRole($u['role']); q("UPDATE users SET parent_id=?, role=?, listed=? WHERE id=?", [$u['id'], $cr, $cr==='user'?0:1, $c['id']]); logAct($u['id'],'partner_link',$email); out(true);
   }
   case 'partner_profile': {   // what my child accounts see when they need to buy tokens
     $u = auth();
@@ -604,7 +604,7 @@ switch ($action) {
   }
   case 'admin_role': {
     ownerAuth(); $id=(int)($_POST['id']??0); $role=$_POST['role']??''; if (!in_array($role, ROLES)) out(false, ['error'=>'Bad role']);
-    q("UPDATE users SET role=? WHERE id=?", [$role, $id]);
+    q("UPDATE users SET role=?, listed=CASE WHEN ?='user' THEN 0 ELSE 1 END WHERE id=?", [$role, $role, $id]);   // partners are listed on the website by default
     if (isset($_POST['parent_email'])) { $pe=strtolower(trim($_POST['parent_email'])); if ($pe==='') q("UPDATE users SET parent_id=NULL WHERE id=?", [$id]); else { $p=row("SELECT id FROM users WHERE email=? AND deleted=0",[$pe]); if(!$p) out(false,['error'=>'No account with that parent email']); if((int)$p['id']===$id) out(false,['error'=>'Cannot be its own parent']); q("UPDATE users SET parent_id=? WHERE id=?", [$p['id'],$id]); } }
     logAct($id,'admin_role',$role,'admin'); out(true);
   }

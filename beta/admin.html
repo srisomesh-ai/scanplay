@@ -274,7 +274,7 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
     </div>
     <div class="card" style="margin:0">
       <h3 style="margin:0 0 6px">Role &amp; parent</h3>
-      <div class="st" style="margin-bottom:10px">Parent: ${r.parent?`<b>${r.parent.name}</b> (${r.parent.role}) · ${r.parent.email}`:'<b>ScanPlay (direct)</b>'}${u.business?' · Business: '+u.business:''}${u.area?' · '+u.area:''}${u.listed?' · <span class="tag a">listed</span>':''}</div>
+      <div class="st" style="margin-bottom:10px">Parent: ${r.parent?`<b>${r.parent.name}</b> (${r.parent.role}) · ${r.parent.email}`:'<b>ScanPlay (direct)</b>'}${u.business?' · Business: '+u.business:''}${u.area?' · '+u.area:''}${u.listed?' · <span class="tag a">on website</span>':' · not on website'}${u.lat?' · 📍 '+(u.address||u.lat+','+u.lng):' · <span class="tag x">no map pin</span>'}</div>
       <div class="row" style="gap:6px;flex-wrap:wrap"><select id="rl"><option value="distributor" ${u.role==='distributor'?'selected':''}>Distributor</option><option value="retailer" ${u.role==='retailer'?'selected':''}>Retailer</option><option value="user" ${(u.role||'user')==='user'?'selected':''}>User</option></select><input id="pe" placeholder="parent email (blank = direct under ScanPlay)" value="${r.parent?r.parent.email:''}" style="flex:1;min-width:160px"><button class="btn s" onclick="act('admin_role',{id:${id},role:$('#rl').value,parent_email:$('#pe').value})">Save</button></div>
       <div class="row" style="gap:6px;margin-top:8px"><input id="nt" value="${(u.note||'').replace(/"/g,'&quot;')}" style="flex:1" placeholder="Admin note"><button class="btn g s" onclick="act('admin_credit',{id:${id},note:$('#nt').value})">Save note</button></div>
     </div>

@@ -428,7 +428,7 @@ async function openPartner(){
     <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()">📍</button></div>
     <div id="pLocMap" style="height:180px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="color:var(--mute);margin-top:6px">${u.lat?esc(u.address||'Pinned'):'No location set'}</div>
     <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">
-    <label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> List me on scanplay.in "Find a retailer"</label>
+    <label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show my business in "Partners near me" on the website</label>
     <button class="btn" style="width:100%" onclick="savePartner()">Save details</button>
     <h4>Recent token movements</h4>${led}`;
   $('#ptModal').classList.add('open'); setTimeout(()=>initLocMap('p','pLocMap'),80);
