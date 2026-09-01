@@ -49,11 +49,12 @@ $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
 /* ---------- TOKEN MODEL (beta) ----------
    1 token = 1 photo + 1 video. Spent when a photo is added; never refunded, never expires.
    Roles form a tree: admin -> distributor -> retailer -> user. Tokens only move DOWN the tree; only admin can remove them. */
-const ROLES = ['distributor','retailer','user'];
+const ROLES = ['distributor','promoter','user'];
+q("UPDATE users SET role='promoter' WHERE role='retailer'");   // rename migration
 function setting($k, $d='') { $r = row("SELECT v FROM settings WHERE k=?", [$k]); return $r ? $r['v'] : $d; }
 function adminContact() { return ['name'=>setting('admin_name','ScanPlay'), 'business'=>setting('admin_business','ScanPlay LLP'), 'phone'=>setting('admin_phone',''), 'whatsapp'=>setting('admin_whatsapp',''), 'email'=>setting('admin_email','info@scanplay.in'), 'pay_details'=>setting('admin_pay','')]; }
 function contactOf($u) { if (!$u) return null; return ['id'=>(int)$u['id'], 'name'=>$u['name'], 'business'=>$u['business'] ?: $u['name'], 'phone'=>$u['phone'], 'whatsapp'=>$u['whatsapp'] ?: $u['phone'], 'email'=>$u['email'], 'pay_details'=>$u['pay_details'], 'role'=>$u['role'] ?: 'user']; }
-function childRole($parentRole) { return $parentRole==='distributor' ? 'retailer' : 'user'; }
+function childRole($parentRole) { return $parentRole==='distributor' ? 'promoter' : 'user'; }
 function partnerCode($u) { if (empty($u['partner_code'])) { $c = strtoupper(substr(bin2hex(random_bytes(4)),0,6)); q("UPDATE users SET partner_code=? WHERE id=?", [$c, $u['id']]); $u['partner_code']=$c; } return $u['partner_code']; }
 function linkParent($childId, $parentCode) {
   $p = row("SELECT * FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($parentCode)]); if (!$p || (int)$p['id']===(int)$childId) return;
@@ -186,7 +187,7 @@ function userInfo($u) {
   $children = (int)row("SELECT COUNT(*) c FROM users WHERE parent_id=? AND deleted=0", [$u['id']])['c'];
   return ['id'=>(int)$u['id'],'email'=>$u['email'],'name'=>$u['name'],'phone'=>$u['phone'],'plan'=>'tokens','planName'=>'Tokens',
     'planUntil'=>0,'state'=>'active','limits'=>$p,'used'=>['photos'=>$photos,'accounts'=>$accs],
-    'tokens'=>(int)($u['tokens']??0),'tokensUsed'=>(int)($u['tokens_used']??0),'role'=>$u['role'] ?: 'user','isPartner'=>in_array($u['role'],['distributor','retailer']) || $children>0,
+    'tokens'=>(int)($u['tokens']??0),'tokensUsed'=>(int)($u['tokens_used']??0),'role'=>$u['role'] ?: 'user','isPartner'=>in_array($u['role'],['distributor','promoter']) || $children>0,
     'partnerCode'=>partnerCode($u),'inviteLink'=>baseUrl().'/studio.html?partner='.$u['partner_code'],
     'parent'=>$parent ? contactOf($parent) : adminContact(), 'hasParent'=>(bool)$parent, 'children'=>$children,
     'business'=>$u['business'],'lat'=>$u['lat'],'lng'=>$u['lng'],'address'=>$u['address'],'whatsapp'=>$u['whatsapp'],'pay_details'=>$u['pay_details'],'area'=>$u['area'],'listed'=>(int)($u['listed']??0),
@@ -232,12 +233,15 @@ switch ($action) {
   /* ---------- auth ---------- */
   case 'config': out(true, ['google'=> GOOGLE_CLIENT_ID !== 'CHANGE_ME.apps.googleusercontent.com' ? GOOGLE_CLIENT_ID : null, 'mail'=>mailConfigured()]);
 
+  case 'invite_info': { $pc=clean($_GET['code']??''); $p=$pc!==''?row("SELECT name,business,role FROM users WHERE upper(partner_code)=? AND deleted=0",[strtoupper($pc)]):null;
+    if (!$p) out(false, ['error'=>'Invalid invite link']); out(true, ['from'=>$p['business']?:$p['name'], 'fromRole'=>$p['role'], 'youBecome'=>childRole($p['role'])]); }
   case 'signup': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? ''; $name = trim(strip_tags($_POST['name'] ?? '')); $phone = preg_replace('/\D/','',$_POST['phone'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
     if ($name === '') out(false, ['error'=>'Enter your name']);
-    if (empty($_POST['lat']) || empty($_POST['lng'])) out(false, ['error'=>'Please set your business location on the map']);
+    $pc = clean($_POST['partner'] ?? ''); $pp = $pc!=='' ? row("SELECT role FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($pc)]) : null;
+    if ($pp && $pp['role']==='distributor' && (empty($_POST['lat']) || empty($_POST['lng']))) out(false, ['error'=>'Please set your business location on the map']);
     $ex = row("SELECT * FROM users WHERE email=?", [$email]);
     if ($ex && $ex['verified']) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
@@ -585,13 +589,14 @@ switch ($action) {
   }
   case 'partner_profile': {   // what my child accounts see when they need to buy tokens
     $u = auth();
+    if (in_array($u['role'],['distributor','promoter']) && !empty($_POST['listed']) && (empty($_POST['lat']) || empty($_POST['lng']))) out(false, ['error'=>'Set your business location on the map to be shown in "Partners near me"']);
     q("UPDATE users SET business=?, whatsapp=?, pay_details=?, area=?, listed=? WHERE id=?",
       [trim(strip_tags($_POST['business']??'')), preg_replace('/\D/','',$_POST['whatsapp']??''), trim(strip_tags($_POST['pay_details']??'')), trim(strip_tags($_POST['area']??'')), (int)!!($_POST['listed']??0), $u['id']]);
     saveLocation($u['id']);
     out(true, ['user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'retailers': {   // public: partners who chose to be listed on the website
-    $list = rows("SELECT name,business,area,whatsapp,phone,role,lat,lng,address FROM users WHERE listed=1 AND role IN ('retailer','distributor') AND deleted=0 ORDER BY area, business");
+    $list = rows("SELECT name,business,area,whatsapp,phone,role,lat,lng,address FROM users WHERE listed=1 AND role IN ('promoter','distributor') AND deleted=0 ORDER BY area, business");
     $lat=(float)($_REQUEST['lat']??0); $lng=(float)($_REQUEST['lng']??0);
     if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
     out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);

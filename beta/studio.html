@@ -168,12 +168,15 @@
       <div id="upFields" style="display:none">
         <label class="field">Your name</label><input type="text" id="aName" placeholder="Name or business name">
         <label class="field">WhatsApp number</label><input type="text" id="aPhone" placeholder="91XXXXXXXXXX" inputmode="numeric">
+        <div class="status" id="invNote" style="display:none;margin:0 0 8px;color:var(--b)"></div>
+        <div id="bizBlock">
         <label class="field">Business name</label><input type="text" id="aBiz" placeholder="Shop / studio / company name">
-        <label class="field">Business location <span style="font-weight:400;color:var(--mute)">— drag the pin to your shop</span></label>
+        <label class="field">Business location <span style="font-weight:400;color:var(--mute)" id="locHint">— drag the pin to your shop</span></label>
         <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="aAddrQ" placeholder="Search area, e.g. Gajuwaka, Visakhapatnam" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()" title="Use my location">📍</button></div>
         <div id="locMap" style="height:200px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line);background:#eef"></div>
         <div class="tiny" id="locTxt" style="color:var(--mute);margin-top:6px">No location set yet</div>
         <input type="hidden" id="aLat"><input type="hidden" id="aLng"><input type="hidden" id="aAddr">
+        </div>
       </div>
       <label class="field">Email</label><input type="text" id="aEmail" placeholder="you@example.com" inputmode="email" autocomplete="username">
       <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
@@ -329,11 +332,18 @@ const $=s=>document.querySelector(s);
 document.addEventListener('click',e=>{ if(e.target.closest('button,.btn,.chip,.acc,.accbox,.tabs button')&&navigator.vibrate) navigator.vibrate(12); },true);
 function toast(msg,ms=3500){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('on'); if(navigator.vibrate) navigator.vibrate([30,40,30]); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showView(v){ ['In','Code','Forgot'].forEach(x=>$('#v'+x).style.display='none'); $('#v'+{in:'In',code:'Code',forgot:'Forgot'}[v]).style.display=''; }
-function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up'); if(m==='up') setTimeout(initLocMap,50);
+let LOC_REQ=false, INV=null;
+async function inviteSetup(){ const c=localStorage.getItem('sp_partner')||''; const note=$('#invNote'), bb=$('#bizBlock');
+  if(!c){ INV=null; LOC_REQ=false; bb.style.display=''; $('#locHint').textContent='— optional for customers; needed if you are a distributor or promoter'; return; }
+  if(INV===null){ const r=await fetch('api.php?action=invite_info&code='+encodeURIComponent(c)).then(x=>x.json()).catch(()=>null); INV=r&&r.ok?r:false; }
+  if(!INV){ localStorage.removeItem('sp_partner'); note.style.display='none'; LOC_REQ=false; bb.style.display=''; return; }
+  note.style.display=''; note.textContent=`Invited by ${INV.from} (${INV.fromRole}) — you will join as a ${INV.youBecome}.`;
+  if(INV.youBecome==='user'){ LOC_REQ=false; bb.style.display='none'; } else { LOC_REQ=true; bb.style.display=''; $('#locHint').textContent='— required: drag the pin to your shop'; setTimeout(initLocMap,50); } }
+function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up'); if(m==='up') inviteSetup().then(()=>{ if($('#bizBlock').style.display!=='none') setTimeout(initLocMap,50); });
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
-  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; f.business=$('#aBiz').value.trim(); f.lat=$('#aLat').value; f.lng=$('#aLng').value; f.address=$('#aAddr').value; if(!f.lat){ $('#loginErr').textContent='Please set your business location on the map'; return; } }
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; f.business=$('#aBiz').value.trim(); f.lat=$('#aLat').value; f.lng=$('#aLng').value; f.address=$('#aAddr').value; if(LOC_REQ&&!f.lat){ $('#loginErr').textContent='Please set your business location on the map'; return; } }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
   finishAuth(r);
@@ -398,7 +408,7 @@ function renderPlan(){
   const u=USER, el=$('#planIn'); const low=u.tokens<=0, warn=u.tokens>0&&u.tokens<=3;
   el.className='in '+(low?'bad':warn?'warn':'');
   el.innerHTML=`<div><b>${u.tokens} token${u.tokens===1?'':'s'}</b> <span>· ${u.tokensUsed} used · 1 token = 1 photo + 1 video</span></div>
-    <div><span>${u.role==='distributor'?'Distributor':u.role==='retailer'?'Retailer':'Account'}${u.isPartner?` · ${u.children} under you`:''}</span></div>
+    <div><span>${u.role==='distributor'?'Distributor':u.role==='promoter'?'Promoter':'Account'}${u.isPartner?` · ${u.children} under you`:''}</span></div>
     ${u.isPartner?'<button class="btn sm" onclick="openPartner()">Partner panel</button>':''}<button class="btn sm ghost" onclick="openBuy()">Buy tokens</button>`;
 }
 /* buy tokens = contact your parent (retailer / distributor / ScanPlay). No online payment. */
@@ -420,7 +430,7 @@ async function openPartner(){
     <div class="pcard"><b>${u.tokens} tokens</b> in your wallet · ${u.tokensUsed} used<br><span class="tiny">Give tokens to the accounts under you. Tokens only move down; only ScanPlay can remove them.</span></div>
     <h4>Your invite link</h4>
     <div class="row" style="gap:6px"><input type="text" readonly value="${u.inviteLink}" id="invLink" style="margin:0;font-size:12px"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Copied'))">Copy</button><button class="btn sm ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">WhatsApp</button></div>
-    <p class="tiny" style="color:var(--mute)">Anyone who signs up through this link is placed under you as a ${u.role==='distributor'?'retailer':'user'}.</p>
+    <p class="tiny" style="color:var(--mute)">Anyone who signs up through this link is placed under you as a ${u.role==='distributor'?'promoter':'user'}.</p>
     <h4>Accounts under you (${kids.length} direct · ${countAll(kids)} total)</h4><p class="tiny" style="color:var(--mute);margin:0 0 6px">You give tokens to your direct accounts; they pass them on to theirs. Everyone below you is shown so you can see the full chain.</p>${rows}
     <div class="row" style="gap:6px;margin-top:8px"><input type="text" id="linkEmail" placeholder="Link an existing account by email" style="margin:0"><button class="btn sm ghost" onclick="linkAcc()">Link</button></div>
     <h4>Your details <span class="tiny" style="font-weight:400;color:var(--mute)">— what your accounts see under "Buy tokens"</span></h4>
@@ -428,14 +438,14 @@ async function openPartner(){
     <label class="field">WhatsApp number</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX">
     <label class="field">Payment details (UPI ID, bank, price per token…)</label><textarea id="pPay" rows="3">${esc(u.pay_details||'')}</textarea>
     <label class="field">Area / city you serve</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="e.g. Visakhapatnam">
-    <label class="field">Business location on the map</label>
+    ${['distributor','promoter'].includes(u.role)?`<label class="field">Business location on the map</label>
     <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()">📍</button></div>
     <div id="pLocMap" style="height:180px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="color:var(--mute);margin-top:6px">${u.lat?esc(u.address||'Pinned'):'No location set'}</div>
-    <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">
-    <label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show my business in "Partners near me" on the website</label>
+    <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">`:`<input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">`}
+    ${['distributor','promoter'].includes(u.role)?`<label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show my business in "Partners near me" on the website</label>`:'<input type="checkbox" id="pListed" style="display:none">'}
     <button class="btn" style="width:100%" onclick="savePartner()">Save details</button>
     <h4>Recent token movements</h4>${led}`;
-  $('#ptModal').classList.add('open'); setTimeout(()=>initLocMap('p','pLocMap'),80);
+  $('#ptModal').classList.add('open'); if($('#pLocMap')) setTimeout(()=>initLocMap('p','pLocMap'),80);
 }
 function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }

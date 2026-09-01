@@ -343,7 +343,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 </div></section>
 
 <section id="retailers" style="padding-top:0"><div class="w">
-  <div class="h r"><div class="k">Get started</div><h2>Buy tokens from a ScanPlay partner</h2><p>ScanPlay runs on tokens — <b>1 token = 1 photo + 1 video</b>. Tokens never expire. You buy them from an authorised retailer or distributor near you, then create as many AR prints as you have tokens.</p></div>
+  <div class="h r"><div class="k">Get started</div><h2>Buy tokens from a ScanPlay partner</h2><p>ScanPlay runs on tokens — <b>1 token = 1 photo + 1 video</b>. Tokens never expire. You buy them from an authorised promoter — a ScanPlay partner photographer, event manager or print shop near you, then create as many AR prints as you have tokens.</p></div>
   <div class="nearbar">
     <button class="btn g" onclick="nearMe()" id="nearBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-7.1 7-12a7 7 0 1 0-14 0c0 4.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Partners near me</button>
     <div class="nearq"><input type="text" id="nearQ" placeholder="or type your area — e.g. Gajuwaka, Visakhapatnam" onkeydown="if(event.key==='Enter')nearArea()"><button class="btn w" onclick="nearArea()">Search</button></div>
@@ -352,7 +352,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
   <div id="retMap" style="height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px;display:none"></div>
   <div id="retList" class="pr" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="note">Loading partners…</div></div>
   <div class="note" id="retNote" style="margin-top:14px"></div>
-  <div class="cta" style="margin-top:18px"><a class="btn" href="studio.html">Open the studio →</a><a class="btn ghost" id="becomePartner" href="contact.html">Become a distributor or retailer</a></div>
+  <div class="cta" style="margin-top:18px"><a class="btn" href="studio.html">Open the studio →</a><a class="btn ghost" id="becomePartner" href="contact.html">Become a distributor or promoter</a></div>
 </div></section>
 
 <section id="faq" style="padding-top:0"><div class="w">
@@ -439,9 +439,9 @@ function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
     const L_=(r.ok&&r.retailers)||[]; const wa=r.admin&&r.admin.whatsapp;
     document.getElementById('retNote').innerHTML=`${L_.length?'Not in the list?':'No partner listed in your area yet?'} Contact ScanPlay directly${wa?` — <a href="https://wa.me/${e(wa)}" target="_blank" rel="noopener">WhatsApp ${e(wa)}</a>`:''}.`;
-    if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / retailer');
+    if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / promoter');
     if(!L_.length){ el.innerHTML=''; return; }
-    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Retailer'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi, I want to buy ScanPlay tokens')}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
+    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi, I want to buy ScanPlay tokens')}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
     const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
