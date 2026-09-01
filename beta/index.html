@@ -434,19 +434,19 @@ function showSlide(){
 fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r.items.length){ SLIDES.length=0; r.items.forEach(x=>SLIDES.push(x)); } }).catch(()=>{}).finally(()=>{ buildSlides(); showSlide(); setInterval(showSlide,CYCLE*2); });
 
 /* ---------- partners ---------- */
-let RMAP=null;
+let RMAP=null; const WAMSG=encodeURIComponent('Hi ScanPlay! I need tokens.');
 function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
 function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
     const L_=(r.ok&&r.retailers)||[]; const wa=r.admin&&r.admin.whatsapp;
-    document.getElementById('retNote').innerHTML=`${L_.length?'Not in the list?':'No partner listed in your area yet?'} Contact ScanPlay directly${wa?` — <a href="https://wa.me/${e(wa)}" target="_blank" rel="noopener">WhatsApp ${e(wa)}</a>`:''}.`;
+    document.getElementById('retNote').innerHTML=`${L_.length?'Not in the list?':'No partner listed in your area yet?'} Contact ScanPlay directly${wa?` — <a href="https://wa.me/${e(wa)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp ${e(wa)}</a>`:''}.`;
     if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / promoter');
     if(!L_.length){ el.innerHTML=''; return; }
-    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi, I want to buy ScanPlay tokens')}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
+    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
     const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
-    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
+    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
     if(lat) L.circleMarker([lat,lng],{radius:7,color:'#7C3AED',fillColor:'#7C3AED',fillOpacity:.9}).bindPopup('You are here').addTo(RMAP);
     RMAP.fitBounds(g.getBounds().pad(0.3)); setTimeout(()=>RMAP.invalidateSize(),200);
   }).catch(()=>{ el.innerHTML=''; }); }

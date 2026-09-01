@@ -432,7 +432,7 @@ function renderPlan(){
 }
 /* buy tokens = contact your parent (retailer / distributor / ScanPlay). No online payment. */
 function openBuy(){ const p=USER.parent, who=p.business||p.name;
-  const txt=`Hi, I need more ScanPlay tokens. My account: ${USER.email}`;
+  const txt=`Hi ScanPlay! I need tokens. My account: ${USER.email}`;
   confirmDlg('Buy tokens', `<div style="text-align:left;line-height:1.7"><b>${esc(who)}</b>${p.role?` <span style="color:var(--mute)">(${p.role})</span>`:''}<br>${p.phone?'📞 '+esc(p.phone)+'<br>':''}${p.email?'✉️ '+esc(p.email)+'<br>':''}${p.pay_details?'<div style="margin-top:8px;padding:10px;background:#F6F4FF;border-radius:10px;white-space:pre-wrap">'+esc(p.pay_details)+'</div>':''}<div style="margin-top:8px;color:var(--mute);font-size:12px">Pay them directly. Tokens are added to your account once they confirm. Tokens never expire.</div></div>`, p.whatsapp?'WhatsApp them':'OK').then(ok=>{ if(ok&&p.whatsapp) window.open('https://wa.me/'+p.whatsapp+'?text='+encodeURIComponent(txt),'_blank'); });
 }
 /* partner panel */
