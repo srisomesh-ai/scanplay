@@ -56,10 +56,12 @@ AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
     if(!this.on){ if(this.has && t-this.lostAt>300){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
     tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
     if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stableMs=0; }
-    // movement measured on screen (pixels) so it behaves the same near and far
+    // movement measured on screen (pixels) so it behaves the same near and far.
+    // Centre AND a corner: a flip/rotation/scale change moves the corner even when the centre stays put.
     this.pv.copy(this.tp).project(cam); const sx=(this.pv.x+1)/2*innerWidth, sy=(1-this.pv.y)/2*innerHeight;
-    const d=this.lastScr?Math.hypot(sx-this.lastScr[0],sy-this.lastScr[1]):0; this.lastScr=[sx,sy];
-    const a=Math.min(.75,Math.max(.07,d/40));
+    this.pv.set(.5,.5,0).applyMatrix4(tgt.matrixWorld).project(cam); const cx=(this.pv.x+1)/2*innerWidth, cy=(1-this.pv.y)/2*innerHeight;
+    const d=this.lastScr?Math.max(Math.hypot(sx-this.lastScr[0],sy-this.lastScr[1]),Math.hypot(cx-this.lastScr[2],cy-this.lastScr[3])):0; this.lastScr=[sx,sy,cx,cy];
+    const a=Math.min(.85,Math.max(.12,d/30));
     this.p.lerp(this.tp,a); this.q.slerp(this.tq,a); this.s.lerp(this.ts,a);
     this.stableMs+=dt; if(this.stableMs>100) this.el.object3D.visible=true;
     const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); }
@@ -110,7 +112,7 @@ function fit(R,VR,mode){
 }
 
 /* Tracking filter settings (tracker's built-in one-euro filter). ?tune=1 shows a live panel; values persist on this phone. */
-const T=Object.assign({cf:0.001,beta:1,miss:8,warm:3}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+const T=Object.assign({cf:0.001,beta:1000,miss:8,warm:3}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
 const TUNE=new URLSearchParams(location.search).get('tune')==='1';
 function start(acc){
   const assets=acc.items.map((it,i)=>it.yt?'':`<video id="v${i}" src="${it.video}" preload="auto" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
