@@ -82,7 +82,7 @@
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal{touch-action:none;overscroll-behavior:none}
   #cropModal .box{max-width:560px;text-align:left;max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
-  #cropWrap{height:52vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none} #cropWrap > img{max-width:100%;display:block}
+  #cropWrap{height:52vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none;padding:20px;box-sizing:border-box} #cropWrap > img{max-width:100%;display:block}
   .cropper-point{width:30px!important;height:30px!important;opacity:1!important;background:#fff!important;border:4px solid #7C3AED;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .cropper-point.point-ne{top:-15px!important;right:-15px!important} .cropper-point.point-nw{top:-15px!important;left:-15px!important}
   .cropper-point.point-se{bottom:-15px!important;right:-15px!important} .cropper-point.point-sw{bottom:-15px!important;left:-15px!important}
@@ -91,7 +91,7 @@
   .cropper-line.line-e,.cropper-line.line-w{width:36px!important} .cropper-line.line-e{right:-18px!important} .cropper-line.line-w{left:-18px!important}
   .cropper-line.line-n,.cropper-line.line-s{height:36px!important} .cropper-line.line-n{top:-18px!important} .cropper-line.line-s{bottom:-18px!important}
   .cropper-view-box{outline:3px solid #7C3AED!important} .cropper-modal{opacity:.6!important}
-  .cropper-face{cursor:move}
+  .cropper-face{cursor:move} .cropper-point,.cropper-line{touch-action:none;z-index:5}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
   .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:600 12px 'Plus Jakarta Sans';cursor:pointer}
   .chip.on{background:var(--grad);color:#fff;border-color:transparent}
