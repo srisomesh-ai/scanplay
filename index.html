@@ -149,15 +149,16 @@ h1{font-size:clamp(44px,8vw,92px);line-height:.98;letter-spacing:-.045em;font-we
 .stage{margin:60px auto 0;position:relative;height:470px;max-width:560px}
 @media(max-width:520px){.stage{height:400px;transform:scale(.8);transform-origin:top center;margin-top:36px}.card{margin-left:-190px}.ph{margin-left:-10px}}
 @media(max-width:380px){.stage{transform:scale(.72);height:360px}}
-.card{position:absolute;left:50%;top:30px;width:220px;height:290px;margin-left:-180px;border-radius:16px;background:#fff;box-shadow:0 30px 60px rgba(15,10,31,.18);padding:12px;transform:rotate(-8deg)}
-.card .pic{height:205px;border-radius:10px;background:#eee;position:relative;overflow:hidden}
+.card{position:absolute;left:50%;top:34px;width:224px;height:296px;margin-left:-178px;border-radius:18px;background:#fff;box-shadow:0 24px 50px rgba(15,10,31,.16),0 2px 6px rgba(15,10,31,.06);padding:12px;transform:rotate(-4deg)}
+.card .pic{height:210px;border-radius:12px;background:#eee;position:relative;overflow:hidden}
 .card .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s}
 .card .pic img.on{opacity:1}
 .card .t{margin-top:10px;font-size:12px;font-weight:700}
 .card .d{font-size:10px;color:var(--mute);font-weight:600}
 .card .qr{position:absolute;right:16px;bottom:14px;width:30px;height:30px;background:repeating-linear-gradient(0deg,#111 0 3px,#fff 3px 6px),repeating-linear-gradient(90deg,#111 0 3px,#fff 3px 6px);background-blend-mode:multiply}
-.stamp{position:absolute;left:-26px;top:-26px;width:84px;height:84px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-weight:800;font-size:11px;text-align:center;line-height:1.1;animation:rot 9s linear infinite;box-shadow:0 10px 24px rgba(255,77,109,.4)}
-@keyframes rot{to{transform:rotate(360deg)}}
+.stamp{position:absolute;left:-14px;top:-14px;padding:7px 12px;border-radius:999px;background:var(--a);color:#fff;font-weight:800;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;transform:rotate(-8deg);box-shadow:0 8px 20px rgba(255,77,109,.35);display:flex;align-items:center;gap:6px}
+.stamp i{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 0 rgba(255,255,255,.8);animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{to{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
 .ph{position:absolute;left:50%;top:0;width:220px;height:450px;margin-left:-30px;border-radius:38px;background:var(--ink);padding:10px;box-shadow:0 40px 80px rgba(15,10,31,.35);animation:fl 5s ease-in-out infinite}
 @keyframes fl{50%{transform:translateY(-12px)}}
 .sc{height:100%;border-radius:30px;background:#1a1530;position:relative;overflow:hidden}
@@ -298,7 +299,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
   <div class="trust r d3" data-i18n="trust">Works on iPhone &amp; Android · Opens in the browser · First QR in under 5 minutes</div>
 
   <div class="stage r d2" aria-hidden="true">
-    <div class="card"><div class="stamp">SCAN<br>TO<br>PLAY</div><div class="pic" id="cardPic"></div><div class="t" id="cardT">Ananya &amp; Vikram</div><div class="d" id="cardD">14 December · Vizag</div><div class="qr"></div></div>
+    <div class="card"><div class="stamp"><i></i>Scan to play</div><div class="pic" id="cardPic"></div><div class="t" id="cardT">Ananya &amp; Vikram</div><div class="d" id="cardD">14 December · Vizag</div><div class="qr"></div></div>
     <div class="ph"><div class="sc"><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div><div class="live" id="live"></div><div class="scan"></div><div class="hud">● LOCKED · PLAYING</div></div></div>
   </div>
 </header>
@@ -415,7 +416,7 @@ function buildSlides(){ SLIDES.forEach((sl,i)=>{
 let cur=-1, CYCLE=4500;   // must match the CSS animation length
 function showSlide(){
   cur=(cur+1)%SLIDES.length; const sl=SLIDES[cur];
-  document.getElementById('cardT').innerHTML=sl.img.startsWith('data/')?sl.title.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])):sl.title; document.getElementById('cardD').innerHTML=sl.img.startsWith('data/')?sl.sub.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])):sl.sub;
+  document.getElementById('cardT').innerHTML=sl.img.startsWith('data/')?sl.title.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])):sl.title; document.getElementById('cardD').innerHTML=sl.img.startsWith('data/')?'Made with ScanPlay':sl.sub;
   [...cardPic.children].forEach((im,i)=>im.classList.toggle('on',i===cur));
   const imgs=live.querySelectorAll('img'), vids=live.querySelectorAll('video');
   imgs.forEach((im,i)=>im.classList.toggle('on',i===cur));
