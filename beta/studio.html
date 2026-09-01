@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -165,6 +167,12 @@
       <div id="upFields" style="display:none">
         <label class="field">Your name</label><input type="text" id="aName" placeholder="Name or business name">
         <label class="field">WhatsApp number</label><input type="text" id="aPhone" placeholder="91XXXXXXXXXX" inputmode="numeric">
+        <label class="field">Business name</label><input type="text" id="aBiz" placeholder="Shop / studio / company name">
+        <label class="field">Business location <span style="font-weight:400;color:var(--mute)">— drag the pin to your shop</span></label>
+        <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="aAddrQ" placeholder="Search area, e.g. Gajuwaka, Visakhapatnam" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()" title="Use my location">📍</button></div>
+        <div id="locMap" style="height:200px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line);background:#eef"></div>
+        <div class="tiny" id="locTxt" style="color:var(--mute);margin-top:6px">No location set yet</div>
+        <input type="hidden" id="aLat"><input type="hidden" id="aLng"><input type="hidden" id="aAddr">
       </div>
       <label class="field">Email</label><input type="text" id="aEmail" placeholder="you@example.com" inputmode="email" autocomplete="username">
       <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
@@ -320,15 +328,32 @@ const $=s=>document.querySelector(s);
 document.addEventListener('click',e=>{ if(e.target.closest('button,.btn,.chip,.acc,.accbox,.tabs button')&&navigator.vibrate) navigator.vibrate(12); },true);
 function toast(msg,ms=3500){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('on'); if(navigator.vibrate) navigator.vibrate([30,40,30]); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showView(v){ ['In','Code','Forgot'].forEach(x=>$('#v'+x).style.display='none'); $('#v'+{in:'In',code:'Code',forgot:'Forgot'}[v]).style.display=''; }
-function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up');
+function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up'); if(m==='up') setTimeout(initLocMap,50);
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
-  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; }
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; f.business=$('#aBiz').value.trim(); f.lat=$('#aLat').value; f.lng=$('#aLng').value; f.address=$('#aAddr').value; if(!f.lat){ $('#loginErr').textContent='Please set your business location on the map'; return; } }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
   finishAuth(r);
 }
+/* ---- location picker (OpenStreetMap, no API key) ---- */
+let LMAP=null, LMARK=null, LPREFIX='a';
+if(window.L){ L.Icon.Default.mergeOptions({iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'}); }
+function setLoc(lat,lng,addr){ $('#'+LPREFIX+'Lat').value=lat.toFixed(6); $('#'+LPREFIX+'Lng').value=lng.toFixed(6); if(addr!==undefined) $('#'+LPREFIX+'Addr').value=addr; const t=$('#'+(LPREFIX==='a'?'locTxt':'pLocTxt')); if(t) t.textContent=($('#'+LPREFIX+'Addr').value||'Pinned')+' · '+lat.toFixed(4)+', '+lng.toFixed(4); }
+function initLocMap(prefix='a', elId='locMap'){ LPREFIX=prefix; const el=$('#'+elId); if(!el||!window.L) return; if(LMAP){ LMAP.remove(); LMAP=null; }
+  const lat=+$('#'+prefix+'Lat').value||17.6868, lng=+$('#'+prefix+'Lng').value||83.2185, has=!!$('#'+prefix+'Lat').value;
+  LMAP=L.map(el,{zoomControl:true,attributionControl:false}).setView([lat,lng],has?15:11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(LMAP);
+  LMARK=L.marker([lat,lng],{draggable:true}).addTo(LMAP); if(has) setLoc(lat,lng);
+  LMARK.on('dragend',()=>{ const p=LMARK.getLatLng(); setLoc(p.lat,p.lng); revGeo(p.lat,p.lng); });
+  LMAP.on('click',e=>{ LMARK.setLatLng(e.latlng); setLoc(e.latlng.lat,e.latlng.lng); revGeo(e.latlng.lat,e.latlng.lng); });
+  setTimeout(()=>LMAP.invalidateSize(),200); }
+async function geoSearch(){ const q=$('#'+(LPREFIX==='a'?'aAddrQ':'pAddrQ')).value.trim(); if(!q) return;
+  try{ const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q='+encodeURIComponent(q)).then(x=>x.json()); if(!r.length){ toast('Place not found — try a bigger area name'); return; }
+    const lat=+r[0].lat, lng=+r[0].lon; LMAP.setView([lat,lng],15); LMARK.setLatLng([lat,lng]); setLoc(lat,lng,r[0].display_name.split(',').slice(0,3).join(',')); }catch(e){ toast('Search failed, drop the pin manually'); } }
+function geoMe(){ if(!navigator.geolocation){ toast('Location not available'); return; } navigator.geolocation.getCurrentPosition(p=>{ const {latitude:lat,longitude:lng}=p.coords; LMAP.setView([lat,lng],16); LMARK.setLatLng([lat,lng]); setLoc(lat,lng); revGeo(lat,lng); },()=>toast('Could not get your location — search or drag the pin'),{enableHighAccuracy:true,timeout:8000}); }
+async function revGeo(lat,lng){ try{ const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(x=>x.json()); const a=r.address||{}; const t=[a.suburb||a.neighbourhood||a.village||a.town,a.city||a.county||a.state_district,a.state].filter(Boolean).join(', '); setLoc(lat,lng,t||r.display_name||''); }catch(e){} }
 function finishAuth(r){ TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot(); }
 async function doVerify(){
   const code=$('#aCode').value.trim(); if(code.length!==6){ $('#codeErr').textContent='Enter the 6-digit code'; return; }
@@ -340,7 +365,7 @@ async function doForgot(){
   const email=$('#fEmail').value.trim(); const r=await post({action:'forgot',email}); if(!r.ok){ $('#forgotErr').textContent=r.error; return; }
   pendingEmail=email; codeMode='reset'; $('#codeEmail').textContent=email; $('#resetFields').style.display=''; $('#aCode').value=''; showView('code');
 }
-async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||'',partner:localStorage.getItem('sp_partner')||''}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
+async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||'',partner:localStorage.getItem('sp_partner')||'',business:$('#aBiz').value.trim(),lat:$('#aLat').value,lng:$('#aLng').value,address:$('#aAddr').value}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
 async function initGoogle(){
   CFG=await post({action:'config'}); if(!CFG.google) return;
   const tryRender=()=>{ if(!window.google||!google.accounts){ setTimeout(tryRender,300); return; }
@@ -399,17 +424,21 @@ async function openPartner(){
     <label class="field">WhatsApp number</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX">
     <label class="field">Payment details (UPI ID, bank, price per token…)</label><textarea id="pPay" rows="3">${esc(u.pay_details||'')}</textarea>
     <label class="field">Area / city you serve</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="e.g. Visakhapatnam">
+    <label class="field">Business location on the map</label>
+    <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()">📍</button></div>
+    <div id="pLocMap" style="height:180px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="color:var(--mute);margin-top:6px">${u.lat?esc(u.address||'Pinned'):'No location set'}</div>
+    <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">
     <label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> List me on scanplay.in "Find a retailer"</label>
     <button class="btn" style="width:100%" onclick="savePartner()">Save details</button>
     <h4>Recent token movements</h4>${led}`;
-  $('#ptModal').classList.add('open');
+  $('#ptModal').classList.add('open'); setTimeout(()=>initLocMap('p','pLocMap'),80);
 }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
 async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
   if(!await confirmDlg('Give tokens?',`Send ${q} token${q>1?'s':''} to this account? This cannot be undone.`,'Give')) return;
   const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Sent ${q} token${q>1?'s':''}`); openPartner(); }
 async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Linked'); openPartner(); }
-async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
+async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0,lat:$('#pLat').value,lng:$('#pLng').value,address:$('#pAddr').value}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
 function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';
   $('#logoLock').textContent=''; $('#sLogoFile').disabled=false;
   $('#sLogo').style.display=USER.logo?'':'none'; $('#sLogoDel').style.display=USER.logo?'':'none'; if(USER.logo) $('#sLogo').src=USER.logo;

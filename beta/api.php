@@ -40,7 +40,7 @@ $db->exec("PRAGMA journal_mode=WAL");
 $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, pass TEXT, name TEXT, phone TEXT,
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
 foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT','referral_code TEXT','referrer_id INTEGER','ref_awarded INTEGER DEFAULT 0',
-          'role TEXT DEFAULT \'user\'','parent_id INTEGER','tokens INTEGER DEFAULT 0','tokens_used INTEGER DEFAULT 0','partner_code TEXT','business TEXT','whatsapp TEXT','pay_details TEXT','area TEXT','listed INTEGER DEFAULT 0'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
+          'role TEXT DEFAULT \'user\'','parent_id INTEGER','tokens INTEGER DEFAULT 0','tokens_used INTEGER DEFAULT 0','partner_code TEXT','business TEXT','whatsapp TEXT','pay_details TEXT','area TEXT','listed INTEGER DEFAULT 0','lat REAL','lng REAL','address TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
@@ -59,6 +59,11 @@ function linkParent($childId, $parentCode) {
   $p = row("SELECT * FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($parentCode)]); if (!$p || (int)$p['id']===(int)$childId) return;
   q("UPDATE users SET parent_id=?, role=? WHERE id=? AND parent_id IS NULL", [$p['id'], childRole($p['role']), $childId]);
 }
+function saveLocation($id) {
+  $lat=(float)($_POST['lat']??0); $lng=(float)($_POST['lng']??0); if (!$lat || !$lng || abs($lat)>90 || abs($lng)>180) return;
+  q("UPDATE users SET lat=?, lng=?, address=?".(!empty($_POST['business'])?", business=?":"")." WHERE id=?", array_merge([$lat,$lng,trim(strip_tags($_POST['address']??''))], !empty($_POST['business'])?[trim(strip_tags($_POST['business']))]:[], [$id]));
+}
+function kmBetween($a,$b,$c,$d){ $r=6371; $x=deg2rad($c-$a); $y=deg2rad($d-$b); $h=sin($x/2)**2+cos(deg2rad($a))*cos(deg2rad($c))*sin($y/2)**2; return 2*$r*asin(sqrt($h)); }
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
@@ -184,7 +189,7 @@ function userInfo($u) {
     'tokens'=>(int)($u['tokens']??0),'tokensUsed'=>(int)($u['tokens_used']??0),'role'=>$u['role'] ?: 'user','isPartner'=>in_array($u['role'],['distributor','retailer']) || $children>0,
     'partnerCode'=>partnerCode($u),'inviteLink'=>baseUrl().'/studio.html?partner='.$u['partner_code'],
     'parent'=>$parent ? contactOf($parent) : adminContact(), 'hasParent'=>(bool)$parent, 'children'=>$children,
-    'business'=>$u['business'],'whatsapp'=>$u['whatsapp'],'pay_details'=>$u['pay_details'],'area'=>$u['area'],'listed'=>(int)($u['listed']??0),
+    'business'=>$u['business'],'lat'=>$u['lat'],'lng'=>$u['lng'],'address'=>$u['address'],'whatsapp'=>$u['whatsapp'],'pay_details'=>$u['pay_details'],'area'=>$u['area'],'listed'=>(int)($u['listed']??0),
     'logo'=>$u['logo'] ? "data/users/{$u['id']}/logo.png?v={$u['logo']}" : null, 'graceDays'=>GRACE_DAYS];
 }
 function auth() {
@@ -232,12 +237,14 @@ switch ($action) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
     if ($name === '') out(false, ['error'=>'Enter your name']);
+    if (empty($_POST['lat']) || empty($_POST['lng'])) out(false, ['error'=>'Please set your business location on the map']);
     $ex = row("SELECT * FROM users WHERE email=?", [$email]);
     if ($ex && $ex['verified']) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
     else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
     $isNew = !$ex;
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
+    saveLocation($u['id']);
     /* referral: only brand-new accounts count; linked once at creation, self-referral blocked */
     $ref = clean($_POST['ref'] ?? '');
     if ($isNew && $ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
@@ -282,7 +289,8 @@ switch ($action) {
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
       $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); }
-      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); }
+      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); saveLocation($u['id']); }
+    elseif (empty($u['lat'])) saveLocation($u['id']);
     else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
@@ -576,11 +584,14 @@ switch ($action) {
     $u = auth();
     q("UPDATE users SET business=?, whatsapp=?, pay_details=?, area=?, listed=? WHERE id=?",
       [trim(strip_tags($_POST['business']??'')), preg_replace('/\D/','',$_POST['whatsapp']??''), trim(strip_tags($_POST['pay_details']??'')), trim(strip_tags($_POST['area']??'')), (int)!!($_POST['listed']??0), $u['id']]);
+    saveLocation($u['id']);
     out(true, ['user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'retailers': {   // public: partners who chose to be listed on the website
-    $list = rows("SELECT name,business,area,whatsapp,phone,role FROM users WHERE listed=1 AND role IN ('retailer','distributor') AND deleted=0 ORDER BY area, business");
-    out(true, ['retailers'=>$list, 'admin'=>adminContact()]);
+    $list = rows("SELECT name,business,area,whatsapp,phone,role,lat,lng,address FROM users WHERE listed=1 AND role IN ('retailer','distributor') AND deleted=0 ORDER BY area, business");
+    $lat=(float)($_REQUEST['lat']??0); $lng=(float)($_REQUEST['lng']??0);
+    if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
+    out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
   }
   /* ---------- admin: token control ---------- */
   case 'admin_tokens': {   // delta may be negative: only admin can remove tokens

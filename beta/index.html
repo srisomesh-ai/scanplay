@@ -90,6 +90,7 @@
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--a:#FF4D6D;--b:#7C3AED;--c:#22D3EE;--ink:#0F0A1F;--mute:#4B4661;--soft:#F6F3FF;--line:#ECE8F8}
@@ -335,6 +336,8 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
 
 <section id="retailers" style="padding-top:0"><div class="w">
   <div class="h r"><div class="k">Get started</div><h2>Buy tokens from a ScanPlay partner</h2><p>ScanPlay runs on tokens — <b>1 token = 1 photo + 1 video</b>. Tokens never expire. You buy them from an authorised retailer or distributor near you, then create as many AR prints as you have tokens.</p></div>
+  <div class="row" style="gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap"><button class="btn sm" onclick="nearMe()">📍 Find partners near me</button><span id="nearSt" style="font-size:13px;color:var(--mute)"></span></div>
+  <div id="retMap" style="height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px;display:none"></div>
   <div id="retList" class="pr" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="note">Loading partners…</div></div>
   <div class="note" id="retNote" style="margin-top:14px"></div>
   <div class="cta" style="margin-top:18px"><a class="btn" href="studio.html">Open the studio →</a><a class="btn ghost" id="becomePartner" href="contact.html">Become a distributor or retailer</a></div>
@@ -418,13 +421,25 @@ function showSlide(){
 fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r.items.length){ SLIDES.length=0; r.items.forEach(x=>SLIDES.push(x)); } }).catch(()=>{}).finally(()=>{ buildSlides(); showSlide(); setInterval(showSlide,CYCLE*2); });
 
 /* ---------- partners ---------- */
-fetch('api.php?action=retailers').then(r=>r.json()).then(r=>{ const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-  const L=(r.ok&&r.retailers)||[];
-  if(!L.length){ el.innerHTML=''; document.getElementById('retNote').innerHTML=`No partner listed in your area yet? Contact ScanPlay directly${r.admin&&r.admin.whatsapp?` — <a href="https://wa.me/${e(r.admin.whatsapp)}" target="_blank" rel="noopener">WhatsApp ${e(r.admin.whatsapp)}</a>`:''}.`; return; }
-  el.innerHTML=L.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Retailer'}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.area||'')}</div>${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi, I want to buy ScanPlay tokens')}" target="_blank" rel="noopener">WhatsApp</a>`:''}</div>`).join('');
-  document.getElementById('retNote').innerHTML=`Not in the list? Contact ScanPlay directly${r.admin&&r.admin.whatsapp?` — <a href="https://wa.me/${e(r.admin.whatsapp)}" target="_blank" rel="noopener">WhatsApp ${e(r.admin.whatsapp)}</a>`:''}.`;
-  if(r.admin&&r.admin.whatsapp) document.getElementById('becomePartner').href='https://wa.me/'+r.admin.whatsapp+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / retailer');
-}).catch(()=>{ document.getElementById('retList').innerHTML=''; });
+let RMAP=null;
+function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
+    const L_=(r.ok&&r.retailers)||[]; const wa=r.admin&&r.admin.whatsapp;
+    document.getElementById('retNote').innerHTML=`${L_.length?'Not in the list?':'No partner listed in your area yet?'} Contact ScanPlay directly${wa?` — <a href="https://wa.me/${e(wa)}" target="_blank" rel="noopener">WhatsApp ${e(wa)}</a>`:''}.`;
+    if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / retailer');
+    if(!L_.length){ el.innerHTML=''; return; }
+    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Retailer'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi, I want to buy ScanPlay tokens')}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
+    const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
+    const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
+    RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
+    L.Icon.Default.mergeOptions({iconUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',iconRetinaUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'});
+    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng]).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
+    if(lat) L.circleMarker([lat,lng],{radius:7,color:'#7C3AED',fillColor:'#7C3AED',fillOpacity:.9}).bindPopup('You are here').addTo(RMAP);
+    RMAP.fitBounds(g.getBounds().pad(0.3)); setTimeout(()=>RMAP.invalidateSize(),200);
+  }).catch(()=>{ el.innerHTML=''; }); }
+function nearMe(){ const st=document.getElementById('nearSt'); if(!navigator.geolocation){ st.textContent='Location not available on this device'; return; } st.textContent='Finding you…';
+  navigator.geolocation.getCurrentPosition(p=>{ st.textContent='Sorted by distance from you'; loadPartners(p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5)); },()=>{ st.textContent='Could not get your location'; },{enableHighAccuracy:true,timeout:8000}); }
+loadPartners();
 /* ---------- language ---------- */
 const D=window.SP_I18N, SUP=Object.keys(D), FONTS={te:'Noto+Sans+Telugu',ta:'Noto+Sans+Tamil',hi:'Noto+Sans+Devanagari',kn:'Noto+Sans+Kannada',ml:'Noto+Sans+Malayalam'};
 const sel=document.getElementById('lang');
