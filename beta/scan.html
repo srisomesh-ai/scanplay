@@ -55,7 +55,8 @@ window.MindCompiler = Compiler;
    Jitter of a few px -> heavy smoothing (rock steady). Real movement -> fast follow (no float). */
 AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
   init(){ this.p=new THREE.Vector3(); this.q=new THREE.Quaternion(); this.s=new THREE.Vector3(1,1,1); this.tp=new THREE.Vector3(); this.tq=new THREE.Quaternion(); this.ts=new THREE.Vector3(); this.pv=new THREE.Vector3(); this.has=false; this.on=false; this.lostAt=0; this.stableMs=0; this.lastScr=null; this.el.object3D.visible=false;
-    this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+    this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();});
+    document.addEventListener('sp-found',e=>{ if(e.detail!==this.data.target.id){ this.on=false; this.has=false; this.lastScr=null; this.el.object3D.visible=false; } }); },
   tick(t,dt){ const tgt=this.data.target.object3D, cam=this.el.sceneEl.camera; if(!tgt||!cam) return;
     if(!this.on){ if(this.has && t-this.lostAt>300){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
     tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
@@ -70,7 +71,8 @@ AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
 });
 AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
   init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.sx=null; this.lostAt=0;
-    this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+    this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();});
+    document.addEventListener('sp-found',e=>{ if(e.detail!==this.el.id && this.sx!==null){ const o=document.getElementById(this.data.ov); if(o) o.style.display='none'; this.sx=null; this.on=false; } }); },
   tick(t){ const o=document.getElementById(this.data.ov); if(!o) return;
     if(!this.on){ if(this.sx!==null && t-this.lostAt>300){ o.style.display='none'; this.sx=null; } return; }
     const cam=this.el.sceneEl.camera; if(!cam) return;
@@ -132,7 +134,7 @@ function start(mindUrl,map){
   document.addEventListener('pointerdown',()=>{ vids.forEach(v=>{ if(v) v.muted=false; }); Object.values(yts).forEach(p=>{ try{p.unMute();}catch(e){} }); snd.style.display='none'; },{once:true});
   const hits=new Set();
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{ const i=+t.dataset.i, m=map[i]; let lostT;
-    t.addEventListener('targetFound',()=>{ clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){}
+    t.addEventListener('targetFound',()=>{ document.dispatchEvent(new CustomEvent('sp-found',{detail:t.id})); clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){}
       if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
       const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
     t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
