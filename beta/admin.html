@@ -269,7 +269,7 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
     <div class="card" style="margin:0">
       <h3 style="margin:0 0 6px">Tokens</h3>
       <div class="st" style="margin-bottom:10px"><b>${u.tokens||0}</b> left · ${u.tokens_used||0} used · ${i.used.accounts} projects, ${i.used.photos} photos</div>
-      <div class="row" style="gap:6px;flex-wrap:wrap"><input id="tk" type="number" value="50" style="width:80px"><input id="tkn" placeholder="note (invoice no, cash…)" style="flex:1;min-width:120px"><button class="btn s" onclick="act('admin_tokens',{id:${id},delta:$('#tk').value,note:$('#tkn').value})">Add</button><button class="btn d s" onclick="if(confirm('Remove '+$('#tk').value+' tokens from this account?'))act('admin_tokens',{id:${id},delta:-Math.abs($('#tk').value),note:$('#tkn').value})">Remove</button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><input id="tk" type="number" value="50" style="width:80px"><input id="tkn" placeholder="note (invoice no, cash…)" style="flex:1;min-width:120px"><button class="btn s" onclick="if(confirm('Add '+$('#tk').value+' tokens to ${(u.name||'').replace(/'/g,'')}? They will be notified by email.'))act('admin_tokens',{id:${id},delta:$('#tk').value,note:$('#tkn').value})">Add</button><button class="btn d s" onclick="if(confirm('Remove '+$('#tk').value+' tokens from ${(u.name||'').replace(/'/g,'')}? They currently have ${u.tokens||0}.'))act('admin_tokens',{id:${id},delta:-Math.abs($('#tk').value),note:$('#tkn').value})">Remove</button></div>
       <div class="st" style="margin-top:8px;font-size:12px">Only admin can remove tokens. Partners can only give tokens downward.</div>
     </div>
     <div class="card" style="margin:0">

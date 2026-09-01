@@ -277,14 +277,14 @@
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
   </div>
 </div>
-<div class="modal" id="confirmModal">
+<div class="modal" id="confirmModal" style="z-index:30">
   <div class="box" style="text-align:left;max-width:380px">
     <h3 id="cfTitle">Are you sure?</h3>
     <p id="cfMsg"></p>
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="cfDone(false)">Cancel</button><button class="btn" id="cfOk" onclick="cfDone(true)">OK</button></div>
   </div>
 </div>
-<div class="modal" id="nameModal">
+<div class="modal" id="nameModal" style="z-index:30">
   <div class="box" style="text-align:left;max-width:380px">
     <h3>Name your project</h3>
     <p>A project is one thing you print — a card, a shop menu, a poster.</p>
@@ -437,7 +437,8 @@ async function openPartner(){
 }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
 async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
-  if(!await confirmDlg('Give tokens?',`Send ${q} token${q>1?'s':''} to this account? This cannot be undone.`,'Give')) return;
+  const k=[...document.querySelectorAll('.krow')].find(r=>r.querySelector('#q'+id)); const who=k?k.querySelector('b').textContent:'this account';
+  if(!await confirmDlg('Give tokens?',`Send ${q} token${q>1?'s':''} to ${who}? You will have ${USER.tokens-q} left. Tokens cannot be taken back.`,`Give ${q}`)) return;
   const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Sent ${q} token${q>1?'s':''}`); openPartner(); }
 async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Linked'); openPartner(); }
 async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0,lat:$('#pLat').value,lng:$('#pLng').value,address:$('#pAddr').value}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
