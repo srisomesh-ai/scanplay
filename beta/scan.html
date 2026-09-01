@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ScanPlay Scanner — point at any ScanPlay photo and watch it play</title>
+<meta name="description" content="Open the ScanPlay Scanner, point your phone at any ScanPlay printed photo — wedding card, brochure, menu or frame — and the video plays on it. No app needed.">
+<link rel="canonical" href="https://scanplay.in/scan.html">
+<link rel="icon" href="/assets/brand/favicon.ico" sizes="any">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<style>
+  html,body{margin:0;height:100%;background:#000;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;overflow:hidden}
+  #scene{position:fixed;inset:0}
+  .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;background:#000;z-index:5;transition:opacity .3s}
+  .ov.hide{opacity:0;pointer-events:none}
+  .ov h1{font-size:22px;letter-spacing:-.02em;margin:0 0 8px;font-weight:800}
+  .ov p{color:#A9B1BA;font-size:14px;margin:0 0 22px;line-height:1.5;max-width:300px}
+  .bar{width:240px;height:6px;background:#222;border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7C3AED,#FF4D6D);transition:width .3s}
+  .btn{background:linear-gradient(135deg,#7C3AED,#FF4D6D);color:#fff;border:0;border-radius:999px;padding:14px 28px;font:600 15px 'Plus Jakarta Sans';cursor:pointer}
+  #snd{position:fixed;top:18px;right:18px;z-index:6;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);color:#fff;border:0;border-radius:999px;padding:9px 14px;font:600 13px 'Plus Jakarta Sans'}
+  #brand{position:fixed;top:18px;left:18px;z-index:6;text-decoration:none;color:#fff;font:800 13px 'Plus Jakarta Sans';background:rgba(16,20,24,.6);backdrop-filter:blur(8px);padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px}
+  #brand img{height:20px}
+  #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(16,20,24,.72);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:4;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+  #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite;flex-shrink:0}
+  #hint.found i{background:#3ED598;animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .cn{position:fixed;width:34px;height:34px;border:3px solid #22D3EE;z-index:3;opacity:.85;pointer-events:none}
+  .c1{left:26px;top:100px;border-right:0;border-bottom:0}.c2{right:26px;top:100px;border-left:0;border-bottom:0}.c3{left:26px;bottom:90px;border-right:0;border-top:0}.c4{right:26px;bottom:90px;border-left:0;border-top:0}
+  .ytov{position:fixed;left:0;top:0;width:200px;height:112px;z-index:4;display:none;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px #22D3EE,0 20px 50px rgba(0,0,0,.6);background:#000;will-change:transform}
+  .ytov iframe{width:100%;height:100%;border:0;display:block}
+  .mindar-ui-overlay{display:none!important}
+</style>
+</head>
+<body>
+<div class="ov" id="intro"><img src="/assets/brand/icon-192.png" style="width:72px;border-radius:20px;margin-bottom:16px" alt=""><h1>ScanPlay Scanner</h1><p id="introMsg">Loading photos… point your phone at any ScanPlay photo, poster or card and it plays.</p><div class="bar"><i id="pbar"></i></div></div>
+<div class="ov hide" id="errOv"><h1>Can't start</h1><p id="errMsg"></p><button class="btn" onclick="location.reload()">Try again</button></div>
+<a id="brand" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="">ScanPlay</a>
+<button id="snd" style="display:none">🔇 Tap for sound</button>
+<div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
+<div id="hint" style="display:none"><i></i><span>Point at a ScanPlay photo</span></div>
+<div id="scene"></div>
+
+<script type="module">
+import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
+window.MindCompiler = Compiler;
+</script>
+<script>
+
+/* YouTube floating player: follows the tracked photo on screen (hover, not fused) */
+
+/* Stabiliser for fused video: adaptive smoothing of the tracked pose, judged in screen pixels.
+   Jitter of a few px -> heavy smoothing (rock steady). Real movement -> fast follow (no float). */
+AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
+  init(){ this.p=new THREE.Vector3(); this.q=new THREE.Quaternion(); this.s=new THREE.Vector3(1,1,1); this.tp=new THREE.Vector3(); this.tq=new THREE.Quaternion(); this.ts=new THREE.Vector3(); this.pv=new THREE.Vector3(); this.has=false; this.on=false; this.lostAt=0; this.stableMs=0; this.lastScr=null; this.el.object3D.visible=false;
+    this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+  tick(t,dt){ const tgt=this.data.target.object3D, cam=this.el.sceneEl.camera; if(!tgt||!cam) return;
+    if(!this.on){ if(this.has && t-this.lostAt>300){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
+    tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
+    if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stableMs=0; }
+    // movement measured on screen (pixels) so it behaves the same near and far
+    this.pv.copy(this.tp).project(cam); const sx=(this.pv.x+1)/2*innerWidth, sy=(1-this.pv.y)/2*innerHeight;
+    const d=this.lastScr?Math.hypot(sx-this.lastScr[0],sy-this.lastScr[1]):0; this.lastScr=[sx,sy];
+    const a=Math.min(.75,Math.max(.07,d/40));
+    this.p.lerp(this.tp,a); this.q.slerp(this.tq,a); this.s.lerp(this.ts,a);
+    this.stableMs+=dt; if(this.stableMs>100) this.el.object3D.visible=true;
+    const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); }
+});
+AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
+  init(){ this.v=new THREE.Vector3(); this.pts=[[-.5,-this.data.ratio/2],[.5,-this.data.ratio/2],[.5,this.data.ratio/2],[-.5,this.data.ratio/2]]; this.on=false; this.sx=null; this.lostAt=0;
+    this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();}); },
+  tick(t){ const o=document.getElementById(this.data.ov); if(!o) return;
+    if(!this.on){ if(this.sx!==null && t-this.lostAt>300){ o.style.display='none'; this.sx=null; } return; }
+    const cam=this.el.sceneEl.camera; if(!cam) return;
+    const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
+    const tw=Math.max(140,Math.min(W-20,maxx-minx)), tx=(minx+maxx)/2, ty=(miny+maxy)/2;
+    if(this.sx===null){ this.sx=tx; this.sy=ty; this.sw=tw; }
+    else { // adaptive smoothing: tiny jitter -> heavy smoothing, real movement -> quick follow
+      const d=Math.hypot(tx-this.sx,ty-this.sy); const a=Math.min(.6,Math.max(.06,d/60)); this.sx+=(tx-this.sx)*a; this.sy+=(ty-this.sy)*a; this.sw+=(tw-this.sw)*Math.min(.4,Math.max(.05,Math.abs(tw-this.sw)/80)); }
+    const bw=Math.round(this.sw), bh=Math.round(bw*9/16);
+    o.style.display='block'; o.style.width=bw+'px'; o.style.height=bh+'px'; o.style.transform=`translate3d(${Math.round(this.sx-bw/2)}px,${Math.round(this.sy-bh/2)}px,0)`; }
+});
+
+function ytPlayer(ovId, vid, muted){ return new Promise(res=>{ const mk=()=>{ if(!window.YT||!YT.Player){ setTimeout(mk,150); return; }
+  const p=new YT.Player(ovId+'_f',{videoId:vid,playerVars:{autoplay:0,controls:0,rel:0,modestbranding:1,playsinline:1,loop:1,playlist:vid,mute:muted?1:0},events:{onReady:()=>res(p)}}); }; mk(); }); }
+
+const $=s=>document.querySelector(s);
+function fail(m){ $('#intro').classList.add('hide'); $('#errMsg').textContent=m; $('#errOv').classList.remove('hide'); }
+function fit(R,VR,mode){
+  if(mode==='fit')     return VR>R ? {w:R/VR,h:R,rep:'1 1',off:'0 0'} : {w:1,h:VR,rep:'1 1',off:'0 0'};
+  if(mode==='stretch') return {w:1,h:R,rep:'1 1',off:'0 0'};
+  if(VR>R){ const k=R/VR; return {w:1,h:R,rep:`1 ${k.toFixed(4)}`,off:`0 ${((1-k)/2).toFixed(4)}`}; }
+  const k=VR/R; return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
+}
+const T=Object.assign({cf:0.001,beta:1,miss:8,warm:3}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+
+async function init(){
+  const r=await fetch('api.php?action=scanner',{cache:'no-store'}).then(x=>x.json()).catch(()=>({ok:false}));
+  if(!r.ok) return fail('Could not load the scanner index.');
+  if(!r.projects.length) return fail('No public photos yet.');
+  while(!window.MindCompiler) await new Promise(x=>setTimeout(x,150));
+  // merge all public projects' compiled targets into one index (no recompiling)
+  const comp=new window.MindCompiler(); const merged=[]; const map=[]; let done=0;
+  for(const p of r.projects){
+    try{ const buf=await fetch(p.mind).then(x=>x.arrayBuffer()); const list=comp.importData(buf);
+      list.forEach((d,i)=>{ if(p.items[i]){ merged.push(d); map.push({p,it:p.items[i]}); } });
+    }catch(e){}
+    done++; $('#pbar').style.width=Math.round(done/r.projects.length*100)+'%';
+  }
+  if(!merged.length) return fail('Scanner index is empty.');
+  comp.data=merged; const out=await comp.exportData(); const mindUrl=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
+  $('#introMsg').textContent='Starting camera… allow camera access when asked.';
+  start(mindUrl,map);
+}
+
+function start(mindUrl,map){
+  const assets=map.map((m,i)=>m.it.yt?'':`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
+  map.forEach((m,i)=>{ if(m.it.yt){ const d=document.createElement('div'); d.className='ytov'; d.id='yt'+i; d.innerHTML=`<div id="yt${i}_f"></div>`; document.body.appendChild(d); } });
+  const targets=map.map((m,i)=>{ if(m.it.yt) return `<a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" sp-yt="ov: yt${i}; ratio: ${m.it.ratio}"></a-entity>`; const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
+      <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" id="t${i}"></a-entity>
+      <a-entity sp-stable="target: #t${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
+  $('#scene').innerHTML=`
+    <a-scene mindar-image="imageTargetSrc: ${mindUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: ${T.cf}; filterBeta: ${T.beta}; missTolerance: ${T.miss}; warmupTolerance: ${T.warm}; maxTrack: 1"
+             color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
+      <a-assets>${assets}</a-assets><a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${targets}
+    </a-scene>`;
+  const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd'), vids=map.map((m,i)=>m.it.yt?null:$('#v'+i)); const yts={}; map.forEach((m,i)=>{ if(m.it.yt) ytPlayer('yt'+i,m.it.yt,true).then(p=>{yts[i]=p;}); });
+  vids.forEach(v=>{ if(v) v.muted=true; }); snd.style.display='block';
+  document.addEventListener('pointerdown',()=>{ vids.forEach(v=>{ if(v) v.muted=false; }); Object.values(yts).forEach(p=>{ try{p.unMute();}catch(e){} }); snd.style.display='none'; },{once:true});
+  const hits=new Set();
+  document.querySelectorAll('[mindar-image-target]').forEach(t=>{ const i=+t.dataset.i, m=map[i]; let lostT;
+    t.addEventListener('targetFound',()=>{ clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){}
+      if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
+      const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
+    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
+  });
+  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
+  scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
+}
+init();
+</script>
+<script>
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  const k=(e.key||'').toUpperCase();
+  if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&(k==='I'||k==='J'||k==='C'))||(e.ctrlKey&&(k==='U'||k==='S'))){ e.preventDefault(); e.stopPropagation(); }
+},true);
+</script>
+</body>
+</html>
