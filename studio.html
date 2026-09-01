@@ -82,7 +82,7 @@
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
-  #cropWrap{height:48vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none;padding:16px;box-sizing:border-box} #cropWrap > img{max-width:100%;display:block}
+  #cropWrap{height:48vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none;padding:16px;box-sizing:border-box} #cropIn{width:100%;height:100%;position:relative} #cropIn > img{max-width:100%;display:block}
   .cropper-point{width:26px!important;height:26px!important;opacity:1!important;background:#7C3AED!important;border:3px solid #fff;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,.45);touch-action:none;z-index:5}
   .cropper-point.point-ne{top:-13px!important;right:-13px!important} .cropper-point.point-nw{top:-13px!important;left:-13px!important}
   .cropper-point.point-se{bottom:-13px!important;right:-13px!important} .cropper-point.point-sw{bottom:-13px!important;left:-13px!important}
@@ -308,7 +308,7 @@
   <div class="box">
     <h3>Crop target image</h3>
     <p>Crop to exactly the printed area — <b>remove hands, frame edges and background</b>. Keep the photo straight, not at an angle.</p>
-    <div id="cropWrap"><img id="cropImg" alt=""></div>
+    <div id="cropWrap"><div id="cropIn"><img id="cropImg" alt=""></div></div>
     <div class="chips" id="chips">
       <button class="chip on" data-r="0">Free</button><button class="chip" data-r="1">1:1</button>
       <button class="chip" data-r="0.75">4:3</button><button class="chip" data-r="1.3333">3:4</button>
