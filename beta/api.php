@@ -284,6 +284,7 @@ switch ($action) {
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) { if ($u) logAct($u['id'],'login_failed'); out(false, ['error'=>'Wrong email or password']); }
     if (!$u['verified'] && mailConfigured()) { issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]); }
+    if (empty($u['parent_id']) && !empty($_POST['partner'])) { linkParent($u['id'], clean($_POST['partner'])); $u = row("SELECT * FROM users WHERE id=?", [$u['id']]); }   // came in through an invite link: attach
     logAct($u['id'],'login'); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
   }
   case 'forgot': {
@@ -306,8 +307,7 @@ switch ($action) {
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
       $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); }
       if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); saveLocation($u['id']); }
-    elseif (empty($u['lat'])) saveLocation($u['id']);
-    else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
+    else { q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]); if (empty($u['lat'])) saveLocation($u['id']); if (empty($u['parent_id']) && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); }
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }

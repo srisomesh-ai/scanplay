@@ -361,6 +361,7 @@ function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $(
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
+  f.partner=localStorage.getItem('sp_partner')||'';
   if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; f.business=$('#aBiz').value.trim(); f.lat=$('#aLat').value; f.lng=$('#aLng').value; f.address=$('#aAddr').value; if(LOC_REQ&&!f.lat){ $('#loginErr').textContent='Please set your business location on the map'; return; } }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
@@ -384,7 +385,7 @@ async function geoSearch(){ const q=$('#'+(LPREFIX==='a'?'aAddrQ':'pAddrQ')).val
     const lat=+r[0].lat, lng=+r[0].lon; LMAP.setView([lat,lng],15); LMARK.setLatLng([lat,lng]); setLoc(lat,lng,r[0].display_name.split(',').slice(0,3).join(',')); }catch(e){ toast('Search failed, drop the pin manually'); } }
 function geoMe(){ if(!navigator.geolocation){ toast('Location not available'); return; } navigator.geolocation.getCurrentPosition(p=>{ const {latitude:lat,longitude:lng}=p.coords; LMAP.setView([lat,lng],16); LMARK.setLatLng([lat,lng]); setLoc(lat,lng); revGeo(lat,lng); },()=>toast('Could not get your location — search or drag the pin'),{enableHighAccuracy:true,timeout:8000}); }
 async function revGeo(lat,lng){ try{ const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(x=>x.json()); const a=r.address||{}; const t=[a.suburb||a.neighbourhood||a.village||a.town,a.city||a.county||a.state_district,a.state].filter(Boolean).join(', '); setLoc(lat,lng,t||r.display_name||''); }catch(e){} }
-function finishAuth(r){ TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot(); }
+function finishAuth(r){ localStorage.removeItem('sp_partner'); TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot(); }
 async function doVerify(){
   const code=$('#aCode').value.trim(); if(code.length!==6){ $('#codeErr').textContent='Enter the 6-digit code'; return; }
   const f=codeMode==='reset'?{action:'reset',email:pendingEmail,code,newpass:$('#aNewPass').value}:{action:'verify',email:pendingEmail,code};
