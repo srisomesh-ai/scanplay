@@ -65,6 +65,18 @@ function saveLocation($id) {
   q("UPDATE users SET lat=?, lng=?, address=?".(!empty($_POST['business'])?", business=?":"")." WHERE id=?", array_merge([$lat,$lng,trim(strip_tags($_POST['address']??''))], !empty($_POST['business'])?[trim(strip_tags($_POST['business']))]:[], [$id]));
 }
 function kmBetween($a,$b,$c,$d){ $r=6371; $x=deg2rad($c-$a); $y=deg2rad($d-$b); $h=sin($x/2)**2+cos(deg2rad($a))*cos(deg2rad($c))*sin($y/2)**2; return 2*$r*asin(sqrt($h)); }
+/* ---------- video compression (background ffmpeg, static binary in data/bin) ----------
+   Rewrites video.mp4 as 720p H.264 ~2.5 Mbps: same sharpness on a phone, 5-8x less bandwidth, starts faster.
+   Runs after the API has replied; the original stays in place until the compressed file is complete, then replaces it atomically. */
+function compressVideo($dir) {
+  $ff = DATA_DIR.'/bin/ffmpeg'; $src = "$dir/video.mp4";
+  if (!is_executable($ff) || !file_exists($src) || filesize($src) < 6*1048576) return;   // small files: not worth it
+  $tmp = "$dir/video_c.mp4"; $log = "$dir/compress.log"; @unlink($tmp);
+  $vf = "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'";
+  $cmd = escapeshellarg($ff)." -y -nostdin -threads 2 -i ".escapeshellarg($src)." -vf ".escapeshellarg($vf)." -r 30 -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ".escapeshellarg($tmp)
+       ." > ".escapeshellarg($log)." 2>&1 && [ -s ".escapeshellarg($tmp)." ] && [ $(stat -c%s ".escapeshellarg($tmp).") -lt $(stat -c%s ".escapeshellarg($src).") ] && mv -f ".escapeshellarg($tmp)." ".escapeshellarg($src)." ; rm -f ".escapeshellarg($tmp);
+  shell_exec("nohup sh -c ".escapeshellarg($cmd)." > /dev/null 2>&1 &");
+}
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
@@ -412,6 +424,7 @@ switch ($action) {
       if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that link'.($err?" ($err)":'').'. Use a Google Drive / Dropbox share link (set to "Anyone with the link") or a direct .mp4 link.']); }
     }
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
+    if (!$yt) compressVideo($dir);
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
     logAct($u['id'],'photo_add',"$code/$id");
