@@ -631,7 +631,7 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
   const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
 function rotateCrop(){ cropper&&cropper.rotate(90); }
 let _scrollY=0;
-function lockPage(on){ if(on){ _scrollY=window.scrollY; document.body.classList.add('noscroll'); document.body.style.top=(-_scrollY)+'px'; } else { document.body.classList.remove('noscroll'); document.body.style.top=''; window.scrollTo(0,_scrollY); } }
+function lockPage(on){ try{ if(window.ScanPlayApp&&ScanPlayApp.setPullRefresh) ScanPlayApp.setPullRefresh(!on); }catch(e){} if(on){ _scrollY=window.scrollY; document.body.classList.add('noscroll'); document.body.style.top=(-_scrollY)+'px'; } else { document.body.classList.remove('noscroll'); document.body.style.top=''; window.scrollTo(0,_scrollY); } }
 // While the crop dialog is open, the browser gets NO touch gestures (pull-to-refresh cancelled Cropper's drag on downward moves). Cropper still receives the same events.
 document.addEventListener('touchmove',e=>{ if(document.getElementById('cropModal').classList.contains('open')) e.preventDefault(); },{passive:false,capture:true});
 document.addEventListener('touchstart',e=>{ if(document.getElementById('cropModal').classList.contains('open') && !e.target.closest('button')) e.preventDefault(); },{passive:false,capture:true});
