@@ -21,12 +21,7 @@ define('GOOGLE_CLIENT_ID', $cfg['google_client_id']);
 define('DATA_DIR', __DIR__ . '/data');
 define('MAX_VIDEO_MB', 200);
 define('GRACE_DAYS', 30);
-/* Email (Hostinger mailbox) — fill in once noreply@scanplay.in exists */
-define('SMTP_HOST', 'smtp.hostinger.com'); define('SMTP_PORT', 465);
-define('SMTP_USER', 'info@scanplay.in'); define('SMTP_PASS', 'Simhadriappanna@143');
-define('MAIL_FROM_NAME', 'ScanPlay');
-/* Google sign-in — OAuth client ID from console.cloud.google.com (authorised origin: https://scanplay.in) */
-define('GOOGLE_CLIENT_ID', 'CHANGE_ME.apps.googleusercontent.com');
+/* Email + Google settings come from config.php (see config.sample.php) */
 
 /* plan => [photos, accounts (0 = unlimited), logo, analytics, sublogins, domain, price_month, price_year, watermark] */
 const PLANS = [

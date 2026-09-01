@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{--ink:#0F0A1F;--paper:#F6F3FF;--card:#FFFFFF;--line:#ECE8F8;--mute:#4B4661;--a:#FF4D6D;--b:#7C3AED;--c:#22D3EE;--teal:#7C3AED;--teal-d:#6A2FD0;--amber:#FF9A3D;--red:#E4462B;
@@ -79,6 +78,7 @@
   .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior:none}
+  .krow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee} .pcard{background:#F6F4FF;border-radius:12px;padding:12px 14px;margin:6px 0 10px} #ptBody h4{margin:16px 0 6px;font-size:14px} #ptBody .tag{font-size:10px;background:#EEE9FF;color:var(--b);border-radius:6px;padding:2px 6px;font-weight:700;text-transform:uppercase}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
@@ -170,7 +170,7 @@
       <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
       <div class="status err" id="loginErr"></div>
       <button class="btn" style="width:100%;margin-top:12px" id="authBtn" onclick="doAuth()">Sign in</button>
-      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">Free forever · 1 photo + 1 video · no card</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">1 token = 1 photo + 1 video</span></div>
     </div>
 
     <div id="vCode" style="display:none">
@@ -191,7 +191,7 @@
     </div>
   </div>
 </div>
-<div style="text-align:center;margin:-30px auto 20px;font-size:13px;color:var(--mute)" id="appHint">Prefer an app? <a href="https://play.google.com/store/apps/details?id=in.scanplay.app" target="_blank" rel="noopener" style="color:var(--b);font-weight:700">Get ScanPlay on Google Play</a></div>
+<div id="appHint" style="display:none"></div>
 <div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
 <main id="app" style="display:none">
@@ -243,7 +243,7 @@
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
-  <button class="btn qrbig" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D);box-shadow:0 8px 20px rgba(255,154,61,.3)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
+  
   <div class="row" style="justify-content:center;margin-top:12px;gap:8px"><a class="btn ghost sm" href="https://wa.me/918985849710?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a><button class="btn ghost sm" onclick="openSettings()">Settings &amp; logo</button></div>
 </template>
 
@@ -268,27 +268,6 @@
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
   </div>
 </div>
-<div class="modal" id="upiModal" onclick="if(event.target===this)closeUpi()">
-  <div class="box" style="max-width:400px;text-align:center">
-    <div style="font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--mute)">PAY BY UPI</div>
-    <div style="font:800 34px 'Plus Jakarta Sans';margin:4px 0 2px" id="upiAmt">₹499</div>
-    <div class="status" id="upiPlan" style="margin:0 0 14px"></div>
-    <div class="upiApps">
-      <button class="upiApp" onclick="upiOpen('phonepe')"><span class="ic" style="background:#5F259F">Pe</span>PhonePe</button>
-      <button class="upiApp" onclick="upiOpen('gpay')"><span class="ic" style="background:#1A73E8">G</span>Google Pay</button>
-      <button class="upiApp" onclick="upiOpen('paytm')"><span class="ic" style="background:#00BAF2">P</span>Paytm</button>
-      <button class="upiApp" onclick="upiOpen('any')"><span class="ic" style="background:#0F0A1F">UPI</span>Other UPI app</button>
-    </div>
-    <button class="chip" style="margin-top:12px" onclick="upiQr()">Show QR to pay from another phone</button>
-    <div id="upiQrBox" style="display:none;margin-top:12px">
-      <div id="upiQrImg" style="display:inline-block;padding:10px;background:#fff;border:1.5px solid var(--line);border-radius:14px"></div>
-      <div class="status" style="margin-top:6px">Valid for <b id="upiTimer">10:00</b></div>
-    </div>
-    <div class="status" style="margin:14px 0 10px">UPI ID <b>scanplay@ybl</b> · After paying, send the screenshot and we activate your plan within a few hours.</div>
-    <a class="btn" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box" id="upiPaid" href="#" target="_blank" rel="noopener">I have paid — send screenshot</a>
-    <div style="margin-top:10px"><button class="link" onclick="closeUpi()">Back to plans</button></div>
-  </div>
-</div>
 <div class="modal" id="confirmModal">
   <div class="box" style="text-align:left;max-width:380px">
     <h3 id="cfTitle">Are you sure?</h3>
@@ -302,6 +281,12 @@
     <p>A project is one thing you print — a card, a shop menu, a poster.</p>
     <input type="text" id="nameInput" placeholder='e.g. "Our wedding", "Shop menu"' onkeydown="if(event.key==='Enter')nameOk()">
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="nameCancel()">Cancel</button><button class="btn" onclick="nameOk()">Create</button></div>
+  </div>
+</div>
+<div class="modal" id="ptModal" onclick="if(event.target===this)closePartner()">
+  <div class="box" style="max-width:520px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
+    <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Partner panel</h3><button class="btn ghost sm" onclick="closePartner()">Close</button></div>
+    <div id="ptBody"></div>
   </div>
 </div>
 <div class="modal" id="cropModal">
@@ -318,20 +303,6 @@
       <button class="btn ghost" onclick="rotateCrop()">Rotate</button>
       <button class="btn ghost" onclick="cancelCrop()">Cancel</button>
       <button class="btn" onclick="applyCrop()">Use crop</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="upModal" onclick="if(event.target===this)closeUp()">
-  <div class="box">
-    <h3>Choose a plan</h3>
-    <p id="upMsg">Every plan: unlimited scans, videos up to 200 MB, data kept while subscribed.</p>
-    <div class="seg"><button class="on" id="segM" onclick="setPeriod('month')">Monthly</button><button id="segY" onclick="setPeriod('year')">Yearly · 2 months free</button></div>
-    <div class="plans" id="planGrid"></div>
-    <div class="row" style="justify-content:flex-start;margin:4px 0 10px"><input type="text" id="promo" placeholder="Promo code (optional)" style="max-width:220px;text-transform:uppercase" oninput="PROMO=null;renderPlans()"><button class="btn ghost sm" onclick="applyPromoCode()">Apply</button><span class="status" id="promoSt" style="margin:0"></span></div>
-    <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="closeUp()">Not now</button><button class="btn ghost" id="upiBtn" onclick="payUpi()">Pay by UPI</button><button class="btn" id="payBtn" onclick="pay()">Pay with Razorpay</button></div>
-    <div class="status" id="payErr" style="margin-top:8px"></div>
-    <div class="status" style="margin-top:6px">Razorpay: cards, net banking, UPI — instant activation. UPI direct: pay to <b>scanplay@ybl</b>, we activate within a few hours.</div>
     </div>
   </div>
 </div>
@@ -353,7 +324,7 @@ function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $(
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
-  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; }
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
   finishAuth(r);
@@ -369,7 +340,7 @@ async function doForgot(){
   const email=$('#fEmail').value.trim(); const r=await post({action:'forgot',email}); if(!r.ok){ $('#forgotErr').textContent=r.error; return; }
   pendingEmail=email; codeMode='reset'; $('#codeEmail').textContent=email; $('#resetFields').style.display=''; $('#aCode').value=''; showView('code');
 }
-async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||''}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
+async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||'',partner:localStorage.getItem('sp_partner')||''}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
 async function initGoogle(){
   CFG=await post({action:'config'}); if(!CFG.google) return;
   const tryRender=()=>{ if(!window.google||!google.accounts){ setTimeout(tryRender,300); return; }
@@ -381,7 +352,7 @@ async function logout(){ await post({action:'logout'}).catch(()=>{}); localStora
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
 function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts().then(()=>{ $('#app').style.display='grid'; if(!CUR&&ACCOUNTS.length) openAcc(ACCOUNTS[0].code); }); }
 let _cfRes=null;
-function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
+function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; if(msg&&msg.startsWith('<div')) $('#cfMsg').innerHTML=msg; else $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
 function cfDone(v){ $('#confirmModal').classList.remove('open'); const r=_cfRes; _cfRes=null; r&&r(v); }
 let _nameRes=null;
 function askName(def){ return new Promise(res=>{ _nameRes=res; $('#nameInput').value=def||''; $('#nameModal').classList.add('open'); setTimeout(()=>$('#nameInput').focus(),80); }); }
@@ -392,73 +363,55 @@ async function post(fields,files){
   if(files) Object.entries(files).forEach(([k,v])=>fd.append(k,v,v.name||k));
   const r=await (await fetch(API+'?action='+encodeURIComponent(fields.action),{method:'POST',body:fd,headers:{'X-Token':TOKEN}})).json();
   if(!r.ok&&r.auth){ localStorage.removeItem('sp_token'); location.reload(); }
-  if(!r.ok&&r.upgrade){ openUp(r.error); }
+  if(!r.ok&&r.upgrade){ toast(r.error); }
   return r;
 }
 /* plan bar */
 function renderPlan(){
-  const u=USER, L=u.limits, el=$('#planIn'); const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
-  let cls='', msg='';
-  if(u.plan==='free') { msg='Free forever'; }
-  else if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
-  else if(u.state==='expired') { cls='bad'; msg='Plan expired and data removed.'; }
-  else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
-  el.className='in '+cls;
-  const projLim=L.accounts||L.photos, projPct=Math.min(100,Math.round(u.used.accounts/(projLim||1)*100));
-  el.innerHTML=`<div><b>${u.planName}</b> <span>· ${msg||`${days} days left`}</span></div>
-    <div><span>Projects ${u.used.accounts} / ${projLim}</span><span class="meter"><i style="width:${projPct}%"></i></span></div>
-    <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
+  const u=USER, el=$('#planIn'); const low=u.tokens<=0, warn=u.tokens>0&&u.tokens<=3;
+  el.className='in '+(low?'bad':warn?'warn':'');
+  el.innerHTML=`<div><b>${u.tokens} token${u.tokens===1?'':'s'}</b> <span>· ${u.tokensUsed} used · 1 token = 1 photo + 1 video</span></div>
+    <div><span>${u.role==='distributor'?'Distributor':u.role==='retailer'?'Retailer':'Account'}${u.isPartner?` · ${u.children} under you`:''}</span></div>
+    ${u.isPartner?'<button class="btn sm" onclick="openPartner()">Partner panel</button>':''}<button class="btn sm ghost" onclick="openBuy()">Buy tokens</button>`;
 }
-/* upgrade */
-const PLANS_UI=[['personal','Personal','2 projects · 3 photos each'],['business','Business','6 projects · 5 photos each · logo · analytics'],['pro','Pro','10 projects · 10 photos each · sub-logins'],['agency','Gold','15 projects · 20 photos each · custom domain']];
-function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
-function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
-function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
-function renderPlans(){
-  const L=USER?USER.limits:null;
-  $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; const dis=PROMO&&PROMO.plan===k&&PROMO.period===PERIOD; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';PROMO=null;$('#promoSt').textContent='';renderPlans()"><b>${n}</b><div class="pr">${dis?`<s style="opacity:.5;font-size:14px">₹${pr.toLocaleString('en-IN')}</s> ₹${PROMO.total.toLocaleString('en-IN')}`:'₹'+pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
-  const tot=finalPrice(); $('#payBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} with Razorpay`; $('#upiBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} by UPI`;
+/* buy tokens = contact your parent (retailer / distributor / ScanPlay). No online payment. */
+function openBuy(){ const p=USER.parent, who=p.business||p.name;
+  const txt=`Hi, I need more ScanPlay tokens. My account: ${USER.email}`;
+  confirmDlg('Buy tokens', `<div style="text-align:left;line-height:1.7"><b>${esc(who)}</b>${p.role?` <span style="color:var(--mute)">(${p.role})</span>`:''}<br>${p.phone?'📞 '+esc(p.phone)+'<br>':''}${p.email?'✉️ '+esc(p.email)+'<br>':''}${p.pay_details?'<div style="margin-top:8px;padding:10px;background:#F6F4FF;border-radius:10px;white-space:pre-wrap">'+esc(p.pay_details)+'</div>':''}<div style="margin-top:8px;color:var(--mute);font-size:12px">Pay them directly. Tokens are added to your account once they confirm. Tokens never expire.</div></div>`, p.whatsapp?'WhatsApp them':'OK').then(ok=>{ if(ok&&p.whatsapp) window.open('https://wa.me/'+p.whatsapp+'?text='+encodeURIComponent(txt),'_blank'); });
 }
-const PRICES={personal:{month:499,year:4990},business:{month:1999,year:19990},pro:{month:2999,year:29990},agency:{month:5999,year:59990}};
-/* Razorpay payment-page links per plan — paste when ready; empty = use in-studio Razorpay checkout */
-const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{month:'',year:''},agency:{month:'',year:''}};
-const UPI_ID='scanplay@ybl';
-function upiLink(plan,period){ const amt=finalPrice(); const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function upiParams(){ const amt=finalPrice(); const tn=('ScanPlay '+PICK+' '+(PERIOD==='year'?'1yr':'1mo')).replace(/[^A-Za-z0-9 ]/g,'').slice(0,35); return `pa=${UPI_ID}&pn=ScanPlay&am=${amt.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function upiOpen(app){ const q=upiParams(); const links={phonepe:'phonepe://pay?'+q, gpay:'tez://upi/pay?'+q, paytm:'paytmmp://pay?'+q, any:'upi://pay?'+q};
-  location.href=links[app]||links.any; setTimeout(()=>{ if(document.visibilityState==='visible' && app!=='any') toast('If '+({phonepe:'PhonePe',gpay:'Google Pay',paytm:'Paytm'}[app])+' did not open, try "Any UPI app" or the QR.'); },1500); }
-let upiT=null;
-function upiQr(){ const box=$('#upiQrBox'); box.style.display=''; const q=$('#upiQrImg'); q.innerHTML=''; new QRCode(q,{text:'upi://pay?'+upiParams(),width:220,height:220,correctLevel:QRCode.CorrectLevel.L});
-  clearInterval(upiT); let left=600; const tick=()=>{ const m=String(Math.floor(left/60)).padStart(2,'0'), s2=String(left%60).padStart(2,'0'); $('#upiTimer').textContent=m+':'+s2; if(left--<=0){ clearInterval(upiT); q.innerHTML='<div class="status err">Expired — tap Show QR again</div>'; } }; tick(); upiT=setInterval(tick,1000); }
-function payUpi(){ const amt=finalPrice(); $('#upiAmt').textContent='₹'+amt.toLocaleString('en-IN'); $('#upiPlan').textContent=`${({personal:'Personal',business:'Business',pro:'Pro',agency:'Agency'})[PICK]} · ${PERIOD==='year'?'1 year':'1 month'}${PROMO?' · promo '+PROMO.code:''}`;
-  $('#upiQrBox').style.display='none'; clearInterval(upiT);
-  $('#upiPaid').href='https://wa.me/918985849710?text='+encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+')'+(PROMO?' with promo '+PROMO.code:'')+'. My email: '+(USER?USER.email:'')+'. Screenshot attached.');
-  $('#upModal').classList.remove('open'); $('#upiModal').classList.add('open'); }
-function closeUpi(){ $('#upiModal').classList.remove('open'); clearInterval(upiT); $('#upModal').classList.add('open'); }
-
-function finalPrice(){ const p=PRICES[PICK][PERIOD]; return PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD ? PROMO.total : p; }
-async function applyPromoCode(){
-  const code=$('#promo').value.trim(); const st=$('#promoSt'); if(!code){ PROMO=null; st.textContent=''; renderPlans(); return; }
-  const r=await post({action:'promo_check',plan:PICK,period:PERIOD,code}); if(!r.ok){ PROMO=null; st.className='status err'; st.textContent=r.error; renderPlans(); return; }
-  PROMO={code:r.code,total:r.total,discount:r.discount,plan:PICK,period:PERIOD}; st.className='status'; st.textContent=`${r.code}: ${r.label} — you save ₹${r.discount.toLocaleString('en-IN')}`; renderPlans();
+/* partner panel */
+async function openPartner(){
+  const r=await post({action:'partner_children'}); if(!r.ok){ toast(r.error); return; } USER=r.user;
+  const kids=r.children, u=USER;
+  const rows=kids.length?kids.map(k=>`<div class="krow"><div><b>${esc(k.business||k.name)}</b> <span class="tag">${k.role}</span><br><span class="tiny">${esc(k.email)}${k.phone?' · '+esc(k.phone):''} · ${k.tokens} left · ${k.tokens_used} used${k.subs?' · '+k.subs+' under them':''}</span></div>
+      <div class="row" style="gap:6px"><input type="number" min="1" placeholder="qty" id="q${k.id}" style="width:64px;margin:0"><button class="btn sm" onclick="giveTokens(${k.id})">Give</button></div></div>`).join('')
+    : '<p class="tiny" style="color:var(--mute)">No accounts under you yet. Share your invite link, or link an existing account by email.</p>';
+  const led=r.ledger.slice(0,20).map(l=>`<div class="tiny" style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN')} · ${l.kind==='spent'?'used on a photo':l.kind==='grant'?'from ScanPlay':l.kind==='remove'?'removed by ScanPlay':(l.from_id==u.id?'to '+esc(l.tname||'?'):'from '+esc(l.fname||'?'))}${l.note?' · '+esc(l.note):''}</span><b>${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<p class="tiny" style="color:var(--mute)">No token movements yet.</p>';
+  $('#ptBody').innerHTML=`
+    <div class="pcard"><b>${u.tokens} tokens</b> in your wallet · ${u.tokensUsed} used<br><span class="tiny">Give tokens to the accounts under you. Tokens only move down; only ScanPlay can remove them.</span></div>
+    <h4>Your invite link</h4>
+    <div class="row" style="gap:6px"><input type="text" readonly value="${u.inviteLink}" id="invLink" style="margin:0;font-size:12px"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Copied'))">Copy</button><button class="btn sm ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">WhatsApp</button></div>
+    <p class="tiny" style="color:var(--mute)">Anyone who signs up through this link is placed under you as a ${u.role==='distributor'?'retailer':'user'}.</p>
+    <h4>Accounts under you (${kids.length})</h4>${rows}
+    <div class="row" style="gap:6px;margin-top:8px"><input type="text" id="linkEmail" placeholder="Link an existing account by email" style="margin:0"><button class="btn sm ghost" onclick="linkAcc()">Link</button></div>
+    <h4>Your details <span class="tiny" style="font-weight:400;color:var(--mute)">— what your accounts see under "Buy tokens"</span></h4>
+    <label class="field">Business name</label><input type="text" id="pBiz" value="${esc(u.business||'')}">
+    <label class="field">WhatsApp number</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX">
+    <label class="field">Payment details (UPI ID, bank, price per token…)</label><textarea id="pPay" rows="3">${esc(u.pay_details||'')}</textarea>
+    <label class="field">Area / city you serve</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="e.g. Visakhapatnam">
+    <label class="chip" style="display:inline-flex;margin:8px 0"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> List me on scanplay.in "Find a retailer"</label>
+    <button class="btn" style="width:100%" onclick="savePartner()">Save details</button>
+    <h4>Recent token movements</h4>${led}`;
+  $('#ptModal').classList.add('open');
 }
-async function pay(){
-  $('#payErr').textContent='';
-  const link=PAY_LINKS[PICK]&&PAY_LINKS[PICK][PERIOD]; if(link){ window.open(link,'_blank'); $('#payErr').className='status'; $('#payErr').textContent='Payment page opened in a new tab. Your plan activates automatically after payment — refresh this page in a minute.'; return; }
-  const pb=$('#payBtn'); pb.disabled=true; const old=pb.textContent; pb.textContent='Opening Razorpay…';
-  const r=await post({action:'pay_create',plan:PICK,period:PERIOD,promo:(PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD)?PROMO.code:''}).catch(e=>({ok:false,error:'Network error'})); pb.disabled=false; pb.textContent=old;
-  if(!r.ok){ $('#payErr').className='status err'; $('#payErr').textContent=r.error; toast(r.error); return; }
-  if(!window.Razorpay){ $('#payErr').className='status err'; $('#payErr').textContent='Razorpay checkout could not load. Check your connection and try again.'; return; }
-  const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
-    prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#7C3AED'},
-    modal:{ondismiss:async()=>{ const m=await post({action:'me'}); if(m.ok&&m.user&&m.user.plan!==USER.plan){ USER=m.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } }},
-    handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
-      if(v.ok){ USER=v.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
-  rz.on('payment.failed',e=>{ $('#payErr').className='status err'; $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
-}
-/* settings */
+function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
+async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
+  if(!await confirmDlg('Give tokens?',`Send ${q} token${q>1?'s':''} to this account? This cannot be undone.`,'Give')) return;
+  const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Sent ${q} token${q>1?'s':''}`); openPartner(); }
+async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Linked'); openPartner(); }
+async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
 function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';
-  const can=USER.limits.logo; $('#logoLock').textContent=can?'':'(Business plan and above)'; $('#sLogoFile').disabled=!can;
+  $('#logoLock').textContent=''; $('#sLogoFile').disabled=false;
   $('#sLogo').style.display=USER.logo?'':'none'; $('#sLogoDel').style.display=USER.logo?'':'none'; if(USER.logo) $('#sLogo').src=USER.logo;
   $('#setErr').textContent=''; $('#setModal').classList.add('open'); }
 function closeSettings(){ $('#setModal').classList.remove('open'); }
@@ -522,9 +475,9 @@ function updSave(){
 function updSteps(){ fitPreview(); updSave();
   const rb3=$('#refBtn3'); if(rb3) rb3.style.display=ACCOUNTS.reduce((n,a)=>n+a.items.length,0)>0?'':'none';
   const has=CUR&&CUR.items.length>0;
-  const ppp=(USER&&USER.limits&&USER.limits.ppp)||1, full=CUR&&CUR.items.length>=ppp;
+  const ppp=Infinity, full=false;
   $('#st1').style.display=full?'none':''; $('#st2').style.display=full?'none':'';
-  const ih=$('#itemsHead'); if(ih){ ih.style.display=has?'':'none'; ih.textContent=`Photos in this project (${CUR?CUR.items.length:0} / ${ppp})`; }
+  const ih=$('#itemsHead'); if(ih){ ih.style.display=has?'':'none'; ih.textContent=`Photos in this project (${CUR?CUR.items.length:0})`; }
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
   $('#qrBtn').textContent=has?'Show my QR':'QR (add your photo first)';
@@ -716,7 +669,7 @@ async function addItem(){
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(offerReferral,2500); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
-  }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
+  }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; if(/no tokens/i.test(e.message)){ await post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; renderPlan(); } }); openBuy(); } }
 }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
 async function removeItem(id){
@@ -741,19 +694,8 @@ function closeQr(){ $('#qrModal').classList.remove('open'); }
 function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.createElement('a'); a.download=CUR.name.replace(/\s+/g,'-')+'-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }
 
 /* referral: capture ?ref= for signup, offer share after first save (uses existing confirmDlg + toast) */
-(function(){ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('sp_ref',r); })();
-async function showReferral(){
-  const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok){ toast('Could not load your referral link — try again.'); return; }
-  const earned=r.earned?` You have earned ${r.earned} so far.`:'';
-  if(await confirmDlg('Refer a friend, get a free project 🎁',`Share your link. When a friend joins and creates their first AR photo, you get +1 free project. Refer more, earn more!${earned}`,'Share on WhatsApp')){
-    const msg='Make your printed photos play videos! Try ScanPlay with my link: '+r.link;
-    window.open('https://wa.me/?text='+encodeURIComponent(msg));
-  }
-}
+(function(){ const q=new URLSearchParams(location.search); const r=q.get('ref'); if(r) localStorage.setItem('sp_ref',r); const p=q.get('partner'); if(p) localStorage.setItem('sp_partner',p); })();
 async function offerReferral(){
-  if(localStorage.getItem('sp_ref_offered')) return;
-  localStorage.setItem('sp_ref_offered','1');
-  showReferral();
 }
 
 initGoogle();
