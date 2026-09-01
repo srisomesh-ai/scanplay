@@ -81,7 +81,7 @@
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior:none}
   .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
-  .krow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee} .pcard{background:#F6F4FF;border-radius:12px;padding:12px 14px;margin:6px 0 10px} #ptBody h4{margin:16px 0 6px;font-size:14px} #ptBody .tag{font-size:10px;background:#EEE9FF;color:var(--b);border-radius:6px;padding:2px 6px;font-weight:700;text-transform:uppercase}
+  .krow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee} .krow.sub{background:#FAFAFF;border-bottom:1px dashed #e5e5f0;padding-top:8px;padding-bottom:8px} .pcard{background:#F6F4FF;border-radius:12px;padding:12px 14px;margin:6px 0 10px} #ptBody h4{margin:16px 0 6px;font-size:14px} #ptBody .tag{font-size:10px;background:#EEE9FF;color:var(--b);border-radius:6px;padding:2px 6px;font-weight:700;text-transform:uppercase}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
@@ -410,8 +410,10 @@ function openBuy(){ const p=USER.parent, who=p.business||p.name;
 async function openPartner(){
   const r=await post({action:'partner_children'}); if(!r.ok){ toast(r.error); return; } USER=r.user;
   const kids=r.children, u=USER;
-  const rows=kids.length?kids.map(k=>`<div class="krow"><div><b>${esc(k.business||k.name)}</b> <span class="tag">${k.role}</span><br><span class="tiny">${esc(k.email)}${k.phone?' · '+esc(k.phone):''} · ${k.tokens} left · ${k.tokens_used} used${k.subs?' · '+k.subs+' under them':''}</span></div>
-      <div class="row" style="gap:6px"><input type="number" min="1" placeholder="qty" id="q${k.id}" style="width:64px;margin:0"><button class="btn sm" onclick="giveTokens(${k.id})">Give</button></div></div>`).join('')
+  const roleTag=r=>`<span class="tag">${r}</span>`;
+  const subRows=(list,lvl)=>list.map(c=>`<div class="krow sub" style="padding-left:${lvl*18}px"><div><span style="color:var(--mute)">↳</span> <b>${esc(c.business||c.name)}</b> ${roleTag(c.role)}<br><span class="tiny">${esc(c.email)}${c.phone?' · '+esc(c.phone):''}${c.address?' · '+esc(c.address):''} · ${c.tokens} left · ${c.tokens_used} used</span></div><div class="tiny" style="color:var(--mute);white-space:nowrap">via ${esc(c._via)}</div></div>${subRows(c.subs.map(x=>({...x,_via:c.business||c.name})),lvl+1)}`).join('');
+  const rows=kids.length?kids.map(k=>`<div class="krow"><div><b>${esc(k.business||k.name)}</b> ${roleTag(k.role)}<br><span class="tiny">${esc(k.email)}${k.phone?' · '+esc(k.phone):''}${k.address?' · '+esc(k.address):''} · ${k.tokens} left · ${k.tokens_used} used${k.subCount?' · '+k.subCount+' under them':''}</span></div>
+      <div class="row" style="gap:6px"><input type="number" min="1" placeholder="qty" id="q${k.id}" style="width:64px;margin:0"><button class="btn sm" onclick="giveTokens(${k.id})">Give</button></div></div>${subRows(k.subs.map(x=>({...x,_via:k.business||k.name})),1)}`).join('')
     : '<p class="tiny" style="color:var(--mute)">No accounts under you yet. Share your invite link, or link an existing account by email.</p>';
   const led=r.ledger.slice(0,20).map(l=>`<div class="tiny" style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN')} · ${l.kind==='spent'?'used on a photo':l.kind==='grant'?'from ScanPlay':l.kind==='remove'?'removed by ScanPlay':(l.from_id==u.id?'to '+esc(l.tname||'?'):'from '+esc(l.fname||'?'))}${l.note?' · '+esc(l.note):''}</span><b>${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<p class="tiny" style="color:var(--mute)">No token movements yet.</p>';
   $('#ptBody').innerHTML=`
@@ -419,7 +421,7 @@ async function openPartner(){
     <h4>Your invite link</h4>
     <div class="row" style="gap:6px"><input type="text" readonly value="${u.inviteLink}" id="invLink" style="margin:0;font-size:12px"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Copied'))">Copy</button><button class="btn sm ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">WhatsApp</button></div>
     <p class="tiny" style="color:var(--mute)">Anyone who signs up through this link is placed under you as a ${u.role==='distributor'?'retailer':'user'}.</p>
-    <h4>Accounts under you (${kids.length})</h4>${rows}
+    <h4>Accounts under you (${kids.length} direct · ${countAll(kids)} total)</h4><p class="tiny" style="color:var(--mute);margin:0 0 6px">You give tokens to your direct accounts; they pass them on to theirs. Everyone below you is shown so you can see the full chain.</p>${rows}
     <div class="row" style="gap:6px;margin-top:8px"><input type="text" id="linkEmail" placeholder="Link an existing account by email" style="margin:0"><button class="btn sm ghost" onclick="linkAcc()">Link</button></div>
     <h4>Your details <span class="tiny" style="font-weight:400;color:var(--mute)">— what your accounts see under "Buy tokens"</span></h4>
     <label class="field">Business name</label><input type="text" id="pBiz" value="${esc(u.business||'')}">
@@ -435,6 +437,7 @@ async function openPartner(){
     <h4>Recent token movements</h4>${led}`;
   $('#ptModal').classList.add('open'); setTimeout(()=>initLocMap('p','pLocMap'),80);
 }
+function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
 async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
   const k=[...document.querySelectorAll('.krow')].find(r=>r.querySelector('#q'+id)); const who=k?k.querySelector('b').textContent:'this account';

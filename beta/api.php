@@ -559,7 +559,10 @@ switch ($action) {
   /* ---------- partner panel (distributor / retailer / anyone with children) ---------- */
   case 'partner_children': {
     $u = auth();
-    $kids = rows("SELECT id,name,email,phone,business,role,tokens,tokens_used,created,(SELECT COUNT(*) FROM users c WHERE c.parent_id=users.id AND c.deleted=0) subs FROM users WHERE parent_id=? AND deleted=0 ORDER BY created DESC", [$u['id']]);
+    $tree = function($pid, $depth) use (&$tree) {
+      $k = rows("SELECT id,name,email,phone,business,role,tokens,tokens_used,created,address,area FROM users WHERE parent_id=? AND deleted=0 ORDER BY created DESC", [$pid]);
+      foreach ($k as &$c) { $c['subs'] = $depth < 4 ? $tree($c['id'], $depth+1) : []; $c['subCount'] = count($c['subs']); } return $k; };
+    $kids = $tree($u['id'], 1);
     $led = rows("SELECT l.ts,l.from_id,l.to_id,l.qty,l.kind,l.note,f.name fname,t.name tname FROM ledger l LEFT JOIN users f ON f.id=l.from_id LEFT JOIN users t ON t.id=l.to_id WHERE l.from_id=? OR l.to_id=? ORDER BY l.id DESC LIMIT 100", [$u['id'],$u['id']]);
     out(true, ['children'=>$kids, 'ledger'=>$led, 'user'=>userInfo($u)]);
   }
