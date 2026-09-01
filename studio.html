@@ -78,7 +78,7 @@
   #qr{display:flex;justify-content:center;margin:0 auto 14px} #qr img,#qr canvas{border-radius:8px}
   .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  html,body{overscroll-behavior-y:none}
+  html,body{overscroll-behavior:none}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
@@ -632,7 +632,9 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
 function rotateCrop(){ cropper&&cropper.rotate(90); }
 let _scrollY=0;
 function lockPage(on){ if(on){ _scrollY=window.scrollY; document.body.classList.add('noscroll'); document.body.style.top=(-_scrollY)+'px'; } else { document.body.classList.remove('noscroll'); document.body.style.top=''; window.scrollTo(0,_scrollY); } }
-['touchmove','touchstart'].forEach(ev=>document.getElementById('cropModal').addEventListener(ev,e=>{ if(!e.target.closest('#cropWrap, button')) e.preventDefault(); },{passive:false}));
+// While the crop dialog is open, the browser gets NO touch gestures (pull-to-refresh cancelled Cropper's drag on downward moves). Cropper still receives the same events.
+document.addEventListener('touchmove',e=>{ if(document.getElementById('cropModal').classList.contains('open')) e.preventDefault(); },{passive:false,capture:true});
+document.addEventListener('touchstart',e=>{ if(document.getElementById('cropModal').classList.contains('open') && !e.target.closest('button')) e.preventDefault(); },{passive:false,capture:true});
 function cancelCrop(){ $('#cropModal').classList.remove('open'); lockPage(false); $('#imgFile').value=''; }
 function photoTips(e){ e.preventDefault();
   confirmDlg('Which photo works best?','Upload the original flat design — the exact artwork you will print. Avoid: a framed picture shot at an angle, a hand holding the photo, glare or shadows, or a small piece of a poster. Scanning matches the print to this upload — they must look identical.','Got it');
