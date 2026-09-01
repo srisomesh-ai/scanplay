@@ -79,8 +79,10 @@
   .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior-y:none}
-  #cropModal .box{max-width:560px;text-align:left}
-  #cropWrap{height:60vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none} #cropWrap > img{max-width:100%;display:block}
+  body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
+  #cropModal{touch-action:none;overscroll-behavior:none}
+  #cropModal .box{max-width:560px;text-align:left;max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+  #cropWrap{height:52vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none} #cropWrap > img{max-width:100%;display:block}
   .cropper-point{width:30px!important;height:30px!important;opacity:1!important;background:#fff!important;border:4px solid #7C3AED;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .cropper-point.point-ne{top:-15px!important;right:-15px!important} .cropper-point.point-nw{top:-15px!important;left:-15px!important}
   .cropper-point.point-se{bottom:-15px!important;right:-15px!important} .cropper-point.point-sw{bottom:-15px!important;left:-15px!important}
@@ -591,7 +593,7 @@ function bindPickers(){
   $('#imgFile').onchange=e=>{
     const f=e.target.files[0]; if(!f) return;
     const im=$('#cropImg'); if(cropper){cropper.destroy();cropper=null;}
-    im.src=URL.createObjectURL(f); $('#cropModal').classList.add('open');
+    im.src=URL.createObjectURL(f); lockPage(true); $('#cropModal').classList.add('open');
     im.onload=()=>{ cropper=new Cropper(im,{viewMode:1,dragMode:'none',autoCropArea:1,background:false,responsive:true,zoomable:false,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
     document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.r==='0'));
   };
@@ -631,7 +633,10 @@ $('#chips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c||!cropper) ret
   const r=parseFloat(c.dataset.r); cropper.setAspectRatio(r>0?1/r:NaN); cropper.setCropBoxData({}); };
 function rotateCrop(){ cropper&&cropper.rotate(90); }
 function resetCrop(){ if(!cropper) return; cropper.reset(); const d=cropper.getCanvasData(); cropper.setCropBoxData({left:d.left,top:d.top,width:d.width,height:d.height}); }
-function cancelCrop(){ $('#cropModal').classList.remove('open'); $('#imgFile').value=''; }
+let _scrollY=0;
+function lockPage(on){ if(on){ _scrollY=window.scrollY; document.body.classList.add('noscroll'); document.body.style.top=(-_scrollY)+'px'; } else { document.body.classList.remove('noscroll'); document.body.style.top=''; window.scrollTo(0,_scrollY); } }
+document.getElementById('cropModal').addEventListener('touchmove',e=>{ if(!e.target.closest('.box')) e.preventDefault(); },{passive:false});
+function cancelCrop(){ $('#cropModal').classList.remove('open'); lockPage(false); $('#imgFile').value=''; }
 function photoTips(e){ e.preventDefault();
   confirmDlg('Which photo works best?','Upload the original flat design — the exact artwork you will print. Avoid: a framed picture shot at an angle, a hand holding the photo, glare or shadows, or a small piece of a poster. Scanning matches the print to this upload — they must look identical.','Got it');
 }
@@ -656,7 +661,7 @@ function applyCrop(){
   const c=cropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'});
   const finish=()=>c.toBlob(b=>{ imgFile=new File([b],'target.jpg',{type:'image/jpeg'}); imgRatio=c.height/c.width;
     $('#imgPrev').innerHTML=`<img src="${URL.createObjectURL(b)}"><span class="hint">${c.width}×${c.height} · tap to change</span>`;
-    $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); updSteps(); },'image/jpeg',0.92);
+    $('#dropImg').classList.add('on'); $('#cropModal').classList.remove('open'); lockPage(false); updSteps(); },'image/jpeg',0.92);
   const issues=photoIssues(c);
   if(issues.length){
     confirmDlg('⚠️ This photo may not scan well','This photo is '+issues.join('; ')+'. For best results upload the original flat design (no frame, no hand, no angle).','Use it anyway').then(ok=>{ if(ok) finish(); });
