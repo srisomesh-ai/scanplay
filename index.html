@@ -223,6 +223,7 @@ section{padding:96px 0}
 .nearq .btn{padding:12px 18px}
 .nearst{text-align:center;font-size:13px;color:var(--mute);min-height:18px;margin-bottom:12px}
 .nearst.err{color:#DC2626}
+.p.opp{border:2px dashed #F5B65E;background:#FFFDF8}
 .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
@@ -436,13 +437,16 @@ fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r
 /* ---------- partners ---------- */
 let RMAP=null; const WAMSG=encodeURIComponent('Hi ScanPlay! I need tokens.');
 function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
-function loadPartners(lat,lng){ const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+let PLACE='';
+function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
     const L_=(r.ok&&r.retailers)||[]; const wa=r.admin&&r.admin.whatsapp;
     document.getElementById('retNote').innerHTML=`${L_.length?'Not in the list?':'No partner listed in your area yet?'} Contact ScanPlay directly${wa?` — <a href="https://wa.me/${e(wa)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp ${e(wa)}</a>`:''}.`;
     if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / promoter');
-    if(!L_.length){ el.innerHTML=''; return; }
-    el.innerHTML=L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
+    const near=L_.filter(x=>x.km!=null&&x.km<=30);
+    const opp=(lat&&!near.length)?`<div class="p r opp"><span class="tag" style="background:#FFF3E4;color:#B45309">Opportunity</span><h3>No partner in ${e(PLACE||'your area')} yet — be the first!</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">Buy tokens at partner price, sell at your own price. Photographers, event managers &amp; print shops welcome.</div><a class="btn sm" href="https://wa.me/${e((r.admin&&r.admin.whatsapp)||'')}?text=${encodeURIComponent('Hi ScanPlay! I want to become a partner in '+(PLACE||'my area'))}" target="_blank" rel="noopener">Apply on WhatsApp</a></div>`:'';
+    if(!L_.length){ el.innerHTML=opp; return; }
+    el.innerHTML=opp+L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
     const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
@@ -454,7 +458,7 @@ function nearMe(){ const st=document.getElementById('nearSt'), b=document.getEle
   if(!navigator.geolocation){ st.textContent='This browser has no location support — type your area instead.'; return; }
   if(location.protocol!=='https:'){ st.className='nearst err'; st.textContent='Location needs a secure (https) connection.'; return; }
   st.textContent='Finding your location…'; b.disabled=true;
-  const ok=p=>{ b.disabled=false; st.textContent='Sorted by distance from you'; loadPartners(p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5)); };
+  const ok=async p=>{ b.disabled=false; st.textContent='Sorted by distance from you'; let pl=''; try{ const g=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}`).then(x=>x.json()); const a=g.address||{}; pl=a.city||a.town||a.state_district||a.county||''; }catch(e){} loadPartners(p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5),pl); };
   const fail=e=>{ b.disabled=false; st.className='nearst err';
     if(e&&e.code===1) st.textContent='Location is blocked for this site. Tap the lock icon in the address bar → Permissions → Location → Allow, then try again. Or type your area above.';
     else if(e&&e.code===2) st.textContent='Your phone could not determine its position (GPS off?). Turn on Location, or type your area above.';
@@ -465,7 +469,7 @@ function nearMe(){ const st=document.getElementById('nearSt'), b=document.getEle
 async function nearArea(){ const q=document.getElementById('nearQ').value.trim(), st=document.getElementById('nearSt'); if(!q) return; st.className='nearst'; st.textContent='Searching…';
   try{ const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q='+encodeURIComponent(q)).then(x=>x.json());
     if(!r.length){ st.className='nearst err'; st.textContent='Place not found — try a bigger area or city name.'; return; }
-    st.textContent='Partners near '+r[0].display_name.split(',').slice(0,2).join(','); loadPartners((+r[0].lat).toFixed(5),(+r[0].lon).toFixed(5));
+    const pl=r[0].display_name.split(',')[0]; st.textContent='Partners near '+r[0].display_name.split(',').slice(0,2).join(','); loadPartners((+r[0].lat).toFixed(5),(+r[0].lon).toFixed(5),pl);
   }catch(e){ st.className='nearst err'; st.textContent='Search failed — check your connection.'; } }
 loadPartners();
 /* ---------- language ---------- */
