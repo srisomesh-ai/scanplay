@@ -39,10 +39,60 @@ catch (Exception $e) { echo json_encode(['ok'=>false,'error'=>'Database unavaila
 $db->exec("PRAGMA journal_mode=WAL");
 $db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, pass TEXT, name TEXT, phone TEXT,
   plan TEXT DEFAULT 'free', plan_until INTEGER, created INTEGER, token TEXT, logo INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0)");
-foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT','referral_code TEXT','referrer_id INTEGER','ref_awarded INTEGER DEFAULT 0'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
+foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id TEXT','extra_photos INTEGER DEFAULT 0','extra_accounts INTEGER DEFAULT 0','note TEXT','referral_code TEXT','referrer_id INTEGER','ref_awarded INTEGER DEFAULT 0',
+          'role TEXT DEFAULT \'user\'','parent_id INTEGER','tokens INTEGER DEFAULT 0','tokens_used INTEGER DEFAULT 0','partner_code TEXT','business TEXT','whatsapp TEXT','pay_details TEXT','area TEXT','listed INTEGER DEFAULT 0','lat REAL','lng REAL','address TEXT'] as $col) { try { $db->exec("ALTER TABLE users ADD COLUMN $col"); } catch (Exception $e) {} }
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
+$db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
+$db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
+/* one-time migration to the token model: nobody loses paid capacity */
+if (!$db->query("SELECT v FROM settings WHERE k='token_migrated'")->fetch()) {
+  $db->exec("INSERT INTO settings (k,v) VALUES ('token_migrated','1')");
+  foreach ($db->query("SELECT * FROM users WHERE deleted=0")->fetchAll(PDO::FETCH_ASSOC) as $mu) {
+    $grant = 2;   // welcome tokens for everyone
+    $plan = PLANS[$mu['plan']] ?? null;
+    if ($plan && $mu['plan'] !== 'free' && (int)$mu['plan_until'] > time()) {
+      $cap = ((int)$plan['accounts'] + (int)($mu['extra_accounts']??0)) * (int)($plan['ppp']??1) + (int)($mu['extra_photos']??0);
+      $used = (int)$db->query("SELECT COUNT(*) FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=".(int)$mu['id'])->fetchColumn();
+      $grant += max(0, $cap - $used);
+    }
+    $db->prepare("UPDATE users SET tokens=COALESCE(tokens,0)+? WHERE id=?")->execute([$grant, $mu['id']]);
+    $db->prepare("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)")->execute([time(), 0, $mu['id'], $grant, 'grant', 'migration to tokens'.($grant>2?' (paid plan converted)':'')]);
+  }
+}
+/* ---------- TOKEN MODEL (beta) ----------
+   1 token = 1 photo + 1 video. Spent when a photo is added; never refunded, never expires.
+   Roles form a tree: admin -> distributor -> retailer -> user. Tokens only move DOWN the tree; only admin can remove them. */
+const ROLES = ['distributor','promoter','user'];
+q("UPDATE users SET role='promoter' WHERE role='retailer'");   // rename migration
+function setting($k, $d='') { $r = row("SELECT v FROM settings WHERE k=?", [$k]); return $r ? $r['v'] : $d; }
+function adminContact() { return ['name'=>setting('admin_name','ScanPlay'), 'business'=>setting('admin_business','ScanPlay LLP'), 'phone'=>setting('admin_phone',''), 'whatsapp'=>setting('admin_whatsapp',''), 'email'=>setting('admin_email','info@scanplay.in'), 'pay_details'=>setting('admin_pay','')]; }
+function contactOf($u) { if (!$u) return null; return ['id'=>(int)$u['id'], 'name'=>$u['name'], 'business'=>$u['business'] ?: $u['name'], 'phone'=>$u['phone'], 'whatsapp'=>$u['whatsapp'] ?: $u['phone'], 'email'=>$u['email'], 'pay_details'=>$u['pay_details'], 'role'=>$u['role'] ?: 'user']; }
+function childRole($parentRole) { return $parentRole==='distributor' ? 'promoter' : 'user'; }
+function partnerCode($u) { if (empty($u['partner_code'])) { $c = strtoupper(substr(bin2hex(random_bytes(4)),0,6)); q("UPDATE users SET partner_code=? WHERE id=?", [$c, $u['id']]); $u['partner_code']=$c; } return $u['partner_code']; }
+function linkParent($childId, $parentCode) {
+  $p = row("SELECT * FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($parentCode)]); if (!$p || (int)$p['id']===(int)$childId) return;
+  $cr = childRole($p['role']); q("UPDATE users SET parent_id=?, role=?, listed=? WHERE id=? AND parent_id IS NULL", [$p['id'], $cr, $cr==='user'?0:1, $childId]);
+}
+function saveLocation($id) {
+  $lat=(float)($_POST['lat']??0); $lng=(float)($_POST['lng']??0); if (!$lat || !$lng || abs($lat)>90 || abs($lng)>180) return;
+  q("UPDATE users SET lat=?, lng=?, address=?".(!empty($_POST['business'])?", business=?":"")." WHERE id=?", array_merge([$lat,$lng,trim(strip_tags($_POST['address']??''))], !empty($_POST['business'])?[trim(strip_tags($_POST['business']))]:[], [$id]));
+}
+function kmBetween($a,$b,$c,$d){ $r=6371; $x=deg2rad($c-$a); $y=deg2rad($d-$b); $h=sin($x/2)**2+cos(deg2rad($a))*cos(deg2rad($c))*sin($y/2)**2; return 2*$r*asin(sqrt($h)); }
+/* ---------- video compression (background ffmpeg, static binary in data/bin) ----------
+   Rewrites video.mp4 as 720p H.264 ~2.5 Mbps: same sharpness on a phone, 5-8x less bandwidth, starts faster.
+   Runs after the API has replied; the original stays in place until the compressed file is complete, then replaces it atomically. */
+function compressVideo($dir) {
+  $ff = DATA_DIR.'/bin/ffmpeg'; $src = "$dir/video.mp4";
+  if (!is_executable($ff) || !file_exists($src) || filesize($src) < 6*1048576) return;   // small files: not worth it
+  $tmp = "$dir/video_c.mp4"; $log = "$dir/compress.log"; @unlink($tmp);
+  $vf = "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'";
+  $cmd = escapeshellarg($ff)." -y -nostdin -threads 2 -i ".escapeshellarg($src)." -vf ".escapeshellarg($vf)." -r 30 -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ".escapeshellarg($tmp)
+       ." > ".escapeshellarg($log)." 2>&1 && [ -s ".escapeshellarg($tmp)." ] && [ $(stat -c%s ".escapeshellarg($tmp).") -lt $(stat -c%s ".escapeshellarg($src).") ] && mv -f ".escapeshellarg($tmp)." ".escapeshellarg($src)." ; rm -f ".escapeshellarg($tmp);
+  shell_exec("nohup sh -c ".escapeshellarg($cmd)." > /dev/null 2>&1 &");
+}
+function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
 
@@ -148,6 +198,7 @@ function issueToken($id) { $t = bin2hex(random_bytes(24)); q("UPDATE users SET t
 
 /* plan state for a user: active | grace | expired */
 function planState($u) {
+  return 'active';   // token model: no subscriptions, nothing expires
   if (($u['plan'] ?? 'free') === 'free') return 'active';   // Free is forever
   $until = (int)$u['plan_until'];
   if (now() <= $until) return 'active';
@@ -158,8 +209,15 @@ function userInfo($u) {
   $p = PLANS[$u['plan']] ?? PLANS['free']; $p['photos'] += (int)($u['extra_photos'] ?? 0); if ($p['accounts']) $p['accounts'] += (int)($u['extra_accounts'] ?? 0);
   $photos = (int)row("SELECT COUNT(*) c FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=?", [$u['id']])['c'];
   $accs   = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
-  return ['id'=>(int)$u['id'],'email'=>$u['email'],'name'=>$u['name'],'phone'=>$u['phone'],'plan'=>$u['plan'],'planName'=>$p['name'],
-    'planUntil'=>(int)$u['plan_until'],'state'=>planState($u),'limits'=>$p,'used'=>['photos'=>$photos,'accounts'=>$accs],
+  $p = ['name'=>'Tokens','photos'=>0,'accounts'=>0,'ppp'=>0,'logo'=>true,'analytics'=>true,'sub'=>true,'domain'=>false,'watermark'=>false];   // token model: no caps, all features
+  $parent = !empty($u['parent_id']) ? row("SELECT * FROM users WHERE id=? AND deleted=0", [$u['parent_id']]) : null;
+  $children = (int)row("SELECT COUNT(*) c FROM users WHERE parent_id=? AND deleted=0", [$u['id']])['c'];
+  return ['id'=>(int)$u['id'],'email'=>$u['email'],'name'=>$u['name'],'phone'=>$u['phone'],'plan'=>'tokens','planName'=>'Tokens',
+    'planUntil'=>0,'state'=>'active','limits'=>$p,'used'=>['photos'=>$photos,'accounts'=>$accs],
+    'tokens'=>(int)($u['tokens']??0),'tokensUsed'=>(int)($u['tokens_used']??0),'role'=>$u['role'] ?: 'user','isPartner'=>in_array($u['role'],['distributor','promoter']) || $children>0,
+    'partnerCode'=>partnerCode($u),'inviteLink'=>baseUrl().'/studio.html?partner='.$u['partner_code'],
+    'parent'=>$parent ? contactOf($parent) : adminContact(), 'hasParent'=>(bool)$parent, 'children'=>$children,
+    'business'=>$u['business'],'lat'=>$u['lat'],'lng'=>$u['lng'],'address'=>$u['address'],'whatsapp'=>$u['whatsapp'],'pay_details'=>$u['pay_details'],'area'=>$u['area'],'listed'=>(int)($u['listed']??0),
     'logo'=>$u['logo'] ? "data/users/{$u['id']}/logo.png?v={$u['logo']}" : null, 'graceDays'=>GRACE_DAYS];
 }
 function auth() {
@@ -202,20 +260,27 @@ switch ($action) {
   /* ---------- auth ---------- */
   case 'config': out(true, ['google'=> GOOGLE_CLIENT_ID !== 'CHANGE_ME.apps.googleusercontent.com' ? GOOGLE_CLIENT_ID : null, 'mail'=>mailConfigured()]);
 
+  case 'invite_info': { $pc=clean($_GET['code']??''); $p=$pc!==''?row("SELECT name,business,role FROM users WHERE upper(partner_code)=? AND deleted=0",[strtoupper($pc)]):null;
+    if (!$p) out(false, ['error'=>'Invalid invite link']); out(true, ['from'=>$p['business']?:$p['name'], 'fromRole'=>$p['role'], 'youBecome'=>childRole($p['role'])]); }
   case 'signup': {
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? ''; $name = trim(strip_tags($_POST['name'] ?? '')); $phone = preg_replace('/\D/','',$_POST['phone'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
     if ($name === '') out(false, ['error'=>'Enter your name']);
+    $pc = clean($_POST['partner'] ?? ''); $pp = $pc!=='' ? row("SELECT role FROM users WHERE upper(partner_code)=? AND deleted=0", [strtoupper($pc)]) : null;
+    if ($pp && $pp['role']==='distributor' && (empty($_POST['lat']) || empty($_POST['lng']))) out(false, ['error'=>'Please set your business location on the map']);
     $ex = row("SELECT * FROM users WHERE email=?", [$email]);
     if ($ex && $ex['verified']) out(false, ['error'=>'An account with this email already exists. Sign in instead.']);
     if ($ex) q("UPDATE users SET pass=?, name=?, phone=? WHERE id=?", [password_hash($pass, PASSWORD_DEFAULT), $name, $phone, $ex['id']]);
     else q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified) VALUES (?,?,?,?,'free',?,?,0)", [$email, password_hash($pass, PASSWORD_DEFAULT), $name, $phone, now()+7*86400, now()]);
     $isNew = !$ex;
     $u = row("SELECT * FROM users WHERE email=?", [$email]);
+    saveLocation($u['id']);
     /* referral: only brand-new accounts count; linked once at creation, self-referral blocked */
     $ref = clean($_POST['ref'] ?? '');
     if ($isNew && $ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
+    if ($isNew && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner']));
+    if ($isNew) { q("UPDATE users SET tokens=COALESCE(tokens,0)+2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); }   // every new account: 2 free tokens to try it
     logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
@@ -235,6 +300,7 @@ switch ($action) {
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) { if ($u) logAct($u['id'],'login_failed'); out(false, ['error'=>'Wrong email or password']); }
     if (!$u['verified'] && mailConfigured()) { issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]); }
+    if (empty($u['parent_id']) && !empty($_POST['partner'])) { linkParent($u['id'], clean($_POST['partner'])); $u = row("SELECT * FROM users WHERE id=?", [$u['id']]); }   // came in through an invite link: attach
     logAct($u['id'],'login'); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
   }
   case 'forgot': {
@@ -255,8 +321,10 @@ switch ($action) {
     if (!$info || ($info['aud'] ?? '') !== GOOGLE_CLIENT_ID || empty($info['email']) || ($info['email_verified'] ?? 'false') !== 'true') out(false, ['error'=>'Google sign-in could not be verified']);
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
-      $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); } }
-    else q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]);
+      $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); }
+      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner']));
+      q("UPDATE users SET tokens=COALESCE(tokens,0)+2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); saveLocation($u['id']); }
+    else { q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]); if (empty($u['lat'])) saveLocation($u['id']); if (empty($u['parent_id']) && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); }
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
@@ -296,7 +364,7 @@ switch ($action) {
     $u = auth(); requireWritable($u);
     $name = trim(strip_tags($_POST['name'] ?? '')); if ($name==='') out(false, ['error'=>'Account name is required']);
     $lim = PLANS[$u['plan']]['accounts'] ? PLANS[$u['plan']]['accounts'] + (int)$u['extra_accounts'] : 0; $have = (int)row("SELECT COUNT(*) c FROM accounts WHERE user_id=?", [$u['id']])['c'];
-    if ($lim && $have >= $lim) out(false, ['error'=>"Your plan allows $lim project".($lim>1?'s':'').". Refer a friend for a free project, or upgrade for more.", 'upgrade'=>true]);
+    /* token model: unlimited projects; tokens are spent per photo */
     $code = substr(bin2hex(random_bytes(4)),0,8);
     q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $u['id'], $name, now()]);
     mkdir(DATA_DIR."/$code", 0755, true); logAct($u['id'],'project_create',"$code $name");
@@ -342,8 +410,10 @@ switch ($action) {
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
-    $ppp = PLANS[$u['plan']]['ppp'] ?? 1; $inProj = (int)row("SELECT COUNT(*) c FROM items WHERE code=?", [$code])['c'];
-    if ($inProj >= $ppp) out(false, ['error'=> $u['plan']==='free' ? 'Free plan: 1 photo in this project. Refer a friend to earn another project, or upgrade for more photos per project.' : "Your plan allows $ppp photos per project. Create a new project or upgrade.", 'upgrade'=>true]);
+    if ((int)($u['tokens']??0) < 1) { $inf = userInfo($u); $pc = $inf['parent'];
+      $msg = $inf['hasParent'] ? 'You have no tokens left. 1 token = 1 photo + 1 video. Buy tokens from '.htmlspecialchars($pc['business'] ?: $pc['name']).($pc['whatsapp'] ? ' · WhatsApp '.$pc['whatsapp'] : '')
+                               : 'Your free tokens are used. 1 token = 1 photo + 1 video. Find a ScanPlay partner near you to buy more.';
+      out(false, ['error'=>$msg, 'tokens'=>0, 'findPartner'=>!$inf['hasParent']]); }
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
@@ -374,9 +444,12 @@ switch ($action) {
       if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that link'.($err?" ($err)":'').'. Use a Google Drive / Dropbox share link (set to "Anyone with the link") or a direct .mp4 link.']); }
     }
     move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
+    if (!$yt) compressVideo($dir);
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
     logAct($u['id'],'photo_add',"$code/$id");
+    /* spend one token - never refunded, deleting the photo does not give it back */
+    q("UPDATE users SET tokens=tokens-1, tokens_used=COALESCE(tokens_used,0)+1 WHERE id=? AND tokens>0", [$u['id']]); ledger($u['id'], null, 1, 'spent', "$code/$id");
     /* referral reward: when a referred user adds their first photo, referrer gets +1 photo and +1 project */
     if (!empty($u['referrer_id']) && !(int)($u['ref_awarded'] ?? 0)) {
       q("UPDATE users SET ref_awarded=1 WHERE id=?", [$u['id']]);
@@ -411,7 +484,7 @@ switch ($action) {
   case 'scanner': {
     $cut = now() - GRACE_DAYS*86400;
     $accs = rows("SELECT a.code, a.name, u.plan, u.plan_until, u.logo, u.id uid, (SELECT MAX(created) FROM items i WHERE i.code=a.code) last FROM accounts a JOIN users u ON u.id=a.user_id
-                  WHERE a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
+                  WHERE a.blocked=0 AND u.deleted=0 AND ? > 0 AND EXISTS (SELECT 1 FROM items i WHERE i.code=a.code) ORDER BY last DESC LIMIT 40", [$cut]);
     $list = [];
     foreach ($accs as $x) {
       if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
@@ -427,7 +500,7 @@ switch ($action) {
   case 'showcase': {
     $cut = now() - GRACE_DAYS*86400;
     $rows = rows("SELECT a.code, a.name, i.id iid, i.title, i.ratio FROM accounts a JOIN users u ON u.id=a.user_id JOIN items i ON i.code=a.code
-                  WHERE a.showcase=1 AND a.blocked=0 AND u.deleted=0 AND (u.plan='free' OR u.plan_until > ?) AND (i.yt IS NULL OR i.yt='') ORDER BY RANDOM() LIMIT 6", [$cut]);
+                  WHERE a.showcase=1 AND a.blocked=0 AND u.deleted=0 AND ? > 0 AND (i.yt IS NULL OR i.yt='') ORDER BY RANDOM() LIMIT 6", [$cut]);
     $list = [];
     foreach ($rows as $r) { $d = DATA_DIR."/{$r['code']}/{$r['iid']}"; if (!file_exists("$d/target.jpg") || !file_exists("$d/video.mp4")) continue;
       $list[] = ['img'=>"data/{$r['code']}/{$r['iid']}/target.jpg", 'video'=>"data/{$r['code']}/{$r['iid']}/video.mp4", 'title'=>$r['name'], 'sub'=>$r['title']]; }
@@ -442,7 +515,7 @@ switch ($action) {
     if (!$a) out(false, ['error'=>'This QR is not linked to any account']);
     if (!empty($a['blocked'])) out(false, ['error'=>'This content is unavailable']);
     $state = planState($a);
-    if ($state === 'expired') out(false, ['error'=>'This experience has expired']);
+    
     $items = rows("SELECT id,title,ratio,vratio,fit,yt FROM items WHERE code=? ORDER BY created", [$code]);
     foreach ($items as &$it) $it['video'] = $it['yt'] ? null : "data/$code/{$it['id']}/video.mp4";
     if (!$items) out(false, ['error'=>'This account has no pictures yet']);
@@ -520,6 +593,67 @@ switch ($action) {
   }
 
   /* ---------- owner admin ---------- */
+  /* ---------- partner panel (distributor / retailer / anyone with children) ---------- */
+  case 'partner_children': {
+    $u = auth();
+    $tree = function($pid, $depth) use (&$tree) {
+      $k = rows("SELECT id,name,email,phone,business,role,tokens,tokens_used,created,address,area FROM users WHERE parent_id=? AND deleted=0 ORDER BY created DESC", [$pid]);
+      foreach ($k as &$c) { $c['subs'] = $depth < 4 ? $tree($c['id'], $depth+1) : []; $c['subCount'] = count($c['subs']); } return $k; };
+    $kids = $tree($u['id'], 1);
+    $led = rows("SELECT l.ts,l.from_id,l.to_id,l.qty,l.kind,l.note,f.name fname,t.name tname FROM ledger l LEFT JOIN users f ON f.id=l.from_id LEFT JOIN users t ON t.id=l.to_id WHERE l.from_id=? OR l.to_id=? ORDER BY l.id DESC LIMIT 100", [$u['id'],$u['id']]);
+    out(true, ['children'=>$kids, 'ledger'=>$led, 'user'=>userInfo($u)]);
+  }
+  case 'partner_transfer': {
+    $u = auth(); $to=(int)($_POST['to']??0); $qty=(int)($_POST['qty']??0); $note=trim(strip_tags($_POST['note']??''));
+    if ($qty < 1) out(false, ['error'=>'Enter how many tokens to give']);
+    $c = row("SELECT * FROM users WHERE id=? AND parent_id=? AND deleted=0", [$to, $u['id']]); if (!$c) out(false, ['error'=>'That account is not under you']);
+    $fresh = row("SELECT tokens FROM users WHERE id=?", [$u['id']]); if ((int)$fresh['tokens'] < $qty) out(false, ['error'=>"You only have {$fresh['tokens']} tokens"]);
+    q("UPDATE users SET tokens=tokens-? WHERE id=? AND tokens>=?", [$qty, $u['id'], $qty]); q("UPDATE users SET tokens=COALESCE(tokens,0)+? WHERE id=?", [$qty, $to]);
+    ledger($u['id'], $to, $qty, 'transfer', $note); logAct($u['id'],'token_transfer',"$qty to user $to");
+    @sendMail($c['email'], "You received $qty ScanPlay tokens", mailTpl("Tokens received &#127873;", "Hi ".htmlspecialchars($c['name']).", <b>".htmlspecialchars($u['business'] ?: $u['name'])."</b> just sent you <b>$qty token".($qty>1?'s':'')."</b>. 1 token = 1 photo + 1 video.", $note ? "Note: ".htmlspecialchars($note) : "", "Open Studio", baseUrl()."/studio.html"));
+    out(true, ['tokens'=>(int)row("SELECT tokens FROM users WHERE id=?", [$u['id']])['tokens']]);
+  }
+  case 'partner_link': {   // attach an existing account (by email) under me, if it has no parent yet
+    $u = auth(); $email = strtolower(trim($_POST['email']??''));
+    $c = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]); if (!$c) out(false, ['error'=>'No account with that email. Ask them to sign up with your invite link.']);
+    if ((int)$c['id']===(int)$u['id']) out(false, ['error'=>'That is you']);
+    if (!empty($c['parent_id'])) out(false, ['error'=>'That account is already linked to another partner']);
+    $cr = childRole($u['role']); q("UPDATE users SET parent_id=?, role=?, listed=? WHERE id=?", [$u['id'], $cr, $cr==='user'?0:1, $c['id']]); logAct($u['id'],'partner_link',$email); out(true);
+  }
+  case 'partner_profile': {   // what my child accounts see when they need to buy tokens
+    $u = auth();
+    if (in_array($u['role'],['distributor','promoter']) && !empty($_POST['listed']) && (empty($_POST['lat']) || empty($_POST['lng']))) out(false, ['error'=>'Set your business location on the map to be shown in "Partners near me"']);
+    q("UPDATE users SET business=?, whatsapp=?, pay_details=?, area=?, listed=? WHERE id=?",
+      [trim(strip_tags($_POST['business']??'')), preg_replace('/\D/','',$_POST['whatsapp']??''), trim(strip_tags($_POST['pay_details']??'')), trim(strip_tags($_POST['area']??'')), (int)!!($_POST['listed']??0), $u['id']]);
+    saveLocation($u['id']);
+    out(true, ['user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
+  }
+  case 'retailers': {   // public: partners who chose to be listed on the website
+    $list = rows("SELECT name,business,area,whatsapp,phone,role,lat,lng,address FROM users WHERE listed=1 AND role IN ('promoter','distributor') AND deleted=0 ORDER BY area, business");
+    $lat=(float)($_REQUEST['lat']??0); $lng=(float)($_REQUEST['lng']??0);
+    if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
+    out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
+  }
+  /* ---------- admin: token control ---------- */
+  case 'admin_tokens': {   // delta may be negative: only admin can remove tokens
+    ownerAuth(); $id=(int)($_POST['id']??0); $d=(int)($_POST['delta']??0); $note=trim(strip_tags($_POST['note']??'')); if (!$d) out(false, ['error'=>'Enter a number']);
+    $u=row("SELECT tokens,email,name FROM users WHERE id=?", [$id]); if(!$u) out(false, ['error'=>'No such user']);
+    if ($d<0 && (int)$u['tokens']+$d<0) $d = -(int)$u['tokens'];
+    q("UPDATE users SET tokens=COALESCE(tokens,0)+? WHERE id=?", [$d, $id]); ledger($d>0?0:$id, $d>0?$id:0, abs($d), $d>0?'grant':'remove', $note); logAct($id,'admin_tokens',"$d $note",'admin');
+    if ($d>0) @sendMail($u['email'], "You received $d ScanPlay tokens", mailTpl("Tokens received &#127873;", "Hi ".htmlspecialchars($u['name']).", ScanPlay added <b>$d token".($d>1?'s':'')."</b> to your account.", $note?htmlspecialchars($note):"", "Open Studio", baseUrl()."/studio.html"));
+    out(true, ['tokens'=>(int)$u['tokens']+$d]);
+  }
+  case 'admin_role': {
+    ownerAuth(); $id=(int)($_POST['id']??0); $role=$_POST['role']??''; if (!in_array($role, ROLES)) out(false, ['error'=>'Bad role']);
+    q("UPDATE users SET role=?, listed=CASE WHEN ?='user' THEN 0 ELSE 1 END WHERE id=?", [$role, $role, $id]);   // partners are listed on the website by default
+    if (isset($_POST['parent_email'])) { $pe=strtolower(trim($_POST['parent_email'])); if ($pe==='') q("UPDATE users SET parent_id=NULL WHERE id=?", [$id]); else { $p=row("SELECT id FROM users WHERE email=? AND deleted=0",[$pe]); if(!$p) out(false,['error'=>'No account with that parent email']); if((int)$p['id']===$id) out(false,['error'=>'Cannot be its own parent']); q("UPDATE users SET parent_id=? WHERE id=?", [$p['id'],$id]); } }
+    logAct($id,'admin_role',$role,'admin'); out(true);
+  }
+  case 'admin_ledger': { ownerAuth(); out(true, ['ledger'=>rows("SELECT l.*,f.name fname,f.email femail,t.name tname,t.email temail FROM ledger l LEFT JOIN users f ON f.id=l.from_id LEFT JOIN users t ON t.id=l.to_id ORDER BY l.id DESC LIMIT 300")]); }
+  case 'admin_settings': {
+    ownerAuth(); if (!empty($_POST['save'])) { foreach (['admin_name','admin_business','admin_phone','admin_whatsapp','admin_email','admin_pay'] as $k) q("INSERT INTO settings (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", [$k, trim(strip_tags($_POST[$k]??''))]); }
+    out(true, ['settings'=>adminContact()]);
+  }
   case 'admin_users': {
     ownerAuth();
     $list = rows("SELECT u.*, (SELECT COUNT(*) FROM accounts a WHERE a.user_id=u.id) accs, (SELECT COUNT(*) FROM items i JOIN accounts a ON a.code=i.code WHERE a.user_id=u.id) photos,
@@ -537,7 +671,9 @@ switch ($action) {
     $accs = array_map('pubAccount', rows("SELECT * FROM accounts WHERE user_id=? ORDER BY created", [$id]));
     $pays = rows("SELECT order_id,payment_id,plan,period,amount,status,created FROM payments WHERE user_id=? ORDER BY created DESC", [$id]);
     $act = rows("SELECT ts,who,action,detail,ip FROM activity WHERE user_id=? ORDER BY id DESC LIMIT 100", [$id]);
-    out(true, ['user'=>$u, 'accounts'=>$accs, 'payments'=>$pays, 'activity'=>$act, 'info'=>userInfo(row("SELECT * FROM users WHERE id=?", [$id]))]);
+    $led = rows("SELECT l.ts,l.from_id,l.to_id,l.qty,l.kind,l.note,f.name fname,t.name tname FROM ledger l LEFT JOIN users f ON f.id=l.from_id LEFT JOIN users t ON t.id=l.to_id WHERE l.from_id=? OR l.to_id=? ORDER BY l.id DESC LIMIT 100", [$id,$id]);
+    $parent = !empty($u['parent_id']) ? row("SELECT id,name,email,role FROM users WHERE id=?", [$u['parent_id']]) : null;
+    out(true, ['user'=>$u, 'accounts'=>$accs, 'payments'=>$pays, 'activity'=>$act, 'ledger'=>$led, 'parent'=>$parent, 'info'=>userInfo(row("SELECT * FROM users WHERE id=?", [$id]))]);
   }
   case 'admin_setplan': {
     ownerAuth(); logAct((int)($_POST['id']??0),'admin_setplan',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0); $plan=$_POST['plan']??''; $days=(int)($_POST['days']??30);

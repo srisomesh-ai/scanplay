@@ -5,4 +5,3 @@ Disallow: /admin.html
 Disallow: /api.php
 Disallow: /data/
 Sitemap: https://scanplay.in/sitemap.xml
-Disallow: /beta/

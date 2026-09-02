@@ -8,8 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{--ink:#0F0A1F;--paper:#F6F3FF;--card:#FFFFFF;--line:#ECE8F8;--mute:#4B4661;--a:#FF4D6D;--b:#7C3AED;--c:#22D3EE;--teal:#7C3AED;--teal-d:#6A2FD0;--amber:#FF9A3D;--red:#E4462B;
@@ -79,6 +80,26 @@
   .link{font-size:12px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:14px}
   .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   html,body{overscroll-behavior:none}
+  .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
+  .pp-wallet{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#F3EEFF,#FFF0F3);border-radius:14px;padding:14px 16px;margin-top:8px}
+  .pp-big{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .pp-sec{margin-top:18px;padding-top:14px;border-top:1px solid #EEECF5}
+  .pp-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .pp-count{background:#EEE9FF;color:var(--b);border-radius:999px;padding:1px 8px;font-size:11px}
+  .pp-link{display:flex;gap:6px} .pp-link input{flex:1;min-width:0;margin:0;font-size:13px}
+  .pp-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:8px}
+  .pp-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #F1EFF7;background:#fff} .pp-row:last-child{border-bottom:0}
+  .pp-row[style*="padding-left:28px"],.pp-row[style*="padding-left:44px"]{background:#FAFAFE}
+  .pp-who b{font-size:14px} .pp-who .tiny{margin-top:1px}
+  .pp-role{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--b);background:#EEE9FF;border-radius:6px;padding:2px 6px;vertical-align:middle}
+  .pp-tok{text-align:center;line-height:1} .pp-tok b{font-size:16px;display:block} .pp-tok span{font-size:10px;color:var(--mute)}
+  .pp-give{display:flex;gap:4px;align-items:center;min-width:104px;justify-content:flex-end} .pp-give input{width:52px;margin:0;padding:7px 8px;border:1px solid var(--line);border-radius:8px;font:600 13px 'Plus Jakarta Sans';text-align:center}
+  .pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px} @media(max-width:420px){.pp-grid{grid-template-columns:1fr}}
+  #ptBody textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:500 14px 'Plus Jakarta Sans';background:#fff;resize:vertical;box-sizing:border-box}
+  #ptBody input[type=number]{-moz-appearance:textfield} #ptBody input::-webkit-outer-spin-button,#ptBody input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .pp-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:12px;cursor:pointer}
+  .pp-h{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1EFF7;font-size:13px} .pp-h span:first-child{color:var(--mute);width:52px;flex:none} .pp-h span:nth-child(2){flex:1} .pp-h b.in{color:#059669}
+  #ptBody label.field{margin:12px 0 5px}
   body.noscroll{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #cropModal,#cropModal .box{touch-action:none;overscroll-behavior:none} #cropModal .box{max-height:calc(100dvh - 24px);overflow:hidden;padding:18px}
   #cropModal .box{max-width:560px;text-align:left}
@@ -165,12 +186,21 @@
       <div id="upFields" style="display:none">
         <label class="field">Your name</label><input type="text" id="aName" placeholder="Name or business name">
         <label class="field">WhatsApp number</label><input type="text" id="aPhone" placeholder="91XXXXXXXXXX" inputmode="numeric">
+        <div class="status" id="invNote" style="display:none;margin:0 0 8px;color:var(--b)"></div>
+        <div id="bizBlock">
+        <label class="field">Business name</label><input type="text" id="aBiz" placeholder="Shop / studio / company name">
+        <label class="field">Business location <span style="font-weight:400;color:var(--mute)" id="locHint">— drag the pin to your shop</span></label>
+        <div class="row" style="gap:6px;margin-bottom:6px"><input type="text" id="aAddrQ" placeholder="Search area, e.g. Gajuwaka, Visakhapatnam" style="margin:0;flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn ghost sm" onclick="geoSearch()">Search</button><button type="button" class="btn ghost sm" onclick="geoMe()" title="Use my location">📍</button></div>
+        <div id="locMap" style="height:200px;border-radius:12px;overflow:hidden;border:1.5px solid var(--line);background:#eef"></div>
+        <div class="tiny" id="locTxt" style="color:var(--mute);margin-top:6px">No location set yet</div>
+        <input type="hidden" id="aLat"><input type="hidden" id="aLng"><input type="hidden" id="aAddr">
+        </div>
       </div>
       <label class="field">Email</label><input type="text" id="aEmail" placeholder="you@example.com" inputmode="email" autocomplete="username">
       <label class="field">Password</label><input type="password" id="aPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
       <div class="status err" id="loginErr"></div>
       <button class="btn" style="width:100%;margin-top:12px" id="authBtn" onclick="doAuth()">Sign in</button>
-      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">Free forever · 1 photo + 1 video · no card</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="link" id="forgotLink" onclick="showView('forgot')">Forgot password?</button><span class="status" id="trialNote" style="display:none;margin:0">1 token = 1 photo + 1 video</span></div>
     </div>
 
     <div id="vCode" style="display:none">
@@ -191,7 +221,7 @@
     </div>
   </div>
 </div>
-<div style="text-align:center;margin:-30px auto 20px;font-size:13px;color:var(--mute)" id="appHint">Prefer an app? <a href="https://play.google.com/store/apps/details?id=in.scanplay.app" target="_blank" rel="noopener" style="color:var(--b);font-weight:700">Get ScanPlay on Google Play</a></div>
+<div id="appHint" style="display:none"></div>
 <div class="planbar" id="planbar" style="display:none"><div class="in" id="planIn"></div></div>
 
 <main id="app" style="display:none">
@@ -243,7 +273,7 @@
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
-  <button class="btn qrbig" id="refBtn3" style="display:none;background:linear-gradient(135deg,#FF9A3D,#FF4D6D);box-shadow:0 8px 20px rgba(255,154,61,.3)" onclick="showReferral()">🎁 Refer &amp; earn free projects</button>
+  
   <div class="row" style="justify-content:center;margin-top:12px;gap:8px"><a class="btn ghost sm" href="https://wa.me/918985849710?text=Hi%2C%20I%20need%20help%20with%20ScanPlay%20Studio" target="_blank" rel="noopener">WhatsApp support</a><button class="btn ghost sm" onclick="openSettings()">Settings &amp; logo</button></div>
 </template>
 
@@ -268,40 +298,25 @@
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeShare()">Cancel</button></div>
   </div>
 </div>
-<div class="modal" id="upiModal" onclick="if(event.target===this)closeUpi()">
-  <div class="box" style="max-width:400px;text-align:center">
-    <div style="font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--mute)">PAY BY UPI</div>
-    <div style="font:800 34px 'Plus Jakarta Sans';margin:4px 0 2px" id="upiAmt">₹499</div>
-    <div class="status" id="upiPlan" style="margin:0 0 14px"></div>
-    <div class="upiApps">
-      <button class="upiApp" onclick="upiOpen('phonepe')"><span class="ic" style="background:#5F259F">Pe</span>PhonePe</button>
-      <button class="upiApp" onclick="upiOpen('gpay')"><span class="ic" style="background:#1A73E8">G</span>Google Pay</button>
-      <button class="upiApp" onclick="upiOpen('paytm')"><span class="ic" style="background:#00BAF2">P</span>Paytm</button>
-      <button class="upiApp" onclick="upiOpen('any')"><span class="ic" style="background:#0F0A1F">UPI</span>Other UPI app</button>
-    </div>
-    <button class="chip" style="margin-top:12px" onclick="upiQr()">Show QR to pay from another phone</button>
-    <div id="upiQrBox" style="display:none;margin-top:12px">
-      <div id="upiQrImg" style="display:inline-block;padding:10px;background:#fff;border:1.5px solid var(--line);border-radius:14px"></div>
-      <div class="status" style="margin-top:6px">Valid for <b id="upiTimer">10:00</b></div>
-    </div>
-    <div class="status" style="margin:14px 0 10px">UPI ID <b>scanplay@ybl</b> · After paying, send the screenshot and we activate your plan within a few hours.</div>
-    <a class="btn" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box" id="upiPaid" href="#" target="_blank" rel="noopener">I have paid — send screenshot</a>
-    <div style="margin-top:10px"><button class="link" onclick="closeUpi()">Back to plans</button></div>
-  </div>
-</div>
-<div class="modal" id="confirmModal">
+<div class="modal" id="confirmModal" style="z-index:30">
   <div class="box" style="text-align:left;max-width:380px">
     <h3 id="cfTitle">Are you sure?</h3>
     <p id="cfMsg"></p>
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="cfDone(false)">Cancel</button><button class="btn" id="cfOk" onclick="cfDone(true)">OK</button></div>
   </div>
 </div>
-<div class="modal" id="nameModal">
+<div class="modal" id="nameModal" style="z-index:30">
   <div class="box" style="text-align:left;max-width:380px">
     <h3>Name your project</h3>
     <p>A project is one thing you print — a card, a shop menu, a poster.</p>
     <input type="text" id="nameInput" placeholder='e.g. "Our wedding", "Shop menu"' onkeydown="if(event.key==='Enter')nameOk()">
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="nameCancel()">Cancel</button><button class="btn" onclick="nameOk()">Create</button></div>
+  </div>
+</div>
+<div class="modal" id="ptModal" onclick="if(event.target===this)closePartner()">
+  <div class="box" style="max-width:520px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
+    <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Partner panel</h3><button class="btn ghost sm" onclick="closePartner()">Close</button></div>
+    <div id="ptBody"></div>
   </div>
 </div>
 <div class="modal" id="cropModal">
@@ -322,20 +337,6 @@
   </div>
 </div>
 
-<div class="modal" id="upModal" onclick="if(event.target===this)closeUp()">
-  <div class="box">
-    <h3>Choose a plan</h3>
-    <p id="upMsg">Every plan: unlimited scans, videos up to 200 MB, data kept while subscribed.</p>
-    <div class="seg"><button class="on" id="segM" onclick="setPeriod('month')">Monthly</button><button id="segY" onclick="setPeriod('year')">Yearly · 2 months free</button></div>
-    <div class="plans" id="planGrid"></div>
-    <div class="row" style="justify-content:flex-start;margin:4px 0 10px"><input type="text" id="promo" placeholder="Promo code (optional)" style="max-width:220px;text-transform:uppercase" oninput="PROMO=null;renderPlans()"><button class="btn ghost sm" onclick="applyPromoCode()">Apply</button><span class="status" id="promoSt" style="margin:0"></span></div>
-    <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="closeUp()">Not now</button><button class="btn ghost" id="upiBtn" onclick="payUpi()">Pay by UPI</button><button class="btn" id="payBtn" onclick="pay()">Pay with Razorpay</button></div>
-    <div class="status" id="payErr" style="margin-top:8px"></div>
-    <div class="status" style="margin-top:6px">Razorpay: cards, net banking, UPI — instant activation. UPI direct: pay to <b>scanplay@ybl</b>, we activate within a few hours.</div>
-    </div>
-  </div>
-</div>
-
 <script type="module">
 import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
 window.MindCompiler = Compiler;
@@ -349,16 +350,42 @@ const $=s=>document.querySelector(s);
 document.addEventListener('click',e=>{ if(e.target.closest('button,.btn,.chip,.acc,.accbox,.tabs button')&&navigator.vibrate) navigator.vibrate(12); },true);
 function toast(msg,ms=3500){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('on'); if(navigator.vibrate) navigator.vibrate([30,40,30]); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showView(v){ ['In','Code','Forgot'].forEach(x=>$('#v'+x).style.display='none'); $('#v'+{in:'In',code:'Code',forgot:'Forgot'}[v]).style.display=''; }
-function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up');
+let LOC_REQ=false, INV=null;
+async function inviteSetup(){ const c=localStorage.getItem('sp_partner')||''; const note=$('#invNote'), bb=$('#bizBlock');
+  if(!c){ INV=null; LOC_REQ=false; bb.style.display=''; $('#locHint').textContent='— optional for customers; needed if you are a distributor or promoter'; return; }
+  if(INV===null){ const r=await fetch('api.php?action=invite_info&code='+encodeURIComponent(c)).then(x=>x.json()).catch(()=>null); INV=r&&r.ok?r:false; }
+  if(!INV){ localStorage.removeItem('sp_partner'); note.style.display='none'; LOC_REQ=false; bb.style.display=''; return; }
+  note.style.display=''; note.textContent=`Invited by ${INV.from} (${INV.fromRole}) — you will join as a ${INV.youBecome}.`;
+  if(INV.youBecome==='user'){ LOC_REQ=false; bb.style.display='none'; } else { LOC_REQ=true; bb.style.display=''; $('#locHint').textContent='— required: drag the pin to your shop'; setTimeout(initLocMap,50); } }
+function authTab(m){ authMode=m; $('#tabIn').classList.toggle('on',m==='in'); $('#tabUp').classList.toggle('on',m==='up'); if(m==='up') inviteSetup().then(()=>{ if($('#bizBlock').style.display!=='none') setTimeout(initLocMap,50); });
   $('#upFields').style.display=m==='up'?'':'none'; $('#authBtn').textContent=m==='up'?'Create account':'Sign in'; $('#trialNote').style.display=m==='up'?'':'none'; $('#forgotLink').style.display=m==='up'?'none':''; $('#loginErr').textContent=''; }
 async function doAuth(){
   const f={action:authMode==='up'?'signup':'login',email:$('#aEmail').value.trim(),pass:$('#aPass').value};
-  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; }
+  f.partner=localStorage.getItem('sp_partner')||'';
+  if(authMode==='up'){ f.name=$('#aName').value.trim(); f.phone=$('#aPhone').value.trim(); f.ref=localStorage.getItem('sp_ref')||''; f.partner=localStorage.getItem('sp_partner')||''; f.business=$('#aBiz').value.trim(); f.lat=$('#aLat').value; f.lng=$('#aLng').value; f.address=$('#aAddr').value; if(LOC_REQ&&!f.lat){ $('#loginErr').textContent='Please set your business location on the map'; return; } }
   const r=await post(f); if(!r.ok){ $('#loginErr').textContent=r.error; return; }
   if(r.needVerify){ pendingEmail=r.email; codeMode='verify'; $('#codeEmail').textContent=pendingEmail; $('#resetFields').style.display='none'; $('#aCode').value=''; showView('code'); return; }
   finishAuth(r);
 }
-function finishAuth(r){ TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot(); }
+/* ---- location picker (OpenStreetMap, no API key) ---- */
+let LMAP=null, LMARK=null, LPREFIX='a';
+function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
+if(window.L){ }
+function setLoc(lat,lng,addr){ $('#'+LPREFIX+'Lat').value=lat.toFixed(6); $('#'+LPREFIX+'Lng').value=lng.toFixed(6); if(addr!==undefined) $('#'+LPREFIX+'Addr').value=addr; const t=$('#'+(LPREFIX==='a'?'locTxt':'pLocTxt')); if(t) t.textContent=($('#'+LPREFIX+'Addr').value||'Pinned')+' · '+lat.toFixed(4)+', '+lng.toFixed(4); }
+function initLocMap(prefix='a', elId='locMap'){ LPREFIX=prefix; const el=$('#'+elId); if(!el||!window.L) return; if(LMAP){ LMAP.remove(); LMAP=null; }
+  const lat=+$('#'+prefix+'Lat').value||17.6868, lng=+$('#'+prefix+'Lng').value||83.2185, has=!!$('#'+prefix+'Lat').value;
+  LMAP=L.map(el,{zoomControl:true,attributionControl:false}).setView([lat,lng],has?15:11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(LMAP);
+  LMARK=L.marker([lat,lng],{draggable:true,icon:spIcon()}).addTo(LMAP); if(has) setLoc(lat,lng);
+  LMARK.on('dragend',()=>{ const p=LMARK.getLatLng(); setLoc(p.lat,p.lng); revGeo(p.lat,p.lng); });
+  LMAP.on('click',e=>{ LMARK.setLatLng(e.latlng); setLoc(e.latlng.lat,e.latlng.lng); revGeo(e.latlng.lat,e.latlng.lng); });
+  setTimeout(()=>LMAP.invalidateSize(),200); }
+async function geoSearch(){ const q=$('#'+(LPREFIX==='a'?'aAddrQ':'pAddrQ')).value.trim(); if(!q) return;
+  try{ const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q='+encodeURIComponent(q)).then(x=>x.json()); if(!r.length){ toast('Place not found — try a bigger area name'); return; }
+    const lat=+r[0].lat, lng=+r[0].lon; LMAP.setView([lat,lng],15); LMARK.setLatLng([lat,lng]); setLoc(lat,lng,r[0].display_name.split(',').slice(0,3).join(',')); }catch(e){ toast('Search failed, drop the pin manually'); } }
+function geoMe(){ if(!navigator.geolocation){ toast('Location not available'); return; } navigator.geolocation.getCurrentPosition(p=>{ const {latitude:lat,longitude:lng}=p.coords; LMAP.setView([lat,lng],16); LMARK.setLatLng([lat,lng]); setLoc(lat,lng); revGeo(lat,lng); },()=>toast('Could not get your location — search or drag the pin'),{enableHighAccuracy:true,timeout:8000}); }
+async function revGeo(lat,lng){ try{ const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(x=>x.json()); const a=r.address||{}; const t=[a.suburb||a.neighbourhood||a.village||a.town,a.city||a.county||a.state_district,a.state].filter(Boolean).join(', '); setLoc(lat,lng,t||r.display_name||''); }catch(e){} }
+function finishAuth(r){ localStorage.removeItem('sp_partner'); TOKEN=r.token; localStorage.setItem('sp_token',TOKEN); USER=r.user; boot(); }
 async function doVerify(){
   const code=$('#aCode').value.trim(); if(code.length!==6){ $('#codeErr').textContent='Enter the 6-digit code'; return; }
   const f=codeMode==='reset'?{action:'reset',email:pendingEmail,code,newpass:$('#aNewPass').value}:{action:'verify',email:pendingEmail,code};
@@ -369,7 +396,7 @@ async function doForgot(){
   const email=$('#fEmail').value.trim(); const r=await post({action:'forgot',email}); if(!r.ok){ $('#forgotErr').textContent=r.error; return; }
   pendingEmail=email; codeMode='reset'; $('#codeEmail').textContent=email; $('#resetFields').style.display=''; $('#aCode').value=''; showView('code');
 }
-async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||''}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
+async function onGoogle(resp){ const r=await post({action:'google',credential:resp.credential,ref:localStorage.getItem('sp_ref')||'',partner:localStorage.getItem('sp_partner')||'',business:$('#aBiz').value.trim(),lat:$('#aLat').value,lng:$('#aLng').value,address:$('#aAddr').value}); if(!r.ok){ $('#loginErr').textContent=r.error; return; } finishAuth(r); }
 async function initGoogle(){
   CFG=await post({action:'config'}); if(!CFG.google) return;
   const tryRender=()=>{ if(!window.google||!google.accounts){ setTimeout(tryRender,300); return; }
@@ -381,7 +408,7 @@ async function logout(){ await post({action:'logout'}).catch(()=>{}); localStora
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
 function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts().then(()=>{ $('#app').style.display='grid'; if(!CUR&&ACCOUNTS.length) openAcc(ACCOUNTS[0].code); }); }
 let _cfRes=null;
-function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
+function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; if(msg&&msg.startsWith('<div')) $('#cfMsg').innerHTML=msg; else $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
 function cfDone(v){ $('#confirmModal').classList.remove('open'); const r=_cfRes; _cfRes=null; r&&r(v); }
 let _nameRes=null;
 function askName(def){ return new Promise(res=>{ _nameRes=res; $('#nameInput').value=def||''; $('#nameModal').classList.add('open'); setTimeout(()=>$('#nameInput').focus(),80); }); }
@@ -392,73 +419,81 @@ async function post(fields,files){
   if(files) Object.entries(files).forEach(([k,v])=>fd.append(k,v,v.name||k));
   const r=await (await fetch(API+'?action='+encodeURIComponent(fields.action),{method:'POST',body:fd,headers:{'X-Token':TOKEN}})).json();
   if(!r.ok&&r.auth){ localStorage.removeItem('sp_token'); location.reload(); }
-  if(!r.ok&&r.upgrade){ openUp(r.error); }
+  if(!r.ok&&r.upgrade){ toast(r.error); }
   return r;
 }
 /* plan bar */
 function renderPlan(){
-  const u=USER, L=u.limits, el=$('#planIn'); const days=Math.ceil((u.planUntil*1000-Date.now())/86400000);
-  let cls='', msg='';
-  if(u.plan==='free') { msg='Free forever'; }
-  else if(u.state==='grace') { cls='bad'; msg=`Plan ended. Data will be deleted in ${Math.max(0,u.graceDays+days)} days.`; }
-  else if(u.state==='expired') { cls='bad'; msg='Plan expired and data removed.'; }
-  else if(days<=3) { cls='warn'; msg=`Ends in ${days} day${days===1?'':'s'}.`; }
-  el.className='in '+cls;
-  const projLim=L.accounts||L.photos, projPct=Math.min(100,Math.round(u.used.accounts/(projLim||1)*100));
-  el.innerHTML=`<div><b>${u.planName}</b> <span>· ${msg||`${days} days left`}</span></div>
-    <div><span>Projects ${u.used.accounts} / ${projLim}</span><span class="meter"><i style="width:${projPct}%"></i></span></div>
-    <button class="btn sm" onclick="openUp()">${u.plan==='free'?'Choose a plan':'Upgrade / renew'}</button>`;
+  const u=USER, el=$('#planIn'); const low=u.tokens<=0, warn=u.tokens>0&&u.tokens<=3;
+  el.className='in '+(low?'bad':warn?'warn':'');
+  el.innerHTML=`<div><b>${u.tokens} token${u.tokens===1?'':'s'}</b> <span>· ${u.tokensUsed} used · 1 token = 1 photo + 1 video</span></div>
+    <div><span>${u.role==='distributor'?'Distributor':u.role==='promoter'?'Promoter':'Account'}${u.isPartner?` · ${u.children} under you`:''}</span></div>
+    ${u.isPartner?'<button class="btn sm" onclick="openPartner()">Partner panel</button>':''}<button class="btn sm ghost" onclick="openBuy()">Buy tokens</button>`;
 }
-/* upgrade */
-const PLANS_UI=[['personal','Personal','2 projects · 3 photos each'],['business','Business','6 projects · 5 photos each · logo · analytics'],['pro','Pro','10 projects · 10 photos each · sub-logins'],['agency','Gold','15 projects · 20 photos each · custom domain']];
-function openUp(msg){ if(msg) $('#upMsg').textContent=msg; renderPlans(); $('#upModal').classList.add('open'); }
-function closeUp(){ $('#upModal').classList.remove('open'); $('#payErr').textContent=''; }
-function setPeriod(p){ PERIOD=p; PROMO=null; $('#promoSt').textContent=''; $('#segM').classList.toggle('on',p==='month'); $('#segY').classList.toggle('on',p==='year'); renderPlans(); }
-function renderPlans(){
-  const L=USER?USER.limits:null;
-  $('#planGrid').innerHTML=PLANS_UI.map(([k,n,d])=>{ const pr=PRICES[k][PERIOD]; const dis=PROMO&&PROMO.plan===k&&PROMO.period===PERIOD; return `<div class="pl ${PICK===k?'on':''}" onclick="PICK='${k}';PROMO=null;$('#promoSt').textContent='';renderPlans()"><b>${n}</b><div class="pr">${dis?`<s style="opacity:.5;font-size:14px">₹${pr.toLocaleString('en-IN')}</s> ₹${PROMO.total.toLocaleString('en-IN')}`:'₹'+pr.toLocaleString('en-IN')}<small style="display:inline">/${PERIOD==='year'?'yr':'mo'}</small></div><small>${d}</small></div>`; }).join('');
-  const tot=finalPrice(); $('#payBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} with Razorpay`; $('#upiBtn').textContent=`Pay ₹${tot.toLocaleString('en-IN')} by UPI`;
+/* buy tokens = contact your parent (retailer / distributor / ScanPlay). No online payment. */
+function openBuy(){ const p=USER.parent, who=p.business||p.name;
+  if(!USER.hasParent){
+    confirmDlg('Get tokens', `<div style="text-align:left;line-height:1.7">1 token = 1 photo + 1 video.<br>Buy tokens from a ScanPlay partner — a photographer, event manager or print shop near you.${p.whatsapp?'<br><span style=\"color:var(--mute);font-size:12px\">No partner nearby? WhatsApp ScanPlay: '+esc(p.whatsapp)+'</span>':''}</div>`, 'Find a partner near me').then(ok=>{ if(ok) location.href='index.html#retailers'; });
+    return; }
+  const txt=`Hi ScanPlay! I need tokens. My account: ${USER.email}`;
+  confirmDlg('Buy tokens', `<div style="text-align:left;line-height:1.7"><b>${esc(who)}</b>${p.role?` <span style="color:var(--mute)">(${p.role})</span>`:''}<br>${p.phone?'📞 '+esc(p.phone)+'<br>':''}${p.email?'✉️ '+esc(p.email)+'<br>':''}${p.pay_details?'<div style="margin-top:8px;padding:10px;background:#F6F4FF;border-radius:10px;white-space:pre-wrap">'+esc(p.pay_details)+'</div>':''}<div style="margin-top:8px;color:var(--mute);font-size:12px">Pay them directly. Tokens are added to your account once they confirm. Tokens never expire.</div></div>`, p.whatsapp?'WhatsApp them':'OK').then(ok=>{ if(ok&&p.whatsapp) window.open('https://wa.me/'+p.whatsapp+'?text='+encodeURIComponent(txt),'_blank'); });
 }
-const PRICES={personal:{month:499,year:4990},business:{month:1999,year:19990},pro:{month:2999,year:29990},agency:{month:5999,year:59990}};
-/* Razorpay payment-page links per plan — paste when ready; empty = use in-studio Razorpay checkout */
-const PAY_LINKS={personal:{month:'',year:''},business:{month:'',year:''},pro:{month:'',year:''},agency:{month:'',year:''}};
-const UPI_ID='scanplay@ybl';
-function upiLink(plan,period){ const amt=finalPrice(); const tn=`ScanPlay ${plan} ${period} ${USER?USER.email:''}`.slice(0,50); return `upi://pay?pa=${UPI_ID}&pn=ScanPlay&am=${amt}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function upiParams(){ const amt=finalPrice(); const tn=('ScanPlay '+PICK+' '+(PERIOD==='year'?'1yr':'1mo')).replace(/[^A-Za-z0-9 ]/g,'').slice(0,35); return `pa=${UPI_ID}&pn=ScanPlay&am=${amt.toFixed(2)}&cu=INR&tn=${encodeURIComponent(tn)}`; }
-function upiOpen(app){ const q=upiParams(); const links={phonepe:'phonepe://pay?'+q, gpay:'tez://upi/pay?'+q, paytm:'paytmmp://pay?'+q, any:'upi://pay?'+q};
-  location.href=links[app]||links.any; setTimeout(()=>{ if(document.visibilityState==='visible' && app!=='any') toast('If '+({phonepe:'PhonePe',gpay:'Google Pay',paytm:'Paytm'}[app])+' did not open, try "Any UPI app" or the QR.'); },1500); }
-let upiT=null;
-function upiQr(){ const box=$('#upiQrBox'); box.style.display=''; const q=$('#upiQrImg'); q.innerHTML=''; new QRCode(q,{text:'upi://pay?'+upiParams(),width:220,height:220,correctLevel:QRCode.CorrectLevel.L});
-  clearInterval(upiT); let left=600; const tick=()=>{ const m=String(Math.floor(left/60)).padStart(2,'0'), s2=String(left%60).padStart(2,'0'); $('#upiTimer').textContent=m+':'+s2; if(left--<=0){ clearInterval(upiT); q.innerHTML='<div class="status err">Expired — tap Show QR again</div>'; } }; tick(); upiT=setInterval(tick,1000); }
-function payUpi(){ const amt=finalPrice(); $('#upiAmt').textContent='₹'+amt.toLocaleString('en-IN'); $('#upiPlan').textContent=`${({personal:'Personal',business:'Business',pro:'Pro',agency:'Agency'})[PICK]} · ${PERIOD==='year'?'1 year':'1 month'}${PROMO?' · promo '+PROMO.code:''}`;
-  $('#upiQrBox').style.display='none'; clearInterval(upiT);
-  $('#upiPaid').href='https://wa.me/918985849710?text='+encodeURIComponent('Hi, I paid ₹'+amt+' via UPI for ScanPlay '+PICK+' ('+PERIOD+')'+(PROMO?' with promo '+PROMO.code:'')+'. My email: '+(USER?USER.email:'')+'. Screenshot attached.');
-  $('#upModal').classList.remove('open'); $('#upiModal').classList.add('open'); }
-function closeUpi(){ $('#upiModal').classList.remove('open'); clearInterval(upiT); $('#upModal').classList.add('open'); }
+/* partner panel */
+async function openPartner(){
+  const r=await post({action:'partner_children'}); if(!r.ok){ toast(r.error); return; } USER=r.user;
+  const kids=r.children, u=USER, isP=['distributor','promoter'].includes(u.role), joinAs=u.role==='distributor'?'promoter':'user';
+  const person=(c,lvl)=>`<div class="pp-row" style="padding-left:${12+lvl*16}px">
+      <div class="pp-who"><b>${esc(c.business||c.name)}</b><span class="pp-role">${c.role}</span><div class="tiny">${esc(c.email)}${c.phone?' · '+esc(c.phone):''}</div></div>
+      <div class="pp-tok"><b>${c.tokens}</b><span>left</span></div>
+      ${lvl===0?`<div class="pp-give"><input type="number" min="1" placeholder="0" id="q${c.id}"><button class="btn sm" onclick="giveTokens(${c.id})">Give</button></div>`:'<div class="pp-give"></div>'}
+    </div>`+ (c.subs||[]).map(x=>person(x,lvl+1)).join('');
+  const hist=r.ledger.slice(0,15).map(l=>`<div class="pp-h"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span><span>${l.kind==='spent'?'Used on a photo':l.kind==='grant'?'From ScanPlay':l.kind==='remove'?'Removed by ScanPlay':(l.from_id==u.id?'To '+esc(l.tname||'—'):'From '+esc(l.fname||'—'))}</span><b class="${l.to_id==u.id?'in':''}">${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<div class="tiny" style="padding:8px 0">Nothing yet</div>';
+  $('#ptBody').innerHTML=`
+    <div class="pp-wallet"><div><div class="pp-big">${u.tokens}</div><div class="tiny">tokens available · ${u.tokensUsed} used</div></div><button class="btn sm ghost" onclick="openBuy()">Buy more</button></div>
 
-function finalPrice(){ const p=PRICES[PICK][PERIOD]; return PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD ? PROMO.total : p; }
-async function applyPromoCode(){
-  const code=$('#promo').value.trim(); const st=$('#promoSt'); if(!code){ PROMO=null; st.textContent=''; renderPlans(); return; }
-  const r=await post({action:'promo_check',plan:PICK,period:PERIOD,code}); if(!r.ok){ PROMO=null; st.className='status err'; st.textContent=r.error; renderPlans(); return; }
-  PROMO={code:r.code,total:r.total,discount:r.discount,plan:PICK,period:PERIOD}; st.className='status'; st.textContent=`${r.code}: ${r.label} — you save ₹${r.discount.toLocaleString('en-IN')}`; renderPlans();
+    <div class="pp-sec"><div class="pp-title">Invite</div>
+      <div class="pp-link"><input type="text" readonly value="${u.inviteLink}" id="invLink"><button class="btn sm ghost" onclick="navigator.clipboard.writeText($('#invLink').value).then(()=>toast('Link copied'))">Copy</button><button class="btn sm" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Create your ScanPlay account with my link: '+$('#invLink').value),'_blank')">Share</button></div>
+      <div class="tiny">New sign-ups through this link join under you as a ${joinAs}.</div>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">Your accounts <span class="pp-count">${countAll(kids)}</span></div>
+      ${kids.length?`<div class="pp-list">${kids.map(k=>person(k,0)).join('')}</div>`:'<div class="tiny" style="padding:6px 0 10px">No one yet — share your invite link.</div>'}
+      <div class="pp-link"><input type="text" id="linkEmail" placeholder="Add an existing account by email"><button class="btn sm ghost" onclick="linkAcc()">Add</button></div>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">Your details</div>
+      <div class="pp-grid">
+        <div><label class="field">Business name</label><input type="text" id="pBiz" value="${esc(u.business||'')}"></div>
+        <div><label class="field">WhatsApp</label><input type="text" id="pWa" value="${esc(u.whatsapp||'')}" inputmode="numeric" placeholder="91XXXXXXXXXX"></div>
+      </div>
+      <label class="field">How to pay you <span style="font-weight:400">(UPI, bank, price per token)</span></label><textarea id="pPay" rows="2">${esc(u.pay_details||'')}</textarea>
+      ${isP?`<div class="pp-grid"><div><label class="field">City / area</label><input type="text" id="pArea" value="${esc(u.area||'')}" placeholder="Visakhapatnam"></div></div>
+      <label class="field">Location on map</label>
+      <div class="pp-link" style="margin-bottom:6px"><input type="text" id="pAddrQ" placeholder="Search area" onkeydown="if(event.key==='Enter'){event.preventDefault();geoSearch()}"><button type="button" class="btn sm ghost" onclick="geoSearch()">Search</button><button type="button" class="btn sm ghost" onclick="geoMe()">📍</button></div>
+      <div id="pLocMap" style="height:170px;border-radius:12px;overflow:hidden;border:1px solid var(--line)"></div><div class="tiny" id="pLocTxt" style="margin-top:6px">${u.lat?esc(u.address||'Pinned'):'Not set'}</div>
+      <label class="pp-check"><input type="checkbox" id="pListed" ${u.listed?'checked':''}> Show me in "Partners near me"</label>`
+      :`<input type="hidden" id="pArea" value="${esc(u.area||'')}"><input type="checkbox" id="pListed" style="display:none">`}
+      <input type="hidden" id="pLat" value="${u.lat||''}"><input type="hidden" id="pLng" value="${u.lng||''}"><input type="hidden" id="pAddr" value="${esc(u.address||'')}">
+      <button class="btn" style="width:100%;margin-top:12px" onclick="savePartner()">Save</button>
+    </div>
+
+    <div class="pp-sec"><div class="pp-title">History</div>${hist}</div>`;
+  $('#ptModal').classList.add('open'); if($('#pLocMap')) setTimeout(()=>initLocMap('p','pLocMap'),80);
 }
-async function pay(){
-  $('#payErr').textContent='';
-  const link=PAY_LINKS[PICK]&&PAY_LINKS[PICK][PERIOD]; if(link){ window.open(link,'_blank'); $('#payErr').className='status'; $('#payErr').textContent='Payment page opened in a new tab. Your plan activates automatically after payment — refresh this page in a minute.'; return; }
-  const pb=$('#payBtn'); pb.disabled=true; const old=pb.textContent; pb.textContent='Opening Razorpay…';
-  const r=await post({action:'pay_create',plan:PICK,period:PERIOD,promo:(PROMO&&PROMO.plan===PICK&&PROMO.period===PERIOD)?PROMO.code:''}).catch(e=>({ok:false,error:'Network error'})); pb.disabled=false; pb.textContent=old;
-  if(!r.ok){ $('#payErr').className='status err'; $('#payErr').textContent=r.error; toast(r.error); return; }
-  if(!window.Razorpay){ $('#payErr').className='status err'; $('#payErr').textContent='Razorpay checkout could not load. Check your connection and try again.'; return; }
-  const rz=new Razorpay({key:r.key,amount:r.amount,currency:'INR',name:'ScanPlay',description:r.label,order_id:r.order_id,
-    prefill:{name:r.name,email:r.email,contact:r.phone},theme:{color:'#7C3AED'},
-    modal:{ondismiss:async()=>{ const m=await post({action:'me'}); if(m.ok&&m.user&&m.user.plan!==USER.plan){ USER=m.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } }},
-    handler:async res=>{ const v=await post({action:'pay_verify',order_id:res.razorpay_order_id,payment_id:res.razorpay_payment_id,signature:res.razorpay_signature});
-      if(v.ok){ USER=v.user; renderPlan(); closeUp(); toast('Payment received. Your plan is active.'); } else $('#payErr').textContent=v.error; }});
-  rz.on('payment.failed',e=>{ $('#payErr').className='status err'; $('#payErr').textContent='Payment failed: '+(e.error&&e.error.description||''); }); rz.open();
-}
-/* settings */
+function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
+async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
+  const k=[...document.querySelectorAll('.pp-row')].find(r=>r.querySelector('#q'+id)); const who=k?k.querySelector('b').textContent:'this account';
+  if(!await confirmDlg('Give tokens?',`Give ${q} token${q>1?'s':''} to ${who}? You will have ${USER.tokens-q} left. This cannot be undone.`,`Give ${q}`)) return;
+  const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Gave ${q} token${q>1?'s':''} to ${who}`); openPartner(); }
+async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Added'); openPartner(); }
+async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0,lat:$('#pLat').value,lng:$('#pLng').value,address:$('#pAddr').value}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
+function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
+
+
+
+
 function openSettings(){ $('#sName').value=USER.name||''; $('#sPhone').value=USER.phone||''; $('#sPass').value='';
-  const can=USER.limits.logo; $('#logoLock').textContent=can?'':'(Business plan and above)'; $('#sLogoFile').disabled=!can;
+  $('#logoLock').textContent=''; $('#sLogoFile').disabled=false;
   $('#sLogo').style.display=USER.logo?'':'none'; $('#sLogoDel').style.display=USER.logo?'':'none'; if(USER.logo) $('#sLogo').src=USER.logo;
   $('#setErr').textContent=''; $('#setModal').classList.add('open'); }
 function closeSettings(){ $('#setModal').classList.remove('open'); }
@@ -522,9 +557,9 @@ function updSave(){
 function updSteps(){ fitPreview(); updSave();
   const rb3=$('#refBtn3'); if(rb3) rb3.style.display=ACCOUNTS.reduce((n,a)=>n+a.items.length,0)>0?'':'none';
   const has=CUR&&CUR.items.length>0;
-  const ppp=(USER&&USER.limits&&USER.limits.ppp)||1, full=CUR&&CUR.items.length>=ppp;
+  const ppp=Infinity, full=false;
   $('#st1').style.display=full?'none':''; $('#st2').style.display=full?'none':'';
-  const ih=$('#itemsHead'); if(ih){ ih.style.display=has?'':'none'; ih.textContent=`Photos in this project (${CUR?CUR.items.length:0} / ${ppp})`; }
+  const ih=$('#itemsHead'); if(ih){ ih.style.display=has?'':'none'; ih.textContent=`Photos in this project (${CUR?CUR.items.length:0})`; }
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
   $('#qrBtn').textContent=has?'Show my QR':'QR (add your photo first)';
@@ -716,7 +751,7 @@ async function addItem(){
     const r=await post(fields,files);
     if(!r.ok) throw new Error(r.error);
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(offerReferral,2500); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
-  }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; }
+  }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; if(/no tokens/i.test(e.message)){ await post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; renderPlan(); } }); openBuy(); } }
 }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
 async function removeItem(id){
@@ -741,19 +776,8 @@ function closeQr(){ $('#qrModal').classList.remove('open'); }
 function downloadQr(){ const c=$('#qr canvas'); if(!c) return; const a=document.createElement('a'); a.download=CUR.name.replace(/\s+/g,'-')+'-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }
 
 /* referral: capture ?ref= for signup, offer share after first save (uses existing confirmDlg + toast) */
-(function(){ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('sp_ref',r); })();
-async function showReferral(){
-  const r=await post({action:'referral'}).catch(()=>null); if(!r||!r.ok){ toast('Could not load your referral link — try again.'); return; }
-  const earned=r.earned?` You have earned ${r.earned} so far.`:'';
-  if(await confirmDlg('Refer a friend, get a free project 🎁',`Share your link. When a friend joins and creates their first AR photo, you get +1 free project. Refer more, earn more!${earned}`,'Share on WhatsApp')){
-    const msg='Make your printed photos play videos! Try ScanPlay with my link: '+r.link;
-    window.open('https://wa.me/?text='+encodeURIComponent(msg));
-  }
-}
+(function(){ const q=new URLSearchParams(location.search); const r=q.get('ref'); if(r) localStorage.setItem('sp_ref',r); const p=q.get('partner'); if(p) localStorage.setItem('sp_partner',p); })();
 async function offerReferral(){
-  if(localStorage.getItem('sp_ref_offered')) return;
-  localStorage.setItem('sp_ref_offered','1');
-  showReferral();
 }
 
 initGoogle();
