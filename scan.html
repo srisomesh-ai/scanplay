@@ -63,7 +63,7 @@ AFRAME.registerComponent('sp-stable',{schema:{target:{type:'selector'}},
     this.data.target.addEventListener('targetFound',()=>{this.on=true;}); this.data.target.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();});
     document.addEventListener('sp-found',e=>{ if(e.detail!==this.data.target.id){ this.on=false; this.has=false; this.lastScr=null; this.el.object3D.visible=false; } }); },
   tick(t,dt){ const tgt=this.data.target.object3D, cam=this.el.sceneEl.camera; if(!tgt||!cam) return;
-    if(!this.on){ if(this.has && t-this.lostAt>300){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
+    if(!this.on){ if(this.has && t-this.lostAt>100){ this.el.object3D.visible=false; this.has=false; this.lastScr=null; } else if(this.has){ const o=this.el.object3D; o.position.copy(this.p); o.quaternion.copy(this.q); o.scale.copy(this.s); } return; }
     tgt.updateMatrixWorld(true); tgt.matrixWorld.decompose(this.tp,this.tq,this.ts);
     if(!this.has){ this.p.copy(this.tp); this.q.copy(this.tq); this.s.copy(this.ts); this.has=true; this.stableMs=0; }
     // movement measured on screen (pixels) so it behaves the same near and far.
@@ -81,7 +81,7 @@ AFRAME.registerComponent('sp-yt',{schema:{ov:{type:'string'},ratio:{default:1}},
     this.el.addEventListener('targetFound',()=>{this.on=true;}); this.el.addEventListener('targetLost',()=>{this.on=false; this.lostAt=performance.now();});
     document.addEventListener('sp-found',e=>{ if(e.detail!==this.el.id && this.sx!==null){ const o=document.getElementById(this.data.ov); if(o) o.style.display='none'; this.sx=null; this.on=false; } }); },
   tick(t){ const o=document.getElementById(this.data.ov); if(!o) return;
-    if(!this.on){ if(this.sx!==null && t-this.lostAt>300){ o.style.display='none'; this.sx=null; } return; }
+    if(!this.on){ if(this.sx!==null && t-this.lostAt>100){ o.style.display='none'; this.sx=null; } return; }
     const cam=this.el.sceneEl.camera; if(!cam) return;
     const W=innerWidth,H=innerHeight; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
     for(const [x,y] of this.pts){ this.v.set(x,y,0); this.el.object3D.localToWorld(this.v); this.v.project(cam); const sx=(this.v.x+1)/2*W, sy=(1-this.v.y)/2*H; minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy); }
@@ -104,7 +104,7 @@ function fit(R,VR,mode){
   if(VR>R){ const k=R/VR; return {w:1,h:R,rep:`1 ${k.toFixed(4)}`,off:`0 ${((1-k)/2).toFixed(4)}`}; }
   const k=VR/R; return {w:1,h:R,rep:`${k.toFixed(4)} 1`,off:`${((1-k)/2).toFixed(4)} 0`};
 }
-const T=Object.assign({cf:0.001,beta:1000,miss:8,warm:3}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
+const T=Object.assign({cf:0.001,beta:1000,miss:4,warm:3}, JSON.parse(localStorage.getItem('sp_tune')||'{}'));
 
 async function init(){
   const r=await fetch('api.php?action=scanner',{cache:'no-store'}).then(x=>x.json()).catch(()=>({ok:false}));
@@ -159,7 +159,7 @@ function setupZoom(){
       if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
       if(!hits.has(m.it.id)){ hits.add(m.it.id); const f2=new FormData(); f2.append('c',m.p.code); f2.append('i',m.it.id); fetch('api.php?action=scan_hit',{method:'POST',body:f2}); }
       const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
-    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
+    t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },120); });
   });
   scene.addEventListener('arReady',()=>{ setTimeout(setupZoom,400); $('#intro').classList.add('hide'); hint.style.display='flex'; });
   scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
