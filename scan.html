@@ -128,6 +128,7 @@ async function init(){
 function start(mindUrl,map){
   const assets=map.map((m,i)=>m.it.yt?'':`<video id="v${i}" src="${m.it.video}" preload="metadata" loop playsinline webkit-playsinline crossorigin="anonymous"></video>`).join('');
   map.forEach((m,i)=>{ if(m.it.yt){ const d=document.createElement('div'); d.className='ytov'; d.id='yt'+i; d.innerHTML=`<div id="yt${i}_f"></div>`; document.body.appendChild(d); } });
+  map.forEach((m,i)=>{ if(!m.it.yt&&m.it.thumb) rcRef(i,m.it.thumb); });
   const targets=map.map((m,i)=>{ if(m.it.yt) return `<a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" sp-yt="ov: yt${i}; ratio: ${m.it.ratio}"></a-entity>`; const f=fit(m.it.ratio,m.it.vratio||m.it.ratio,m.it.fit||'fit'); return `
       <a-entity mindar-image-target="targetIndex: ${i}" data-i="${i}" id="t${i}"></a-entity>
       <a-entity sp-stable="target: #t${i}"><a-video src="#v${i}" width="${f.w}" height="${f.h}" position="0 0 0" material="repeat: ${f.rep}; offset: ${f.off}"></a-video></a-entity>`; }).join('');
@@ -136,6 +137,46 @@ function start(mindUrl,map){
              color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
       <a-assets>${assets}</a-assets><a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${targets}
     </a-scene>`;
+
+
+/* ---------- reality check ----------
+   MindAR can keep "tracking" a busy surface (gravel, carpet) after the print is gone, so targetLost never fires
+   and the video sticks. Every 500ms we sample the camera pixels under the playing plane and compare their colour
+   signature with the target photo. Three misses in a row -> cut the video. Conservative on purpose: rotation,
+   tilt and lighting keep the signature similar; gravel does not. */
+const RC={refs:{},bad:{},cnv:document.createElement('canvas'),ctx:null};
+RC.cnv.width=RC.cnv.height=32; RC.ctx=RC.cnv.getContext('2d',{willReadFrequently:true});
+function rcHist(data){ const h=new Float32Array(64); let n=0;
+  for(let i=0;i<data.length;i+=4){ const R=data[i],G=data[i+1],B=data[i+2],s=R+G+B+1;
+    const r=Math.min(3,(4*R/s)|0), g=Math.min(3,(4*G/s)|0), l=Math.min(3,((R*.3+G*.59+B*.11)/64)|0);
+    h[(r<<4)|(g<<2)|l]++; n++; }
+  for(let i=0;i<64;i++) h[i]/=n; return h; }
+function rcSim(a,b){ let s=0; for(let i=0;i<64;i++) s+=Math.min(a[i],b[i]); return s; }
+function rcRef(idx,url){ const im=new Image(); im.onload=()=>{ try{ RC.ctx.drawImage(im,0,0,32,32); RC.refs[idx]=rcHist(RC.ctx.getImageData(0,0,32,32).data); }catch(e){} }; im.src=url; }
+function rcCheck(){
+  const cam=[...document.querySelectorAll('video')].find(x=>x.srcObject); if(!cam||!cam.videoWidth) return;
+  document.querySelectorAll('[sp-stable]').forEach(w=>{
+    const plane=w.firstElementChild; if(!plane||!w.object3D||!w.object3D.visible) return;
+    const c=w.components['sp-stable']; const tEl=c&&c.data&&c.data.target; if(!tEl||!tEl.id) return; const idx=+tEl.id.replace(/\D/g,'');
+    const ref=RC.refs[idx]; if(!ref) return;
+    const cam3=w.sceneEl.camera; const v=new THREE.Vector3();
+    plane.object3D.getWorldPosition(v); v.project(cam3);
+    if(v.z>1) return;
+    const sx=(v.x+1)/2*innerWidth, sy=(1-v.y)/2*innerHeight;
+    // screen -> camera video pixels (object-fit: cover)
+    const rect=cam.getBoundingClientRect(); const s=Math.max(rect.width/cam.videoWidth, rect.height/cam.videoHeight);
+    const ox=(rect.width-cam.videoWidth*s)/2+rect.left, oy=(rect.height-cam.videoHeight*s)/2+rect.top;
+    const vx=(sx-ox)/s, vy=(sy-oy)/s;
+    const half=Math.min(cam.videoWidth,cam.videoHeight)*0.12;
+    if(vx-half<0||vy-half<0||vx+half>cam.videoWidth||vy+half>cam.videoHeight) return;   // partly off-frame: cannot judge
+    let sim=1;
+    try{ RC.ctx.drawImage(cam,vx-half,vy-half,half*2,half*2,0,0,32,32); sim=rcSim(ref,rcHist(RC.ctx.getImageData(0,0,32,32).data)); }catch(e){ return; }
+    if(sim<0.35){ RC.bad[idx]=(RC.bad[idx]||0)+1; } else RC.bad[idx]=0;
+    if(RC.bad[idx]>=3){ RC.bad[idx]=0; document.dispatchEvent(new CustomEvent('sp-found',{detail:'__none__'}));
+      document.querySelectorAll('video').forEach(x=>{ if(!x.srcObject) x.pause(); }); }
+  });
+}
+setInterval(rcCheck,500);
 
 /* Camera zoom for far-away prints (hoardings, banners). Uses the camera's own zoom, so tracking stays aligned; hidden when the phone doesn't support it. */
 function setupZoom(){

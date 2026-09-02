@@ -490,7 +490,7 @@ switch ($action) {
     foreach ($accs as $x) {
       if (!file_exists(DATA_DIR."/{$x['code']}/targets.mind")) continue;
       $items = rows("SELECT id,title,ratio,vratio,fit,yt FROM items WHERE code=? ORDER BY created", [$x['code']]);
-      foreach ($items as &$it) $it['video'] = $it['yt'] ? null : "data/{$x['code']}/{$it['id']}/video.mp4";
+      foreach ($items as &$it) { $it['video'] = $it['yt'] ? null : "data/{$x['code']}/{$it['id']}/video.mp4"; $it['thumb'] = "data/{$x['code']}/{$it['id']}/target.jpg"; }
       $p = PLANS[$x['plan']] ?? PLANS['free'];
       $list[] = ['code'=>$x['code'], 'name'=>$x['name'], 'mind'=>"data/{$x['code']}/targets.mind?v=".filemtime(DATA_DIR."/{$x['code']}/targets.mind"), 'items'=>$items,
                  'watermark'=>$p['watermark'], 'logo'=>($p['logo'] && $x['logo']) ? "data/users/{$x['uid']}/logo.png?v={$x['logo']}" : null];
