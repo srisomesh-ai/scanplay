@@ -265,7 +265,7 @@ switch ($action) {
     $ref = clean($_POST['ref'] ?? '');
     if ($isNew && $ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
     if ($isNew && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner']));
-    elseif ($isNew) { q("UPDATE users SET tokens=2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); }
+    if ($isNew) { q("UPDATE users SET tokens=COALESCE(tokens,0)+2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); }   // every new account: 2 free tokens to try it
     logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
@@ -307,7 +307,8 @@ switch ($action) {
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
       $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); }
-      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); else { q("UPDATE users SET tokens=2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); } saveLocation($u['id']); }
+      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner']));
+      q("UPDATE users SET tokens=COALESCE(tokens,0)+2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); saveLocation($u['id']); }
     else { q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]); if (empty($u['lat'])) saveLocation($u['id']); if (empty($u['parent_id']) && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); }
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
