@@ -139,7 +139,7 @@ function start(mindUrl,map){
 
 /* Camera zoom for far-away prints (hoardings, banners). Uses the camera's own zoom, so tracking stays aligned; hidden when the phone doesn't support it. */
 function setupZoom(){
-  const v=document.querySelector('video'); if(!v||!v.srcObject) return;
+  const v=[...document.querySelectorAll('video')].find(x=>x.srcObject); if(!v) return;
   const tr=v.srcObject.getVideoTracks()[0]; if(!tr||!tr.getCapabilities) return;
   const c=tr.getCapabilities(); if(!c.zoom) return;
   const ctl=document.getElementById('zoomCtl'), val=document.getElementById('zoomVal');
