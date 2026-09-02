@@ -265,6 +265,7 @@ switch ($action) {
     $ref = clean($_POST['ref'] ?? '');
     if ($isNew && $ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=? AND referrer_id IS NULL", [$rr['id'], $u['id']]); }
     if ($isNew && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner']));
+    elseif ($isNew) { q("UPDATE users SET tokens=2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); }
     logAct($u['id'],'signup',$email);
     if (!mailConfigured()) { q("UPDATE users SET verified=1 WHERE id=?", [$u['id']]); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]); }
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
@@ -306,7 +307,7 @@ switch ($action) {
     $email = strtolower($info['email']); $u = row("SELECT * FROM users WHERE email=?", [$email]);
     if (!$u) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,google_id) VALUES (?,NULL,?,'','free',?,?,1,?)", [$email, $info['name'] ?? $email, now()+7*86400, now(), $info['sub']]); $u = row("SELECT * FROM users WHERE email=?", [$email]);
       $ref = clean($_POST['ref'] ?? ''); if ($ref !== '') { $rr = row("SELECT id FROM users WHERE lower(referral_code)=?", [$ref]); if ($rr && (int)$rr['id'] !== (int)$u['id']) q("UPDATE users SET referrer_id=? WHERE id=?", [$rr['id'], $u['id']]); }
-      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); saveLocation($u['id']); }
+      if (!empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); else { q("UPDATE users SET tokens=2 WHERE id=?", [$u['id']]); ledger(0, $u['id'], 2, 'grant', 'welcome — 2 free tokens'); } saveLocation($u['id']); }
     else { q("UPDATE users SET verified=1, google_id=?, deleted=0 WHERE id=?", [$info['sub'], $u['id']]); if (empty($u['lat'])) saveLocation($u['id']); if (empty($u['parent_id']) && !empty($_POST['partner'])) linkParent($u['id'], clean($_POST['partner'])); }
     logAct($u['id'],'login_google',$email);
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
@@ -393,7 +394,10 @@ switch ($action) {
   case 'item_add': {
     $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
-    if ((int)($u['tokens']??0) < 1) { $pc = userInfo($u)['parent']; out(false, ['error'=>'You have no tokens left. 1 token = 1 photo + 1 video. Buy tokens from '.htmlspecialchars($pc['business'] ?: $pc['name']).($pc['whatsapp'] ? ' · WhatsApp '.$pc['whatsapp'] : ''), 'tokens'=>0]); }
+    if ((int)($u['tokens']??0) < 1) { $inf = userInfo($u); $pc = $inf['parent'];
+      $msg = $inf['hasParent'] ? 'You have no tokens left. 1 token = 1 photo + 1 video. Buy tokens from '.htmlspecialchars($pc['business'] ?: $pc['name']).($pc['whatsapp'] ? ' · WhatsApp '.$pc['whatsapp'] : '')
+                               : 'Your free tokens are used. 1 token = 1 photo + 1 video. Find a ScanPlay partner near you to buy more.';
+      out(false, ['error'=>$msg, 'tokens'=>0, 'findPartner'=>!$inf['hasParent']]); }
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
