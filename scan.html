@@ -23,6 +23,10 @@
   #snd{position:fixed;top:18px;right:18px;z-index:6;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);color:#fff;border:0;border-radius:999px;padding:9px 14px;font:600 13px 'Plus Jakarta Sans'}
   #brand{position:fixed;top:18px;left:18px;z-index:6;text-decoration:none;color:#fff;font:800 13px 'Plus Jakarta Sans';background:rgba(16,20,24,.6);backdrop-filter:blur(8px);padding:7px 12px;border-radius:999px;display:flex;align-items:center;gap:8px}
   #brand img{height:20px}
+  #zoomCtl{position:fixed;right:14px;bottom:96px;display:none;flex-direction:column;align-items:center;gap:2px;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);border-radius:999px;padding:8px 6px;z-index:6}
+  #zoomCtl button{width:38px;height:38px;border-radius:50%;border:0;background:transparent;color:#fff;font-size:22px;font-weight:700;line-height:1;cursor:pointer}
+  #zoomCtl button:active{background:rgba(255,255,255,.15)}
+  #zoomVal{color:#fff;font:700 11px 'Plus Jakarta Sans',sans-serif;padding:2px 0}
   #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(16,20,24,.72);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:4;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
   #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite;flex-shrink:0}
   #hint.found i{background:#3ED598;animation:none}
@@ -40,6 +44,7 @@
 <a id="brand" href="/"><img src="/assets/brand/scanplay-logo.svg" alt="">ScanPlay</a>
 <button id="snd" style="display:none">🔇 Tap for sound</button>
 <div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
+<div id="zoomCtl"><button id="zin" aria-label="Zoom in">+</button><span id="zoomVal">1×</span><button id="zout" aria-label="Zoom out">−</button></div>
 <div id="hint" style="display:none"><i></i><span>Point at a ScanPlay photo</span></div>
 <div id="scene"></div>
 
@@ -131,6 +136,20 @@ function start(mindUrl,map){
              color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" embedded>
       <a-assets>${assets}</a-assets><a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${targets}
     </a-scene>`;
+
+/* Camera zoom for far-away prints (hoardings, banners). Uses the camera's own zoom, so tracking stays aligned; hidden when the phone doesn't support it. */
+function setupZoom(){
+  const v=document.querySelector('video'); if(!v||!v.srcObject) return;
+  const tr=v.srcObject.getVideoTracks()[0]; if(!tr||!tr.getCapabilities) return;
+  const c=tr.getCapabilities(); if(!c.zoom) return;
+  const ctl=document.getElementById('zoomCtl'), val=document.getElementById('zoomVal');
+  let z=(tr.getSettings&&tr.getSettings().zoom)||c.zoom.min||1;
+  const step=Math.max(c.zoom.step||0.1,(c.zoom.max-c.zoom.min)/12);
+  const apply=()=>{ z=Math.min(c.zoom.max,Math.max(c.zoom.min,z)); tr.applyConstraints({advanced:[{zoom:z}]}).catch(()=>{}); val.textContent=(Math.round(z*10)/10)+'\u00d7'; };
+  document.getElementById('zin').onclick=()=>{ z+=step; apply(); };
+  document.getElementById('zout').onclick=()=>{ z-=step; apply(); };
+  ctl.style.display='flex'; apply();
+}
   const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd'), vids=map.map((m,i)=>m.it.yt?null:$('#v'+i)); const yts={}; map.forEach((m,i)=>{ if(m.it.yt) ytPlayer('yt'+i,m.it.yt,true).then(p=>{yts[i]=p;}); });
   vids.forEach(v=>{ if(v) v.muted=true; }); snd.style.display='block';
   document.addEventListener('pointerdown',()=>{ vids.forEach(v=>{ if(v) v.muted=false; }); Object.values(yts).forEach(p=>{ try{p.unMute();}catch(e){} }); snd.style.display='none'; },{once:true});
@@ -142,7 +161,7 @@ function start(mindUrl,map){
       const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
     t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
   });
-  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; });
+  scene.addEventListener('arReady',()=>{ setTimeout(setupZoom,400); $('#intro').classList.add('hide'); hint.style.display='flex'; });
   scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
 }
 init();

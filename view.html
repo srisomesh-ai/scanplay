@@ -20,6 +20,10 @@
   .ov p{color:#A9B1BA;font-size:14px;margin:0 0 22px;line-height:1.5;max-width:300px}
   .btn{background:linear-gradient(135deg,#7C3AED,#FF4D6D);color:#fff;border:0;border-radius:999px;padding:14px 28px;font:500 15px Inter;cursor:pointer}
   #snd{position:fixed;top:18px;right:18px;z-index:6;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);color:#fff;border:0;border-radius:999px;padding:9px 14px;font:500 13px Inter}
+  #zoomCtl{position:fixed;right:14px;bottom:96px;display:none;flex-direction:column;align-items:center;gap:2px;background:rgba(16,20,24,.72);backdrop-filter:blur(8px);border-radius:999px;padding:8px 6px;z-index:6}
+  #zoomCtl button{width:38px;height:38px;border-radius:50%;border:0;background:transparent;color:#fff;font-size:22px;font-weight:700;line-height:1;cursor:pointer}
+  #zoomCtl button:active{background:rgba(255,255,255,.15)}
+  #zoomVal{color:#fff;font:700 11px 'Plus Jakarta Sans',sans-serif;padding:2px 0}
   #hint{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(16,20,24,.72);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:4;white-space:nowrap}
   #hint i{width:8px;height:8px;border-radius:50%;background:#F2A93B;animation:pulse 1.2s infinite}
   #hint.found i{background:#3ED598;animation:none}
@@ -39,6 +43,7 @@
 
 <button id="snd" style="display:none">🔇 Tap for sound</button>
 <a id="brand" href="https://scanplay.in" target="_blank" rel="noopener" style="display:none"></a>
+<div id="zoomCtl"><button id="zin" aria-label="Zoom in">+</button><span id="zoomVal">1×</span><button id="zout" aria-label="Zoom out">−</button></div>
 <div id="hint" style="display:none"><i></i><span>Point at the picture</span></div>
 <div id="scene"></div>
 
@@ -129,6 +134,20 @@ function start(acc){
       ${targets}
     </a-scene>`;
 
+
+/* Camera zoom for far-away prints (hoardings, banners). Uses the camera's own zoom, so tracking stays aligned; hidden when the phone doesn't support it. */
+function setupZoom(){
+  const v=document.querySelector('video'); if(!v||!v.srcObject) return;
+  const tr=v.srcObject.getVideoTracks()[0]; if(!tr||!tr.getCapabilities) return;
+  const c=tr.getCapabilities(); if(!c.zoom) return;
+  const ctl=document.getElementById('zoomCtl'), val=document.getElementById('zoomVal');
+  let z=(tr.getSettings&&tr.getSettings().zoom)||c.zoom.min||1;
+  const step=Math.max(c.zoom.step||0.1,(c.zoom.max-c.zoom.min)/12);
+  const apply=()=>{ z=Math.min(c.zoom.max,Math.max(c.zoom.min,z)); tr.applyConstraints({advanced:[{zoom:z}]}).catch(()=>{}); val.textContent=(Math.round(z*10)/10)+'\u00d7'; };
+  document.getElementById('zin').onclick=()=>{ z+=step; apply(); };
+  document.getElementById('zout').onclick=()=>{ z-=step; apply(); };
+  ctl.style.display='flex'; apply();
+}
   const scene=$('a-scene'), hint=$('#hint'), snd=$('#snd');
   const vids=acc.items.map((it,i)=>it.yt?null:$('#v'+i)); const yts={}; acc.items.forEach((it,i)=>{ if(it.yt) ytPlayer('yt'+i,it.yt,true).then(p=>{yts[i]=p;}); });
   vids.forEach(v=>{ if(v) v.muted=true; });
@@ -144,7 +163,7 @@ function start(acc){
     let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
     t.addEventListener('targetFound',()=>clearTimeout(lostT));
   });
-  scene.addEventListener('arReady',()=>{ $('#intro').classList.add('hide'); hint.style.display='flex'; if(TUNE) tunePanel(); });
+  scene.addEventListener('arReady',()=>{ setTimeout(setupZoom,400); $('#intro').classList.add('hide'); hint.style.display='flex'; if(TUNE) tunePanel(); });
   scene.addEventListener('arError',ev=>fail('Camera could not start. Check permissions and that you are on HTTPS. '+(ev.detail?.error||'')));
 }
 function tunePanel(){
