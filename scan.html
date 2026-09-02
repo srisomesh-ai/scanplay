@@ -138,6 +138,7 @@ function start(mindUrl,map){
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{ const i=+t.dataset.i, m=map[i]; let lostT;
     t.addEventListener('targetFound',()=>{ document.dispatchEvent(new CustomEvent('sp-found',{detail:t.id})); clearTimeout(lostT); hint.classList.add('found'); hint.lastElementChild.textContent=m.p.name+' · '+m.it.title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){}
       if(!hits.has(m.p.code)){ hits.add(m.p.code); const fd=new FormData(); fd.append('c',m.p.code); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); }
+      if(!hits.has(m.it.id)){ hits.add(m.it.id); const f2=new FormData(); f2.append('c',m.p.code); f2.append('i',m.it.id); fetch('api.php?action=scan_hit',{method:'POST',body:f2}); }
       const b=$('#brand'); if(m.p.logo){ b.innerHTML=`<img src="${m.p.logo}" alt="">`; } });
     t.addEventListener('targetLost',()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at a ScanPlay photo'; lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
   });

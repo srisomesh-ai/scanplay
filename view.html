@@ -137,7 +137,10 @@ function start(acc){
 
   document.querySelectorAll('[mindar-image-target]').forEach(t=>{
     const i=+t.dataset.i;
-    t.addEventListener('targetFound',()=>{ document.dispatchEvent(new CustomEvent('sp-found',{detail:t.id})); hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title; vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){} });
+    t.addEventListener('targetFound',()=>{ document.dispatchEvent(new CustomEvent('sp-found',{detail:t.id})); hint.classList.add('found'); hint.lastElementChild.textContent=acc.items[i].title;
+      if(!window._hits) window._hits=new Set();
+      if(!_hits.has('p')){ _hits.add('p'); const fp=new FormData(); fp.append('c',acc.code); fetch('api.php?action=scan_hit',{method:'POST',body:fp}); }
+      if(!_hits.has(acc.items[i].id)){ _hits.add(acc.items[i].id); const fd=new FormData(); fd.append('c',acc.code); fd.append('i',acc.items[i].id); fetch('api.php?action=scan_hit',{method:'POST',body:fd}); } vids.forEach((v,j)=>{ if(v&&j!==i) v.pause(); }); Object.entries(yts).forEach(([j,p])=>{ if(+j!==i) try{p.pauseVideo();}catch(e){} }); if(vids[i]) vids[i].play().catch(()=>{}); else if(yts[i]) try{yts[i].playVideo();}catch(e){} });
     let lostT; t.addEventListener('targetLost', ()=>{ hint.classList.remove('found'); hint.lastElementChild.textContent='Point at the picture'; clearTimeout(lostT); lostT=setTimeout(()=>{ if(vids[i]) vids[i].pause(); else if(yts[i]) try{yts[i].pauseVideo();}catch(e){} },300); });
     t.addEventListener('targetFound',()=>clearTimeout(lostT));
   });

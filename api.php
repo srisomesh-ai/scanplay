@@ -108,6 +108,7 @@ if (!file_exists($_bfile)) {
 try { $db->exec("ALTER TABLE items ADD COLUMN yt TEXT"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, code TEXT, title TEXT, ratio REAL, vratio REAL, fit TEXT, created INTEGER)");
 $db->exec("CREATE TABLE IF NOT EXISTS scans (code TEXT, day TEXT, n INTEGER, PRIMARY KEY(code,day))");
+$db->exec("CREATE TABLE IF NOT EXISTS item_hits (item_id TEXT, day TEXT, n INTEGER, PRIMARY KEY(item_id,day))");
 $db->exec("CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, user_id INTEGER, who TEXT, action TEXT, detail TEXT, ip TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, percent INTEGER DEFAULT 0, flat INTEGER DEFAULT 0, max_uses INTEGER DEFAULT 0, uses INTEGER DEFAULT 0, expires INTEGER DEFAULT 0, active INTEGER DEFAULT 1, note TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE payments ADD COLUMN promo TEXT"); $db->exec("ALTER TABLE payments ADD COLUMN discount INTEGER DEFAULT 0"); } catch (Exception $e) {}
@@ -245,7 +246,7 @@ function ownerAuth() {
 }
 function pubAccount($a) {
   $items = rows("SELECT * FROM items WHERE code=? ORDER BY created", [$a['code']]);
-  foreach ($items as &$it) $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg";
+  foreach ($items as &$it) { $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg"; $it['hits'] = (int)(row("SELECT SUM(n) s FROM item_hits WHERE item_id=?", [$it['id']])['s'] ?? 0); }
   $scans = (int)(row("SELECT SUM(n) s FROM scans WHERE code=?", [$a['code']])['s'] ?? 0);
   $scans30 = (int)(row("SELECT SUM(n) s FROM scans WHERE code=? AND day>=?", [$a['code'], date('Y-m-d', now()-30*86400)])['s'] ?? 0);
   return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'showcase'=>(int)($a['showcase']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
@@ -378,7 +379,7 @@ switch ($action) {
   case 'account_delete': {
     $u = auth(); $code = clean($_POST['code'] ?? '');
     if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
-    q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]);
+    q("DELETE FROM item_hits WHERE item_id IN (SELECT id FROM items WHERE code=?)", [$code]); q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]);
     rrmdir(DATA_DIR."/$code"); logAct($u['id'],'project_delete',$code); out(true);
   }
 
@@ -506,7 +507,10 @@ switch ($action) {
       $list[] = ['img'=>"data/{$r['code']}/{$r['iid']}/target.jpg", 'video'=>"data/{$r['code']}/{$r['iid']}/video.mp4", 'title'=>$r['name'], 'sub'=>$r['title']]; }
     header('Cache-Control: no-store'); out(true, ['items'=>$list]);
   }
-  case 'scan_hit': { $code = clean($_POST['c'] ?? ''); if ($code) q("INSERT INTO scans (code,day,n) VALUES (?,?,1) ON CONFLICT(code,day) DO UPDATE SET n=n+1", [$code, date('Y-m-d')]); out(true); }
+  case 'scan_hit': { $code = clean($_POST['c'] ?? ''); $iid = clean($_POST['i'] ?? '');
+    if ($iid !== '') q("INSERT INTO item_hits (item_id,day,n) VALUES (?,?,1) ON CONFLICT(item_id,day) DO UPDATE SET n=n+1", [$iid, date('Y-m-d')]);
+    elseif ($code) q("INSERT INTO scans (code,day,n) VALUES (?,?,1) ON CONFLICT(code,day) DO UPDATE SET n=n+1", [$code, date('Y-m-d')]);
+    out(true); }
 
   /* ---------- public player ---------- */
   case 'get': {
@@ -700,7 +704,7 @@ switch ($action) {
   case 'admin_block': { ownerAuth(); logAct(0,'admin_block',json_encode($_POST),'admin'); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
   case 'admin_account_delete': {
     ownerAuth(); logAct(0,'admin_account_delete',json_encode($_POST),'admin'); $code=clean($_POST['code']??'');
-    q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]); rrmdir(DATA_DIR."/$code"); out(true);
+    q("DELETE FROM item_hits WHERE item_id IN (SELECT id FROM items WHERE code=?)", [$code]); q("DELETE FROM items WHERE code=?", [$code]); q("DELETE FROM scans WHERE code=?", [$code]); q("DELETE FROM accounts WHERE code=?", [$code]); rrmdir(DATA_DIR."/$code"); out(true);
   }
   case 'admin_user_delete': {
     ownerAuth(); logAct((int)($_POST['id']??0),'admin_user_delete',json_encode(array_diff_key($_POST,['pass'=>1])),'admin'); $id=(int)($_POST['id']??0);
