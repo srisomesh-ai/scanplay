@@ -418,7 +418,8 @@ switch ($action) {
     $videoUrl = trim($_POST['video_url'] ?? ''); $upId = preg_replace('/[^a-z0-9_]/','',$_POST['video_id'] ?? '');
     $upFile = $upId ? DATA_DIR."/tmp/$upId.part" : '';
     if ($upId) { $meta=@json_decode(file_get_contents(DATA_DIR."/tmp/$upId.json"),true); if(!$meta||$meta['user']!=$u['id']||!file_exists($upFile)||filesize($upFile)!=$meta['size']) out(false,['error'=>'Video upload incomplete — please try again']); }
-    if (empty($_FILES['mind']) || empty($_FILES['target']) || (empty($_FILES['video']) && $videoUrl==='' && !$upId))
+    $bulk = !empty($_POST['bulk']);
+    if ((empty($_FILES['mind']) && !$bulk) || empty($_FILES['target']) || (empty($_FILES['video']) && $videoUrl==='' && !$upId))
       out(false, ['error'=>'Photo, a video (file or URL) and compiled file are all required']);
     if (!empty($_FILES['video']) && $_FILES['video']['size'] > MAX_VIDEO_MB*1048576) out(false, ['error'=>"Video must be under ".MAX_VIDEO_MB." MB"]);
     if ($videoUrl!=='' && !preg_match('#^https?://#i', $videoUrl)) out(false, ['error'=>'Video URL must start with http:// or https://']);
@@ -444,7 +445,7 @@ switch ($action) {
       }
       if (!$okDl || $http>=400 || filesize("$dir/video.mp4")<10000 || stripos($ctype,'text/html')!==false) { rrmdir($dir); out(false, ['error'=>'Could not download video from that link'.($err?" ($err)":'').'. Use a Google Drive / Dropbox share link (set to "Anyone with the link") or a direct .mp4 link.']); }
     }
-    move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
+    if (!empty($_FILES['mind'])) move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
     if (!$yt) compressVideo($dir);
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,?)",
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
@@ -462,6 +463,12 @@ switch ($action) {
     $acc = row("SELECT name FROM accounts WHERE code=?", [$code]); $qr = baseUrl()."/view.html?c=$code";
     @sendMail($u['email'], "Your AR photo is ready — ".$acc['name'], mailTpl("Your AR photo is ready &#127881;", "Hi ".htmlspecialchars($u['name']).", <b>".htmlspecialchars(trim(strip_tags($_POST['title'] ?? 'Untitled')))."</b> in project <b>".htmlspecialchars($acc['name'])."</b> is linked and live.", "Open the ScanPlay Scanner, point at the printed photo, and it plays. Print the QR too if you like &mdash; it's optional.<br><span style='font-size:13px;color:#8B84A0'>Tip: matte paper, good light, at least 4&times;6 inches.</span>", "Open the player", $qr));
     out(true, ['id'=>$id]);
+  }
+  case 'mind_update': {   // bulk add: one re-analysis for the whole batch
+    $u = auth(); requireWritable($u); $code = clean($_POST['code'] ?? '');
+    if (!row("SELECT code FROM accounts WHERE code=? AND user_id=?", [$code, $u['id']])) out(false, ['error'=>'Account not found']);
+    if (empty($_FILES['mind'])) out(false, ['error'=>'Compiled file missing']);
+    move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind"); out(true);
   }
   case 'item_update': {
     $u = auth(); $code = clean($_POST['code'] ?? ''); $id = clean($_POST['id'] ?? '');

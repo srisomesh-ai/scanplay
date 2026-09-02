@@ -239,6 +239,7 @@
   <div class="stepc" id="st1"><div class="sh"><i><span>1</span></i><b>Upload the photo</b><small>the one you will print</small></div>
     <div class="drop" id="dropImg"><input type="file" id="imgFile" accept="image/*"><div id="imgPrev">Tap to choose a photo</div></div>
     <div class="tiny" style="margin-top:8px;color:var(--mute)">Original flat design works best · <a href="#" onclick="photoTips(event)" style="color:var(--b);font-weight:600">Photo tips</a></div>
+    <div class="tiny" style="margin-top:6px"><a href="#" onclick="openBulk(event)" style="color:var(--b);font-weight:700">⬆ Bulk add — many photos + videos at once</a></div>
   </div>
 
   <div class="stepc" id="st2"><div class="sh"><i><span>2</span></i><b>Upload the video</b><small>plays on that photo</small></div>
@@ -317,6 +318,20 @@
   <div class="box" style="max-width:520px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
     <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Partner panel</h3><button class="btn ghost sm" onclick="closePartner()">Close</button></div>
     <div id="ptBody"></div>
+  </div>
+</div>
+<div class="modal" id="bulkModal" onclick="if(event.target===this)closeBulk()">
+  <div class="box" style="max-width:560px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
+    <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Bulk add</h3><button class="btn ghost sm" onclick="closeBulk()">Close</button></div>
+    <p class="tiny" style="margin:6px 0 10px">Pick all the photos, then all the videos. They pair up in order — check the list, then start. Photos are used as-is (no cropping) · 1 token per photo.</p>
+    <div class="pp-grid">
+      <div><label class="field">Photos</label><input type="file" id="bImgs" accept="image/*" multiple onchange="bulkBuild()"></div>
+      <div><label class="field">Videos</label><input type="file" id="bVids" accept="video/*" multiple onchange="bulkBuild()"></div>
+    </div>
+    <div id="bList" style="margin-top:10px"></div>
+    <div id="bStatus" class="status" style="display:none"></div>
+    <div class="prog" id="bProg" style="display:none"><i></i></div>
+    <button class="btn" style="width:100%;margin-top:10px" id="bGo" onclick="bulkGo()" disabled>Start</button>
   </div>
 </div>
 <div class="modal" id="cropModal">
@@ -752,6 +767,51 @@ async function addItem(){
     if(!r.ok) throw new Error(r.error);
     await loadAccounts(true); setProg(100,'Saved. Now generate your QR (step 3).'); setTimeout(offerReferral,2500); toast('✅ Your AR photo is ready — get your QR below. We also emailed you the link.'); setTimeout(()=>{ const q=$('#st3'); q&&q.scrollIntoView({behavior:'smooth',block:'center'}); },300);
   }catch(e){ setProg(0,'Could not add: '+e.message,true); btn.disabled=false; if(/no tokens/i.test(e.message)){ await post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; renderPlan(); } }); openBuy(); } }
+}
+/* ---------- bulk add ---------- */
+let BPAIRS=[];
+function openBulk(e){ if(e) e.preventDefault(); if(!CUR){ toast('Open a project first'); return; } $('#bImgs').value=''; $('#bVids').value=''; BPAIRS=[]; $('#bList').innerHTML=''; $('#bStatus').style.display='none'; $('#bProg').style.display='none'; $('#bGo').disabled=true; $('#bGo').textContent='Start'; $('#bulkModal').classList.add('open'); }
+function closeBulk(){ if($('#bGo').dataset.busy){ toast('Bulk add is running — please wait'); return; } $('#bulkModal').classList.remove('open'); }
+const bMeta=f=>new Promise(res=>{ if(f.type.startsWith('image')){ const i=new Image(); i.onload=()=>res({r:i.naturalWidth/i.naturalHeight}); i.onerror=()=>res({r:0}); i.src=URL.createObjectURL(f); } else { const v=document.createElement('video'); v.preload='metadata'; v.onloadedmetadata=()=>res({r:v.videoWidth/v.videoHeight}); v.onerror=()=>res({r:0}); v.src=URL.createObjectURL(f); } });
+async function bulkBuild(){
+  const imgs=[...($('#bImgs').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  const vids=[...($('#bVids').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  BPAIRS=imgs.map((im,i)=>({img:im, vid:vids[i]||null, title:im.name.replace(/\.[^.]+$/,'')}));
+  const big=vids.find(v=>v.size>150*1048576);
+  $('#bList').innerHTML=BPAIRS.map((p,i)=>`<div class="pp-row" style="grid-template-columns:44px 1fr auto"><img src="${URL.createObjectURL(p.img)}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><div class="pp-who"><b>${esc(p.title)}</b><div class="tiny">${p.vid?esc(p.vid.name)+' · '+(p.vid.size/1048576).toFixed(1)+' MB':'<span style=color:var(--red)>no video — will be skipped</span>'}</div></div><select onchange="BPAIRS[${i}].vid=[...$('#bVids').files][this.value]||null;bulkRefresh()" style="max-width:90px;font-size:12px"><option value="">video…</option>${vids.map((v,j)=>`<option value="${j}" ${p.vid===v?'selected':''}>${j+1}</option>`).join('')}</select></div>`).join('')
+    + (imgs.length&&vids.length&&imgs.length!==vids.length?`<div class="tiny" style="color:#B45309;margin-top:6px">${imgs.length} photos but ${vids.length} videos — unmatched photos are skipped.</div>`:'')
+    + (big?`<div class="tiny" style="color:#B45309;margin-top:6px">Videos over 150 MB upload more reliably one at a time.</div>`:'');
+  bulkRefresh();
+}
+function bulkRefresh(){ const ready=BPAIRS.filter(p=>p.vid).length; $('#bGo').disabled=!ready; $('#bGo').textContent=ready?`Add ${ready} photo${ready>1?'s':''} (${ready} token${ready>1?'s':''})`:'Start'; }
+async function bulkGo(){
+  const pairs=BPAIRS.filter(p=>p.vid); if(!pairs.length) return;
+  if(USER.tokens<pairs.length){ toast(`You have ${USER.tokens} tokens but this needs ${pairs.length}.`); if(!await confirmDlg('Not enough tokens',`You have ${USER.tokens} tokens; ${pairs.length} are needed. Add the first ${USER.tokens} now?`,'Add what I can')) return; pairs.length=USER.tokens; if(!pairs.length){ openBuy(); return; } }
+  const go=$('#bGo'); go.disabled=true; go.dataset.busy='1'; const st=$('#bStatus'); st.style.display='block'; st.className='status'; const bp=$('#bProg'); bp.style.display='block';
+  let ok=0, fail=0;
+  for(let i=0;i<pairs.length;i++){
+    const p=pairs[i]; st.textContent=`Uploading ${i+1} of ${pairs.length}: ${p.title}…`; bp.firstElementChild.style.width=Math.round(i/pairs.length*70)+'%';
+    try{
+      const [im,vm]=await Promise.all([bMeta(p.img),bMeta(p.vid)]);
+      const r=await post({action:'item_add',code:CUR.code,title:p.title,ratio:(im.r||1).toFixed(4),vratio:(vm.r||im.r||1).toFixed(4),fit:'fit',bulk:1},{target:p.img,video:p.vid});
+      if(!r.ok) throw new Error(r.error); ok++;
+    }catch(e){ fail++; st.textContent=`${p.title}: ${e.message}`; if(/no tokens/i.test(e.message)) break; }
+  }
+  if(ok){
+    try{
+      st.textContent='Analysing all pictures — one time for the whole batch…';
+      await loadAccounts(true);
+      const imgs=await Promise.all(CUR.items.map(it=>loadImg(it.thumb+'?v='+Date.now())));
+      const compiler=new window.MindCompiler();
+      await compiler.compileImageTargets(imgs,pr=>{ bp.firstElementChild.style.width=(70+Math.round(pr/100*30))+'%'; st.textContent=`Analysing ${imgs.length} pictures… ${Math.round(pr)}%`; });
+      const mind=new File([await compiler.exportData()],'targets.mind');
+      const r=await post({action:'mind_update',code:CUR.code},{mind}); if(!r.ok) throw new Error(r.error);
+    }catch(e){ st.className='status err'; st.textContent='Added, but analysis failed: '+e.message+' — add or remove any one photo to re-analyse.'; }
+  }
+  await loadAccounts(true); await post({action:'me'}).then(r=>{ if(r.ok){ USER=r.user; renderPlan(); } });
+  bp.firstElementChild.style.width='100%'; st.className='status'; st.textContent=`Done — ${ok} added${fail?`, ${fail} failed`:''}.`;
+  delete go.dataset.busy; go.textContent='Close'; go.disabled=false; go.onclick=()=>{ go.onclick=bulkGo; closeBulk(); };
+  toast(`✅ ${ok} AR photo${ok>1?'s':''} ready`);
 }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
 async function removeItem(id){
