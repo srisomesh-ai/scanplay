@@ -42,3 +42,20 @@ Options -Indexes
 
 # Backups folder never served
 RedirectMatch 404 ^/backups/
+
+# --- security headers (conservative; no CSP/SRI) ---
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=(self), payment=()"
+  Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>
+# binaries in data/bin are never served
+<FilesMatch "^(ffmpeg|ffprobe|ffmpeg\.gz)$">
+  Require all denied
+</FilesMatch>
+# no one browses the token ledger or database by URL
+<FilesMatch "\.(db|sqlite|log)$">
+  Require all denied
+</FilesMatch>

@@ -221,6 +221,14 @@ function userInfo($u) {
     'business'=>$u['business'],'lat'=>$u['lat'],'lng'=>$u['lng'],'address'=>$u['address'],'whatsapp'=>$u['whatsapp'],'pay_details'=>$u['pay_details'],'area'=>$u['area'],'listed'=>(int)($u['listed']??0),
     'logo'=>$u['logo'] ? "data/users/{$u['id']}/logo.png?v={$u['logo']}" : null, 'graceDays'=>GRACE_DAYS];
 }
+function ip() { return $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0'; }
+function rateLimit($bucket, $max, $windowSec) {
+  global $db; $db->exec("CREATE TABLE IF NOT EXISTS ratelimit (k TEXT PRIMARY KEY, n INTEGER, reset INTEGER)");
+  $k = $bucket.':'.ip(); $r = row("SELECT n,reset FROM ratelimit WHERE k=?", [$k]); $now = now();
+  if (!$r || $r['reset'] < $now) { q("INSERT INTO ratelimit (k,n,reset) VALUES (?,1,?) ON CONFLICT(k) DO UPDATE SET n=1, reset=excluded.reset", [$k, $now+$windowSec]); return; }
+  if ($r['n'] >= $max) { http_response_code(429); out(false, ['error'=>'Too many attempts. Please wait a few minutes and try again.']); }
+  q("UPDATE ratelimit SET n=n+1 WHERE k=?", [$k]);
+}
 function auth() {
   $t = $_SERVER['HTTP_X_TOKEN'] ?? ($_POST['token'] ?? '');
   if (!$t) out(false, ['error'=>'Please sign in','auth'=>true]);
@@ -233,6 +241,7 @@ function requireWritable($u) {
   if ($s !== 'active') out(false, ['error'=> $s==='grace' ? 'Your plan has ended. Renew to add or change pictures.' : 'Your plan expired and data was removed. Choose a plan to start again.', 'upgrade'=>true]);
 }
 function ownerAuth() {
+  rateLimit('admin', 300, 600);
   if (OWNER_PASS === '') out(false, ['error'=>'Admin disabled: set owner_pass in config.php']);
   $ip = $_SERVER['REMOTE_ADDR'] ?? '?'; $ff = DATA_DIR.'/admin_fails.json';
   $fails = @json_decode(@file_get_contents($ff), true) ?: [];
@@ -264,6 +273,7 @@ switch ($action) {
   case 'invite_info': { $pc=clean($_GET['code']??''); $p=$pc!==''?row("SELECT name,business,role FROM users WHERE upper(partner_code)=? AND deleted=0",[strtoupper($pc)]):null;
     if (!$p) out(false, ['error'=>'Invalid invite link']); out(true, ['from'=>$p['business']?:$p['name'], 'fromRole'=>$p['role'], 'youBecome'=>childRole($p['role'])]); }
   case 'signup': {
+    rateLimit('signup', 6, 3600);
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? ''; $name = trim(strip_tags($_POST['name'] ?? '')); $phone = preg_replace('/\D/','',$_POST['phone'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if (strlen($pass) < 6) out(false, ['error'=>'Password must be at least 6 characters']);
@@ -287,16 +297,19 @@ switch ($action) {
     issueCode($u, 'verification'); out(true, ['needVerify'=>true, 'email'=>$email]);
   }
   case 'verify': {
+    rateLimit('verify', 15, 900);
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
     q("UPDATE users SET verified=1, plan_until=MAX(plan_until, ?) WHERE id=?", [now()+7*86400, $u['id']]); logAct($u['id'],'verified');
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'resend': {
+    rateLimit('resend', 5, 900);
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if ($u) issueCode($u, isset($_POST['reset']) ? 'password reset' : 'verification'); out(true);
   }
   case 'login': {
+    rateLimit('login', 20, 600);
     $email = strtolower(trim($_POST['email'] ?? '')); $pass = $_POST['pass'] ?? '';
     $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !$u['pass'] || !password_verify($pass, $u['pass'])) { if ($u) logAct($u['id'],'login_failed'); out(false, ['error'=>'Wrong email or password']); }
@@ -305,11 +318,13 @@ switch ($action) {
     logAct($u['id'],'login'); out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo($u)]);
   }
   case 'forgot': {
+    rateLimit('forgot', 5, 900);
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!mailConfigured()) out(false, ['error'=>'Password reset by email is not set up yet. Message us on WhatsApp.']);
     if ($u) issueCode($u, 'password reset'); out(true);   // same answer whether or not the email exists
   }
   case 'reset': {
+    rateLimit('reset', 10, 900);
     $email = strtolower(trim($_POST['email'] ?? '')); $u = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]);
     if (!$u || !checkCode($u, $_POST['code'] ?? '')) out(false, ['error'=>'Wrong or expired code']);
     if (strlen($_POST['newpass'] ?? '') < 6) out(false, ['error'=>'Password must be at least 6 characters']);
@@ -317,6 +332,7 @@ switch ($action) {
     out(true, ['token'=>issueToken($u['id']), 'user'=>userInfo(row("SELECT * FROM users WHERE id=?", [$u['id']]))]);
   }
   case 'google': {
+    rateLimit('google', 20, 600);
     $cred = $_POST['credential'] ?? ''; if (!$cred) out(false, ['error'=>'No Google credential']);
     $info = json_decode(@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token='.urlencode($cred)), true);
     if (!$info || ($info['aud'] ?? '') !== GOOGLE_CLIENT_ID || empty($info['email']) || ($info['email_verified'] ?? 'false') !== 'true') out(false, ['error'=>'Google sign-in could not be verified']);
@@ -451,7 +467,9 @@ switch ($action) {
       [$id, $code, trim(strip_tags($_POST['title'] ?? 'Untitled')), (float)($_POST['ratio']??1), $yt ? 0.5625 : (float)($_POST['vratio']??1), in_array($_POST['fit']??'',['fill','fit','stretch'])?$_POST['fit']:'fit', now(), $yt]);
     logAct($u['id'],'photo_add',"$code/$id");
     /* spend one token - never refunded, deleting the photo does not give it back */
-    q("UPDATE users SET tokens=tokens-1, tokens_used=COALESCE(tokens_used,0)+1 WHERE id=? AND tokens>0", [$u['id']]); ledger($u['id'], null, 1, 'spent', "$code/$id");
+    $st = $db->prepare("UPDATE users SET tokens=tokens-1, tokens_used=COALESCE(tokens_used,0)+1 WHERE id=? AND tokens>0"); $st->execute([$u['id']]);
+    if ($st->rowCount() !== 1) { @array_map('unlink', glob("$dir/*")); @rmdir($dir); q("DELETE FROM items WHERE id=?", [$id]); out(false, ['error'=>'You have no tokens left', 'tokens'=>0]); }
+    ledger($u['id'], null, 1, 'spent', "$code/$id");
     /* referral reward: when a referred user adds their first photo, referrer gets +1 photo and +1 project */
     if (!empty($u['referrer_id']) && !(int)($u['ref_awarded'] ?? 0)) {
       q("UPDATE users SET ref_awarded=1 WHERE id=?", [$u['id']]);
@@ -615,16 +633,21 @@ switch ($action) {
     out(true, ['children'=>$kids, 'ledger'=>$led, 'user'=>userInfo($u)]);
   }
   case 'partner_transfer': {
+    rateLimit('partner_transfer', 60, 600);
     $u = auth(); $to=(int)($_POST['to']??0); $qty=(int)($_POST['qty']??0); $note=trim(strip_tags($_POST['note']??''));
     if ($qty < 1) out(false, ['error'=>'Enter how many tokens to give']);
     $c = row("SELECT * FROM users WHERE id=? AND parent_id=? AND deleted=0", [$to, $u['id']]); if (!$c) out(false, ['error'=>'That account is not under you']);
     $fresh = row("SELECT tokens FROM users WHERE id=?", [$u['id']]); if ((int)$fresh['tokens'] < $qty) out(false, ['error'=>"You only have {$fresh['tokens']} tokens"]);
-    q("UPDATE users SET tokens=tokens-? WHERE id=? AND tokens>=?", [$qty, $u['id'], $qty]); q("UPDATE users SET tokens=COALESCE(tokens,0)+? WHERE id=?", [$qty, $to]);
+    $db->beginTransaction();
+    $st = $db->prepare("UPDATE users SET tokens=tokens-? WHERE id=? AND tokens>=?"); $st->execute([$qty, $u['id'], $qty]);
+    if ($st->rowCount() !== 1) { $db->rollBack(); out(false, ['error'=>'Not enough tokens']); }
+    q("UPDATE users SET tokens=COALESCE(tokens,0)+? WHERE id=?", [$qty, $to]); $db->commit();
     ledger($u['id'], $to, $qty, 'transfer', $note); logAct($u['id'],'token_transfer',"$qty to user $to");
     @sendMail($c['email'], "You received $qty ScanPlay tokens", mailTpl("Tokens received &#127873;", "Hi ".htmlspecialchars($c['name']).", <b>".htmlspecialchars($u['business'] ?: $u['name'])."</b> just sent you <b>$qty token".($qty>1?'s':'')."</b>. 1 token = 1 photo + 1 video.", $note ? "Note: ".htmlspecialchars($note) : "", "Open Studio", baseUrl()."/studio.html"));
     out(true, ['tokens'=>(int)row("SELECT tokens FROM users WHERE id=?", [$u['id']])['tokens']]);
   }
-  case 'partner_link': {   // attach an existing account (by email) under me, if it has no parent yet
+  case 'partner_link': {
+    rateLimit('partner_link', 20, 600);   // attach an existing account (by email) under me, if it has no parent yet
     $u = auth(); $email = strtolower(trim($_POST['email']??''));
     $c = row("SELECT * FROM users WHERE email=? AND deleted=0", [$email]); if (!$c) out(false, ['error'=>'No account with that email. Ask them to sign up with your invite link.']);
     if ((int)$c['id']===(int)$u['id']) out(false, ['error'=>'That is you']);
