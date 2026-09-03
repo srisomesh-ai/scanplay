@@ -323,7 +323,7 @@
 <div class="modal" id="bulkModal" onclick="if(event.target===this)closeBulk()">
   <div class="box" style="max-width:560px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
     <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Bulk add</h3><button class="btn ghost sm" onclick="closeBulk()">Close</button></div>
-    <p class="tiny" style="margin:6px 0 10px">Pick all the photos, then all the videos. They pair up in order — check the list, then start. Photos are used as-is (no cropping) · 1 token per photo.</p>
+    <p class="tiny" style="margin:6px 0 10px">Pick all the photos, then all the videos. <b>Same file name = one set</b> (card1.jpg + card1.mp4); anything else pairs up in order. Check the list, fix any pair with the dropdown, then start. Photos are used as-is (no cropping) · 1 token per set.</p>
     <div class="pp-grid">
       <div><label class="field">Photos</label><input type="file" id="bImgs" accept="image/*" multiple onchange="bulkBuild()"></div>
       <div><label class="field">Videos</label><input type="file" id="bVids" accept="video/*" multiple onchange="bulkBuild()"></div>
@@ -776,9 +776,13 @@ const bMeta=f=>new Promise(res=>{ if(f.type.startsWith('image')){ const i=new Im
 async function bulkBuild(){
   const imgs=[...($('#bImgs').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   const vids=[...($('#bVids').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-  BPAIRS=imgs.map((im,i)=>({img:im, vid:vids[i]||null, title:im.name.replace(/\.[^.]+$/,'')}));
+  // 1) same name = same set (card1.jpg + card1.mp4)   2) leftovers pair by order
+  const stem=n=>n.replace(/\.[^.]+$/,'').toLowerCase().replace(/[\s_\-]+/g,'');
+  const used=new Set();
+  BPAIRS=imgs.map(im=>{ const v=vids.find(x=>!used.has(x)&&stem(x.name)===stem(im.name)); if(v) used.add(v); return {img:im, vid:v||null, title:im.name.replace(/\.[^.]+$/,''), byName:!!v}; });
+  const rest=vids.filter(v=>!used.has(v)); BPAIRS.forEach(p=>{ if(!p.vid&&rest.length) p.vid=rest.shift(); });
   const big=vids.find(v=>v.size>150*1048576);
-  $('#bList').innerHTML=BPAIRS.map((p,i)=>`<div class="pp-row" style="grid-template-columns:44px 1fr auto"><img src="${URL.createObjectURL(p.img)}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><div class="pp-who"><b>${esc(p.title)}</b><div class="tiny">${p.vid?esc(p.vid.name)+' · '+(p.vid.size/1048576).toFixed(1)+' MB':'<span style=color:var(--red)>no video — will be skipped</span>'}</div></div><select onchange="BPAIRS[${i}].vid=[...$('#bVids').files][this.value]||null;bulkRefresh()" style="max-width:90px;font-size:12px"><option value="">video…</option>${vids.map((v,j)=>`<option value="${j}" ${p.vid===v?'selected':''}>${j+1}</option>`).join('')}</select></div>`).join('')
+  $('#bList').innerHTML=BPAIRS.map((p,i)=>`<div class="pp-row" style="grid-template-columns:44px 1fr auto"><img src="${URL.createObjectURL(p.img)}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><div class="pp-who"><b>${esc(p.title)}</b><div class="tiny">${p.vid?esc(p.vid.name)+' · '+(p.vid.size/1048576).toFixed(1)+' MB'+(p.byName?' <span style="color:#059669">· name match ✓</span>':' · by order'):'<span style=color:var(--red)>no video — will be skipped</span>'}</div></div><select onchange="BPAIRS[${i}].vid=[...$('#bVids').files][this.value]||null;bulkRefresh()" style="max-width:90px;font-size:12px"><option value="">video…</option>${vids.map((v,j)=>`<option value="${j}" ${p.vid===v?'selected':''}>${j+1}</option>`).join('')}</select></div>`).join('')
     + (imgs.length&&vids.length&&imgs.length!==vids.length?`<div class="tiny" style="color:#B45309;margin-top:6px">${imgs.length} photos but ${vids.length} videos — unmatched photos are skipped.</div>`:'')
     + (big?`<div class="tiny" style="color:#B45309;margin-top:6px">Videos over 150 MB upload more reliably one at a time.</div>`:'');
   bulkRefresh();
