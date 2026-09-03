@@ -224,6 +224,8 @@ section{padding:96px 0}
 .nearst{text-align:center;font-size:13px;color:var(--mute);min-height:18px;margin-bottom:12px}
 .nearst.err{color:#DC2626}
 .p.opp{border:2px dashed #F5B65E;background:#FFFDF8}
+.oppop{font:500 13px 'Plus Jakarta Sans',sans-serif;line-height:1.45} .oppop b{font-size:14px} .oppop p{margin:6px 0 8px;color:#5b5670} .oppop a{display:inline-block;background:#25D366;color:#fff;font-weight:700;padding:8px 12px;border-radius:999px;text-decoration:none}
+.leaflet-popup-content-wrapper{border-radius:14px} .leaflet-popup-content{margin:12px 14px}
 .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
@@ -454,10 +456,14 @@ function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getE
     const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
     if(lat){
       // the map goes to the place that was searched; nearby partners (within 60 km) are framed with it
-      const here=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#7C3AED',fillOpacity:1}).bindPopup(PLACE?e(PLACE):'Searched location').addTo(RMAP);
-      const nearby=pts.filter(x=>x.km!=null&&x.km<=60);
+      const nearby=pts.filter(x=>x.km!=null&&x.km<=60), none=!near.length, adminWa=(r.admin&&r.admin.whatsapp)||'';
+      const popHtml=none
+        ? `<div class="oppop"><b>No ScanPlay partner in ${e(PLACE||'this area')} yet</b><p>Be the first — become a distributor or promoter here. Buy tokens at partner price, sell at your price.</p><a href="https://wa.me/${e(adminWa)}?text=${encodeURIComponent('Hi ScanPlay! I want to become a partner in '+(PLACE||'my area'))}" target="_blank" rel="noopener">Contact ScanPlay on WhatsApp</a></div>`
+        : `<b>${e(PLACE||'Searched location')}</b><br>${near.length} partner${near.length>1?'s':''} within 30 km`;
+      const here=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:2,fillColor:'#7C3AED',fillOpacity:1}).bindPopup(popHtml,{maxWidth:260,autoPan:true}).addTo(RMAP);
       if(nearby.length){ const gb=L.featureGroup([here,...nearby.map(x=>L.marker([+x.lat,+x.lng]))]); RMAP.fitBounds(gb.getBounds().pad(0.35)); }
-      else { RMAP.setView([lat,lng],11); here.openPopup(); }
+      else RMAP.setView([lat,lng],11);
+      setTimeout(()=>here.openPopup(),250);
     } else RMAP.fitBounds(g.getBounds().pad(0.3));
     setTimeout(()=>RMAP.invalidateSize(),200);
   }).catch(()=>{ el.innerHTML=''; }); }
