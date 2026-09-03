@@ -97,6 +97,15 @@
   .pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px} @media(max-width:420px){.pp-grid{grid-template-columns:1fr}}
   #ptBody textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:500 14px 'Plus Jakarta Sans';background:#fff;resize:vertical;box-sizing:border-box}
   #ptBody input[type=number]{-moz-appearance:textfield} #ptBody input::-webkit-outer-spin-button,#ptBody input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .bk-row{display:grid;grid-template-columns:64px 18px 64px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #F1EFF7}
+  .bk-pic{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;background:#F3F1FA;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center}
+  .bk-pic img{width:100%;height:100%;object-fit:cover;display:block} .bk-pic span{position:absolute;left:0;right:0;bottom:0;background:rgba(16,20,24,.55);color:#fff;font-size:8px;text-align:center;padding:2px 0;line-height:1.1}
+  .bk-vid{cursor:pointer;border-color:var(--b)} .bk-vid.none{border-style:dashed} .bk-pic i{font-style:normal;font-size:22px;color:var(--b)}
+  .bk-arrow{text-align:center;color:var(--mute);font-weight:700}
+  .bk-txt b{font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:52vh;overflow:auto;text-align:left}
+  .bk-opt{border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;background:#fff} .bk-opt.on{border-color:var(--b)} .bk-opt img{width:100%;aspect-ratio:1;object-fit:cover;display:block} .bk-opt i{display:flex;aspect-ratio:1;align-items:center;justify-content:center;font-style:normal;font-size:24px;color:var(--b)}
+  .bk-opt span{display:block;font-size:10px;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .bk-opt em{display:block;font-size:9px;color:#B45309;padding:0 6px 4px;font-style:normal}
   .pp-check{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-top:12px;cursor:pointer}
   .pp-h{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F1EFF7;font-size:13px} .pp-h span:first-child{color:var(--mute);width:52px;flex:none} .pp-h span:nth-child(2){flex:1} .pp-h b.in{color:#059669}
   #ptBody label.field{margin:12px 0 5px}
@@ -772,8 +781,12 @@ async function addItem(){
 let BPAIRS=[];
 function openBulk(e){ if(e) e.preventDefault(); if(!CUR){ toast('Open a project first'); return; } $('#bImgs').value=''; $('#bVids').value=''; BPAIRS=[]; $('#bList').innerHTML=''; $('#bStatus').style.display='none'; $('#bProg').style.display='none'; $('#bGo').disabled=true; $('#bGo').textContent='Start'; $('#bulkModal').classList.add('open'); }
 function closeBulk(){ if($('#bGo').dataset.busy){ toast('Bulk add is running — please wait'); return; } $('#bulkModal').classList.remove('open'); }
+const BTHUMB=new Map();
+function bThumb(f){ if(BTHUMB.has(f)) return BTHUMB.get(f); const p=new Promise(res=>{ const v=document.createElement('video'); v.muted=true; v.preload='auto'; v.playsInline=true; const done=()=>{ try{ const c=document.createElement('canvas'); const s=96/Math.max(v.videoWidth,v.videoHeight); c.width=Math.max(1,v.videoWidth*s|0); c.height=Math.max(1,v.videoHeight*s|0); c.getContext('2d').drawImage(v,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',.7)); }catch(e){ res(''); } URL.revokeObjectURL(v.src); };
+  v.onloadeddata=()=>{ try{ v.currentTime=Math.min(1,(v.duration||2)/2); }catch(e){ done(); } }; v.onseeked=done; v.onerror=()=>res(''); v.src=URL.createObjectURL(f); setTimeout(()=>res(''),6000); }); BTHUMB.set(f,p); return p; }
 const bMeta=f=>new Promise(res=>{ if(f.type.startsWith('image')){ const i=new Image(); i.onload=()=>res({r:i.naturalWidth/i.naturalHeight}); i.onerror=()=>res({r:0}); i.src=URL.createObjectURL(f); } else { const v=document.createElement('video'); v.preload='metadata'; v.onloadedmetadata=()=>res({r:v.videoWidth/v.videoHeight}); v.onerror=()=>res({r:0}); v.src=URL.createObjectURL(f); } });
-async function bulkBuild(){
+async function bulkBuild(){ bulkPair(); await bulkBuildList(); }
+function bulkPair(){
   const imgs=[...($('#bImgs').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   const vids=[...($('#bVids').files||[])].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
   // 1) same name = same set (card1.jpg + card1.mp4)   2) leftovers pair by order
@@ -781,12 +794,30 @@ async function bulkBuild(){
   const used=new Set();
   BPAIRS=imgs.map(im=>{ const v=vids.find(x=>!used.has(x)&&stem(x.name)===stem(im.name)); if(v) used.add(v); return {img:im, vid:v||null, title:im.name.replace(/\.[^.]+$/,''), byName:!!v}; });
   const rest=vids.filter(v=>!used.has(v)); BPAIRS.forEach(p=>{ if(!p.vid&&rest.length) p.vid=rest.shift(); });
-  const big=vids.find(v=>v.size>150*1048576);
-  $('#bList').innerHTML=BPAIRS.map((p,i)=>`<div class="pp-row" style="grid-template-columns:44px 1fr auto"><img src="${URL.createObjectURL(p.img)}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><div class="pp-who"><b>${esc(p.title)}</b><div class="tiny">${p.vid?esc(p.vid.name)+' · '+(p.vid.size/1048576).toFixed(1)+' MB'+(p.byName?' <span style="color:#059669">· name match ✓</span>':' · by order'):'<span style=color:var(--red)>no video — will be skipped</span>'}</div></div><select onchange="BPAIRS[${i}].vid=[...$('#bVids').files][this.value]||null;bulkRefresh()" style="max-width:90px;font-size:12px"><option value="">video…</option>${vids.map((v,j)=>`<option value="${j}" ${p.vid===v?'selected':''}>${j+1}</option>`).join('')}</select></div>`).join('')
-    + (imgs.length&&vids.length&&imgs.length!==vids.length?`<div class="tiny" style="color:#B45309;margin-top:6px">${imgs.length} photos but ${vids.length} videos — unmatched photos are skipped.</div>`:'')
+}
+async function bulkBuildList(){
+  const imgs=BPAIRS.map(p=>p.img), vids=[...($('#bVids').files||[])]; const big=vids.find(v=>v.size>150*1048576);
+  const vids2=[...($('#bVids').files||[])];
+  const thumbs=await Promise.all(vids2.map(v=>bThumb(v)));
+  const th=v=>thumbs[vids2.indexOf(v)]||'';
+  $('#bList').innerHTML=BPAIRS.map((p,i)=>`<div class="bk-row">
+      <div class="bk-pic"><img src="${URL.createObjectURL(p.img)}"><span>photo</span></div>
+      <div class="bk-arrow">→</div>
+      <div class="bk-pic bk-vid ${p.vid?'':'none'}" onclick="bulkPick(${i})">${p.vid?(th(p.vid)?`<img src="${th(p.vid)}">`:'<i>▶</i>'):'<i>+</i>'}<span>${p.vid?'video · tap to change':'choose video'}</span></div>
+      <div class="bk-txt"><b>${esc(p.title)}</b><div class="tiny">${p.vid?esc(p.vid.name)+' · '+(p.vid.size/1048576).toFixed(1)+' MB'+(p.byName?' <span style="color:#059669">· name match ✓</span>':''):'<span style="color:var(--red)">no video — skipped</span>'}</div></div>
+    </div>`).join('')
+    + (imgs.length&&vids.length&&imgs.length!==vids.length?`<div class="tiny" style="color:#B45309;margin-top:6px">${imgs.length} photos but ${vids.length} videos — check the pairs.</div>`:'')
     + (big?`<div class="tiny" style="color:#B45309;margin-top:6px">Videos over 150 MB upload more reliably one at a time.</div>`:'');
   bulkRefresh();
 }
+async function bulkPick(i){
+  const vids2=[...($('#bVids').files||[])]; const thumbs=await Promise.all(vids2.map(v=>bThumb(v)));
+  const used=new Map(BPAIRS.map((p,j)=>[p.vid,j]));
+  $('#cfTitle').textContent='Choose the video for "'+BPAIRS[i].title+'"';
+  $('#cfMsg').innerHTML=`<div class="bk-grid">${vids2.map((v,j)=>`<div class="bk-opt ${BPAIRS[i].vid===v?'on':''}" onclick="bulkAssign(${i},${j})">${thumbs[j]?`<img src="${thumbs[j]}">`:'<i>▶</i>'}<span>${esc(v.name)}</span>${used.has(v)&&used.get(v)!==i?`<em>used by ${esc(BPAIRS[used.get(v)].title)}</em>`:''}</div>`).join('')}</div>`;
+  const b=$('#cfOk'); b.style.display='none'; $('#confirmModal').classList.add('open'); _cfRes=()=>{ b.style.display=''; };
+}
+function bulkAssign(i,j){ const v=[...$('#bVids').files][j]; const prev=BPAIRS.findIndex(p=>p.vid===v); if(prev>=0&&prev!==i){ BPAIRS[prev].vid=BPAIRS[i].vid; BPAIRS[prev].byName=false; } BPAIRS[i].vid=v; BPAIRS[i].byName=false; cfDone(false); bulkBuildList(); }
 function bulkRefresh(){ const ready=BPAIRS.filter(p=>p.vid).length; $('#bGo').disabled=!ready; $('#bGo').textContent=ready?`Add ${ready} photo${ready>1?'s':''} (${ready} token${ready>1?'s':''})`:'Start'; }
 async function bulkGo(){
   const pairs=BPAIRS.filter(p=>p.vid); if(!pairs.length) return;
