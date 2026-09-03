@@ -445,14 +445,21 @@ function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getE
     if(wa) document.getElementById('becomePartner').href='https://wa.me/'+wa+'?text='+encodeURIComponent('Hi, I want to become a ScanPlay distributor / promoter');
     const near=L_.filter(x=>x.km!=null&&x.km<=30);
     const opp=(lat&&!near.length)?`<div class="p r opp"><span class="tag" style="background:#FFF3E4;color:#B45309">Opportunity</span><h3>No partner in ${e(PLACE||'your area')} yet — be the first!</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">Buy tokens at partner price, sell at your own price. Photographers, event managers &amp; print shops welcome.</div><a class="btn sm" href="https://wa.me/${e((r.admin&&r.admin.whatsapp)||'')}?text=${encodeURIComponent('Hi ScanPlay! I want to become a partner in '+(PLACE||'my area'))}" target="_blank" rel="noopener">Apply on WhatsApp</a></div>`:'';
-    if(!L_.length){ el.innerHTML=opp; return; }
-    el.innerHTML=opp+L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
-    const pts=L_.filter(x=>x.lat&&x.lng); if(!pts.length||!window.L) return;
+    if(!L_.length&&!lat){ el.innerHTML=opp; return; }
+    if(!L_.length) el.innerHTML=opp;
+    if(L_.length) el.innerHTML=opp+L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
+    const pts=L_.filter(x=>x.lat&&x.lng); if((!pts.length&&!lat)||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
     const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
-    if(lat) L.circleMarker([lat,lng],{radius:7,color:'#7C3AED',fillColor:'#7C3AED',fillOpacity:.9}).bindPopup('You are here').addTo(RMAP);
-    RMAP.fitBounds(g.getBounds().pad(0.3)); setTimeout(()=>RMAP.invalidateSize(),200);
+    if(lat){
+      // the map goes to the place that was searched; nearby partners (within 60 km) are framed with it
+      const here=L.circleMarker([lat,lng],{radius:8,color:'#fff',weight:2,fillColor:'#7C3AED',fillOpacity:1}).bindPopup(PLACE?e(PLACE):'Searched location').addTo(RMAP);
+      const nearby=pts.filter(x=>x.km!=null&&x.km<=60);
+      if(nearby.length){ const gb=L.featureGroup([here,...nearby.map(x=>L.marker([+x.lat,+x.lng]))]); RMAP.fitBounds(gb.getBounds().pad(0.35)); }
+      else { RMAP.setView([lat,lng],11); here.openPopup(); }
+    } else RMAP.fitBounds(g.getBounds().pad(0.3));
+    setTimeout(()=>RMAP.invalidateSize(),200);
   }).catch(()=>{ el.innerHTML=''; }); }
 function nearMe(){ const st=document.getElementById('nearSt'), b=document.getElementById('nearBtn'); st.className='nearst';
   if(!navigator.geolocation){ st.textContent='This browser has no location support — type your area instead.'; return; }
