@@ -738,6 +738,15 @@ switch ($action) {
     $email=strtolower(trim($_POST['email']??'')); $name=trim(strip_tags($_POST['name']??'')); $company=trim(strip_tags($_POST['company']??'')); $where=trim(strip_tags($_POST['where']??'')); $variant=($_POST['variant']??'a')==='b'?'b':'a';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
     if ($company==='') out(false, ['error'=>'Enter the company name']);
+    /* option B: the ad already exists in ScanPlay (uploaded by a distributor / promoter) - reuse that photo + video */
+    if (!empty($_POST['code']) && !empty($_POST['item'])) {
+      $code = clean($_POST['code']); $id = clean($_POST['item']); $it = row("SELECT i.* FROM items i JOIN accounts a ON a.code=i.code WHERE i.id=? AND i.code=? AND a.blocked=0", [$id, $code]);
+      if (!$it) out(false, ['error'=>'That photo was not found']); $dir = DATA_DIR."/$code/$id"; if (!file_exists("$dir/target.jpg")) out(false, ['error'=>'Photo file missing']);
+      [$ok,$err,$subject] = outreachMail($email, $name, $company, $where, $variant, $code, $dir);
+      q("INSERT INTO outreach (ts,email,name,company,code,item,subject,sent,error) VALUES (?,?,?,?,?,?,?,?,?)", [now(), $email, $name, $company, $code, $id, $subject, $ok?1:0, $err]);
+      logAct(0, 'outreach', "$company <$email> existing $code/$id ".($ok?'sent':'FAILED '.$err), 'admin');
+      out($ok, ['code'=>$code, 'view'=>baseUrl()."/view.html?c=$code", 'error'=>$ok?null:('Email not sent: '.$err)]);
+    }
     if (empty($_FILES['target']['tmp_name']) || empty($_FILES['video']['tmp_name']) || empty($_FILES['mind']['tmp_name'])) out(false, ['error'=>'Their ad photo and video are both required']);
     /* system account that holds all outreach demos */
     $su = row("SELECT * FROM users WHERE email='outreach@scanplay.in'");
@@ -759,8 +768,11 @@ switch ($action) {
     $email = strtolower(trim($_POST['email'] ?? $o['email'])); if(!filter_var($email,FILTER_VALIDATE_EMAIL)) out(false,['error'=>'Enter a valid email']);
     [$ok,$err] = outreachMail($email, $o['name'], $o['company'], '', 'a', $o['code'], DATA_DIR."/{$o['code']}/{$o['item']}");
     q("UPDATE outreach SET email=?, sent=?, error=?, ts=? WHERE id=?", [$email, $ok?1:0, $err, now(), $id]); out($ok, ['error'=>$ok?null:$err]); }
-  case 'admin_outreach_list': { ownerAuth(); out(true, ['list'=>rows("SELECT o.*, (SELECT COALESCE(SUM(n),0) FROM scans s WHERE s.code=o.code) scans, (SELECT COALESCE(SUM(n),0) FROM item_hits h WHERE h.item_id=o.item) plays FROM outreach o ORDER BY o.id DESC LIMIT 200")]); }
-  case 'admin_outreach_delete': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]); if($o){ q("DELETE FROM items WHERE code=?",[$o['code']]); q("DELETE FROM scans WHERE code=?",[$o['code']]); q("DELETE FROM accounts WHERE code=?",[$o['code']]); rrmdir(DATA_DIR."/{$o['code']}"); q("DELETE FROM outreach WHERE id=?",[$id]); } out(true); }
+  case 'admin_outreach_list': { ownerAuth(); out(true, ['list'=>rows("SELECT o.*, (SELECT COALESCE(SUM(n),0) FROM scans s WHERE s.code=o.code) scans, (SELECT COALESCE(SUM(n),0) FROM item_hits h WHERE h.item_id=o.item) plays, (SELECT COALESCE(u.business,u.name) FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.code=o.code) owner FROM outreach o ORDER BY o.id DESC LIMIT 200")]); }
+  case 'admin_outreach_delete': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]);
+    if($o){ $own = row("SELECT a.code FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.code=? AND u.email='outreach@scanplay.in'", [$o['code']]);
+      if ($own) { q("DELETE FROM items WHERE code=?",[$o['code']]); q("DELETE FROM scans WHERE code=?",[$o['code']]); q("DELETE FROM accounts WHERE code=?",[$o['code']]); rrmdir(DATA_DIR."/{$o['code']}"); }   // a partner's own project is never touched
+      q("DELETE FROM outreach WHERE id=?",[$id]); } out(true); }
   /* ---------- homepage partner slides ---------- */
   case 'slides': { header('Cache-Control: no-store'); out(true, ['slides'=>array_map(fn($s)=>$s+['img'=>$s['photo']?"data/slides/{$s['id']}.jpg?v={$s['photo']}":($s['img_url']?:null)], rows("SELECT id,city,status,title,text,whatsapp,photo,img_url FROM slides ORDER BY sort, id")), 'admin'=>adminContact()]); }
   case 'admin_slides': { ownerAuth(); out(true, ['slides'=>rows("SELECT * FROM slides ORDER BY sort, id")]); }
