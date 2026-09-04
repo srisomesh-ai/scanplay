@@ -236,7 +236,12 @@ section{padding:96px 0}
 @keyframes psfill{from{transform:translateX(-100%)}to{transform:translateX(0)}}@media(prefers-reduced-motion:reduce){.ps-dots i.on::after{animation:none}}
 .oppop{font:500 13px 'Plus Jakarta Sans',sans-serif;line-height:1.45} .oppop b{font-size:14px} .oppop p{margin:6px 0 8px;color:#5b5670} .oppop a{display:inline-block;background:#25D366;color:#fff;font-weight:700;padding:8px 12px;border-radius:999px;text-decoration:none}
 .leaflet-popup-content-wrapper{border-radius:14px} .leaflet-popup-content{margin:12px 14px}
-.spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
+.spmark{background:none;border:0}.spmark-pin{position:relative;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);box-sizing:border-box}.spmark-pin img{display:block}
+.spmark-pin b{position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;color:#fff;font:800 11px/20px 'Plus Jakarta Sans',sans-serif;text-align:center;border:2px solid #fff}
+.spmark-pin.dist{width:48px;height:48px;border-radius:12px;padding:4px;border:3px solid #7C3AED}.spmark-pin.dist img{width:34px;height:34px;border-radius:8px}.spmark-pin.dist b{background:#7C3AED}
+.spmark-pin.promo{width:38px;height:38px;border-radius:50%;padding:3px;border:3px solid #FF4D6D}.spmark-pin.promo img{width:26px;height:26px;border-radius:50%}.spmark-pin.promo b{background:#FF4D6D;width:18px;height:18px;font-size:10px;line-height:18px}
+.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #7C3AED;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}.spmark-tip.promo{border-top-color:#FF4D6D;border-left-width:7px;border-right-width:7px;border-top-width:10px}
+.maplegend{display:flex;gap:16px;justify-content:center;font-size:13px;color:var(--mute);margin:-6px 0 12px}.maplegend span{display:inline-flex;align-items:center;gap:6px}.maplegend i{display:inline-block;width:14px;height:14px;background:#fff;border:3px solid #7C3AED;border-radius:4px}.maplegend i.p{border-color:#FF4D6D;border-radius:50%}.maplegend i.y{border:0;background:#7C3AED;border-radius:50%;width:12px;height:12px}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
 .faq{max-width:760px;margin:auto}
@@ -368,6 +373,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
   </div>
   <div id="nearSt" class="nearst"></div>
   <div id="retMap" style="height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px;display:none"></div>
+  <div class="maplegend" id="mapLegend" style="display:none"><span><i></i>Distributor</span><span><i class="p"></i>Promoter</span><span><i class="y"></i>You</span></div>
   <div id="retList" class="pr" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="note">Loading partners…</div></div>
   <div class="note" id="retNote" style="margin-top:14px"></div>
   <div class="cta" style="margin-top:18px"><a class="btn" href="studio.html">Open the studio →</a><a class="btn ghost" id="becomePartner" href="contact.html">Become a distributor or promoter</a></div>
@@ -468,7 +474,10 @@ fetch('api.php?action=slides').then(r=>r.json()).then(r=>{ if(!r.ok||!r.slides||
 }).catch(()=>{});
 /* ---------- partners ---------- */
 let RMAP=null; const WAMSG=encodeURIComponent('Hi ScanPlay! I need tokens.');
-function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
+function spIcon(role){ const dist=role==='distributor';
+  return dist
+    ? L.divIcon({className:'spmark',html:'<div class="spmark-pin dist"><img src="assets/brand/scanplay-logo.svg" alt=""><b>D</b></div><div class="spmark-tip dist"></div>',iconSize:[48,60],iconAnchor:[24,60],popupAnchor:[0,-56]})
+    : L.divIcon({className:'spmark',html:'<div class="spmark-pin promo"><img src="assets/brand/scanplay-logo.svg" alt=""><b>P</b></div><div class="spmark-tip promo"></div>',iconSize:[38,48],iconAnchor:[19,48],popupAnchor:[0,-44]}); }
 let PLACE='';
 function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
@@ -481,9 +490,9 @@ function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getE
     if(!L_.length) el.innerHTML=opp;
     if(L_.length) el.innerHTML=opp+L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
     const pts=L_.filter(x=>x.lat&&x.lng); if((!pts.length&&!lat)||!window.L) return;
-    const m=document.getElementById('retMap'); m.style.display=''; if(RMAP){ RMAP.remove(); }
+    const m=document.getElementById('retMap'); m.style.display=''; document.getElementById('mapLegend').style.display='flex'; if(RMAP){ RMAP.remove(); }
     RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
-    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon()}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
+    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon(x.role)}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
     if(lat){
       // the map goes to the place that was searched; nearby partners (within 60 km) are framed with it
       const nearby=pts.filter(x=>x.km!=null&&x.km<=60), none=!near.length, adminWa=(r.admin&&r.admin.whatsapp)||'';
