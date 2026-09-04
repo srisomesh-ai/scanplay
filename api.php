@@ -58,6 +58,9 @@ if (!(int)$db->query("SELECT COUNT(*) FROM slides")->fetchColumn()) foreach ([
   ['Tirupati','open','Be the first in Tirupati','Temple tourism, hotels, and a steady stream of family functions.']] as $i=>$s)
   $db->prepare("INSERT INTO slides (sort,city,status,title,text,created) VALUES (?,?,?,?,?,?)")->execute([$i+10,$s[0],$s[1],$s[2],$s[3],time()]);
 $db->exec("CREATE TABLE IF NOT EXISTS agreements (id TEXT PRIMARY KEY, user_id INTEGER, created INTEGER, status TEXT, terms TEXT, sign_name TEXT, signed_at INTEGER, sign_ip TEXT, sign_kind TEXT, admin_signed_at INTEGER)");
+try { $db->exec("ALTER TABLE agreements ADD COLUMN mail_sent INTEGER DEFAULT 0"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE agreements ADD COLUMN mail_err TEXT"); } catch (Exception $e) {}
+try { $db->exec("ALTER TABLE agreements ADD COLUMN mail_at INTEGER"); } catch (Exception $e) {}
 /* one-time migration to the token model: nobody loses paid capacity */
 if (!$db->query("SELECT v FROM settings WHERE k='token_migrated'")->fetch()) {
   $db->exec("INSERT INTO settings (k,v) VALUES ('token_migrated','1')");
@@ -103,6 +106,16 @@ function compressVideo($dir) {
   $cmd = escapeshellarg($ff)." -y -nostdin -threads 2 -i ".escapeshellarg($src)." -vf ".escapeshellarg($vf)." -r 30 -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ".escapeshellarg($tmp)
        ." > ".escapeshellarg($log)." 2>&1 && [ -s ".escapeshellarg($tmp)." ] && [ $(stat -c%s ".escapeshellarg($tmp).") -lt $(stat -c%s ".escapeshellarg($src).") ] && mv -f ".escapeshellarg($tmp)." ".escapeshellarg($src)." ; rm -f ".escapeshellarg($tmp);
   shell_exec("nohup sh -c ".escapeshellarg($cmd)." > /dev/null 2>&1 &");
+}
+function agreementNotify($g) {   // emails the partner, copies admin, records delivery on the agreement
+  $t = json_decode($g['terms'], true) ?: []; $num = $t['number'] ?? $g['id']; $roleWord = ($g['role']==='distributor')?'Distributor':'Promoter';
+  $ok = sendMail($g['email'], "Your ScanPlay $roleWord Agreement is ready to sign", mailTpl("Agreement ready &#128203;", "Hi ".htmlspecialchars($g['name']).", your $roleWord Agreement <b>$num</b> is ready. Open the Studio &rarr; Partner panel to review it and sign digitally, or download the PDF, sign and upload it.", "Territory: ".htmlspecialchars($t['territory'] ?? ''), "Review and sign", baseUrl()."/studio.html"));
+  $err = $ok ? '' : $GLOBALS['MAIL_ERR'];
+  q("UPDATE agreements SET mail_sent=?, mail_err=?, mail_at=? WHERE id=?", [$ok?1:0, $err, now(), $g['id']]);
+  $admin = setting('admin_email','info@scanplay.in');
+  if ($admin && strtolower($admin) !== strtolower($g['email']))
+    @sendMail($admin, "Copy: agreement $num sent to ".($g['business'] ?: $g['name']), mailTpl("Agreement sent", "Agreement <b>$num</b> (".$roleWord.", ".htmlspecialchars($t['territory'] ?? '').") was sent to <b>".htmlspecialchars($g['business'] ?: $g['name'])."</b> &lt;".htmlspecialchars($g['email'])."&gt;.", $ok ? "Partner email: delivered to the mail server." : "<b>Partner email FAILED:</b> ".htmlspecialchars($err), "Open agreement", baseUrl()."/agreement.html?id=".$g['id']));
+  return $ok;
 }
 function agrId($s) { return preg_replace('/[^A-Za-z0-9\-]/', '', (string)$s); }
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
@@ -765,10 +778,11 @@ switch ($action) {
     @mkdir(DATA_DIR."/agreements/$id", 0755, true);
     if (!empty($_POST['admin_sign'])) { $png = base64_decode(preg_replace('/^data:image\/\w+;base64,/','',$_POST['admin_sign'])); if ($png) { file_put_contents(DATA_DIR."/agreements/$id/admin.png", $png); q("UPDATE agreements SET admin_signed_at=? WHERE id=?", [now(), $id]); } }
     logAct($uid,'agreement_sent',$id,'admin');
-    @sendMail($u['email'], "Your ScanPlay agreement is ready to sign", mailTpl("Agreement ready &#128203;", "Hi ".htmlspecialchars($u['name']).", your ".($u['role']==='distributor'?'Distributor':'Promoter')." Agreement (".$t['number'].") is ready. Open the Studio &rarr; Partner panel to review and sign it.", "", "Open Studio", baseUrl()."/studio.html"));
-    out(true, ['id'=>$id]);
+    $ok = agreementNotify(['id'=>$id,'terms'=>json_encode($t),'email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role'],'business'=>$u['business']]);
+    out(true, ['id'=>$id, 'mail'=>$ok, 'mail_error'=>$ok?null:$GLOBALS['MAIL_ERR']]);
   }
-  case 'admin_agreements': { ownerAuth(); out(true, ['agreements'=>rows("SELECT g.id,g.user_id,g.created,g.status,g.sign_name,g.signed_at,g.sign_kind,g.admin_signed_at,u.name,u.email,u.business,u.role FROM agreements g JOIN users u ON u.id=g.user_id ORDER BY g.created DESC")]); }
+  case 'admin_agreement_resend': { ownerAuth(); $id=agrId($_POST['id']??''); $g=row("SELECT g.*,u.email,u.name,u.role,u.business FROM agreements g JOIN users u ON u.id=g.user_id WHERE g.id=?",[$id]); if(!$g) out(false,['error'=>'Not found']); $ok=agreementNotify($g); out($ok, ['error'=>$ok?null:$GLOBALS['MAIL_ERR']]); }
+  case 'admin_agreements': { ownerAuth(); out(true, ['agreements'=>rows("SELECT g.id,g.user_id,g.created,g.status,g.sign_name,g.signed_at,g.sign_kind,g.admin_signed_at,g.mail_sent,g.mail_err,g.mail_at,u.name,u.email,u.business,u.role FROM agreements g JOIN users u ON u.id=g.user_id ORDER BY g.created DESC")]); }
   case 'admin_agreement_delete': { ownerAuth(); $id=agrId($_POST['id']??''); $g=row("SELECT * FROM agreements WHERE id=?",[$id]); if(!$g) out(false,['error'=>'Not found']); if($g['status']==='signed'&&empty($_POST['force'])) out(false,['error'=>'Signed agreements cannot be deleted']); q("DELETE FROM agreements WHERE id=?",[$id]); @array_map('unlink', glob(DATA_DIR."/agreements/$id/*")); @rmdir(DATA_DIR."/agreements/$id"); out(true); }
   case 'admin_agreement_sign': {
     ownerAuth(); $id=agrId($_POST['id']??''); if(!row("SELECT id FROM agreements WHERE id=?",[$id])) out(false,['error'=>'Not found']);
