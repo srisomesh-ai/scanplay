@@ -114,7 +114,7 @@ function agreementNotify($g) {   // emails the partner, copies admin, records de
   q("UPDATE agreements SET mail_sent=?, mail_err=?, mail_at=? WHERE id=?", [$ok?1:0, $err, now(), $g['id']]);
   $admin = setting('admin_email','info@scanplay.in');
   if ($admin && strtolower($admin) !== strtolower($g['email']))
-    @sendMail($admin, "Copy: agreement $num sent to ".($g['business'] ?: $g['name']), mailTpl("Agreement sent", "Agreement <b>$num</b> (".$roleWord.", ".htmlspecialchars($t['territory'] ?? '').") was sent to <b>".htmlspecialchars($g['business'] ?: $g['name'])."</b> &lt;".htmlspecialchars($g['email'])."&gt;.", $ok ? "Partner email: delivered to the mail server." : "<b>Partner email FAILED:</b> ".htmlspecialchars($err), "Open agreement", baseUrl()."/agreement.html?id=".$g['id']));
+    @sendMail($admin, "Copy: agreement $num sent to ".($g['business'] ?: $g['name']), mailTpl("Agreement sent", "Agreement <b>$num</b> (".$roleWord.", ".htmlspecialchars($t['territory'] ?? '').") was sent to <b>".htmlspecialchars($g['business'] ?: $g['name'])."</b> &lt;".htmlspecialchars($g['email'])."&gt;.", $ok ? "Partner email: delivered to the mail server." : "<b>Partner email FAILED:</b> ".htmlspecialchars($err), "Open agreement", baseUrl()."/agreement.html?id=".$g['id']."&k=".agrKey($g['id'])));
   return $ok;
 }
 function outreachMail($email, $name, $company, $where, $variant, $code, $dir) {   // returns [ok, error, subject]; CC to admin
@@ -141,6 +141,7 @@ function outreachMail($email, $name, $company, $where, $variant, $code, $dir) { 
     try { $ok = sendMail($email, $subject, $html, $att, $cc); if (!$ok) $err = $GLOBALS['MAIL_ERR'] ?: 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
     return [$ok, $err, $subject];
 }
+function agrKey($id) { return substr(hash_hmac('sha256', 'agreement:'.$id, OWNER_PASS.'|'.CRON_KEY), 0, 24); }   // link key: lets the PDF page open from email / a new tab
 function agrId($s) { return preg_replace('/[^A-Za-z0-9\-]/', '', (string)$s); }
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
@@ -807,7 +808,7 @@ switch ($action) {
     out(true, ['id'=>$id, 'mail'=>$ok, 'mail_error'=>$ok?null:$GLOBALS['MAIL_ERR']]);
   }
   case 'admin_agreement_resend': { ownerAuth(); $id=agrId($_POST['id']??''); $g=row("SELECT g.*,u.email,u.name,u.role,u.business FROM agreements g JOIN users u ON u.id=g.user_id WHERE g.id=?",[$id]); if(!$g) out(false,['error'=>'Not found']); $ok=agreementNotify($g); out($ok, ['error'=>$ok?null:$GLOBALS['MAIL_ERR']]); }
-  case 'admin_agreements': { ownerAuth(); out(true, ['agreements'=>rows("SELECT g.id,g.user_id,g.created,g.status,g.sign_name,g.signed_at,g.sign_kind,g.admin_signed_at,g.mail_sent,g.mail_err,g.mail_at,u.name,u.email,u.business,u.role FROM agreements g JOIN users u ON u.id=g.user_id ORDER BY g.created DESC")]); }
+  case 'admin_agreements': { ownerAuth(); out(true, ['agreements'=>array_map(fn($g)=>$g+['key'=>agrKey($g['id'])], rows("SELECT g.id,g.user_id,g.created,g.status,g.sign_name,g.signed_at,g.sign_kind,g.admin_signed_at,g.mail_sent,g.mail_err,g.mail_at,u.name,u.email,u.business,u.role FROM agreements g JOIN users u ON u.id=g.user_id ORDER BY g.created DESC"))]); }
   case 'admin_agreement_delete': { ownerAuth(); $id=agrId($_POST['id']??''); $g=row("SELECT * FROM agreements WHERE id=?",[$id]); if(!$g) out(false,['error'=>'Not found']); if($g['status']==='signed'&&empty($_POST['force'])) out(false,['error'=>'Signed agreements cannot be deleted']); q("DELETE FROM agreements WHERE id=?",[$id]); @array_map('unlink', glob(DATA_DIR."/agreements/$id/*")); @rmdir(DATA_DIR."/agreements/$id"); out(true); }
   case 'admin_agreement_sign': {
     ownerAuth(); $id=agrId($_POST['id']??''); if(!row("SELECT id FROM agreements WHERE id=?",[$id])) out(false,['error'=>'Not found']);
@@ -818,12 +819,13 @@ switch ($action) {
     $id = agrId($_REQUEST['id'] ?? ''); $g = row("SELECT * FROM agreements WHERE id=?", [$id]); if (!$g) out(false, ['error'=>'Agreement not found']);
     $isAdmin = false; $hp = $_SERVER['HTTP_X_ADMIN_PASS'] ?? '';
     if ($hp !== '' && OWNER_PASS !== '' && hash_equals(OWNER_PASS, $hp)) $isAdmin = true;
-    if (!$isAdmin) { $u = auth(); if ((int)$u['id'] !== (int)$g['user_id']) out(false, ['error'=>'Not your agreement']); }
+    $k = $_REQUEST['k'] ?? ''; $byKey = $k !== '' && hash_equals(agrKey($id), $k);
+    if (!$isAdmin && !$byKey) { $u = auth(); if ((int)$u['id'] !== (int)$g['user_id']) out(false, ['error'=>'Not your agreement']); }
     $dir = DATA_DIR."/agreements/$id"; $f = fn($n)=>file_exists("$dir/$n") ? 'data:'.(str_ends_with($n,'.pdf')?'application/pdf':'image/png').';base64,'.base64_encode(file_get_contents("$dir/$n")) : null;
     $scan = null; foreach (glob("$dir/scan.*") ?: [] as $p) { $scan = 'data:'.mime_content_type($p).';base64,'.base64_encode(file_get_contents($p)); }
-    out(true, ['agreement'=>['id'=>$g['id'],'status'=>$g['status'],'created'=>(int)$g['created'],'terms'=>json_decode($g['terms'],true),'sign_name'=>$g['sign_name'],'signed_at'=>(int)$g['signed_at'],'sign_kind'=>$g['sign_kind'],'admin_signed_at'=>(int)$g['admin_signed_at'],'sign_img'=>$f('sign.png'),'admin_img'=>$f('admin.png'),'scan'=>$scan]]);
+    out(true, ['key'=>agrKey($id), 'agreement'=>['id'=>$g['id'],'status'=>$g['status'],'created'=>(int)$g['created'],'terms'=>json_decode($g['terms'],true),'sign_name'=>$g['sign_name'],'signed_at'=>(int)$g['signed_at'],'sign_kind'=>$g['sign_kind'],'admin_signed_at'=>(int)$g['admin_signed_at'],'sign_img'=>$f('sign.png'),'admin_img'=>$f('admin.png'),'scan'=>$scan]]);
   }
-  case 'my_agreements': { $u=auth(); out(true, ['agreements'=>rows("SELECT id,status,created,signed_at FROM agreements WHERE user_id=? ORDER BY created DESC", [$u['id']])]); }
+  case 'my_agreements': { $u=auth(); out(true, ['agreements'=>array_map(fn($g)=>$g+['key'=>agrKey($g['id'])], rows("SELECT id,status,created,signed_at FROM agreements WHERE user_id=? ORDER BY created DESC", [$u['id']]))]); }
   case 'agreement_sign': {
     $u = auth(); $id = agrId($_POST['id'] ?? ''); $g = row("SELECT * FROM agreements WHERE id=? AND user_id=?", [$id, $u['id']]); if (!$g) out(false, ['error'=>'Agreement not found']);
     if ($g['status']==='signed') out(false, ['error'=>'Already signed']);

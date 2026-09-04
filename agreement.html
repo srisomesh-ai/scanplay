@@ -11,8 +11,8 @@
 const st=document.createElement('style'); st.textContent=AGR_CSS; document.head.appendChild(st);
 (async()=>{ const id=new URLSearchParams(location.search).get('id'); const h={}; const a=sessionStorage.getItem('sp_admin'), t=localStorage.getItem('sp_token');
   if(a) h['X-Admin-Pass']=a; if(t) h['X-Token']=t;
-  const r=await (await fetch('api.php?action=agreement_get&id='+encodeURIComponent(id),{headers:h})).json();
-  document.getElementById('doc').innerHTML=r.ok?agreementHtml(r.agreement):'<p>'+(r.error||'Could not load')+'</p>';
+  const k=new URLSearchParams(location.search).get('k')||''; const r=await (await fetch('api.php?action=agreement_get&id='+encodeURIComponent(id)+(k?'&k='+encodeURIComponent(k):''),{headers:h})).json();
+  document.getElementById('doc').innerHTML=r.ok?agreementHtml(r.agreement):'<p>'+(r.error||'Could not load')+'</p><p style="font-size:13px;color:#5B5670">Open this agreement from your Partner panel in the Studio, or from the link in your email.</p>';
   if(r.ok) document.title='ScanPlay Agreement '+r.agreement.id;
 })();
 </script></body></html>
