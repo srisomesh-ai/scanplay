@@ -236,12 +236,16 @@ section{padding:96px 0}
 @keyframes psfill{from{transform:translateX(-100%)}to{transform:translateX(0)}}@media(prefers-reduced-motion:reduce){.ps-dots i.on::after{animation:none}}
 .oppop{font:500 13px 'Plus Jakarta Sans',sans-serif;line-height:1.45} .oppop b{font-size:14px} .oppop p{margin:6px 0 8px;color:#5b5670} .oppop a{display:inline-block;background:#25D366;color:#fff;font-weight:700;padding:8px 12px;border-radius:999px;text-decoration:none}
 .leaflet-popup-content-wrapper{border-radius:14px} .leaflet-popup-content{margin:12px 14px}
-.spmark{background:none;border:0}.spmark-pin{position:relative;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);box-sizing:border-box}.spmark-pin img{display:block}
-.spmark-pin b{position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;color:#fff;font:800 11px/20px 'Plus Jakarta Sans',sans-serif;text-align:center;border:2px solid #fff}
-.spmark-pin.dist{width:48px;height:48px;border-radius:12px;padding:4px;border:3px solid #7C3AED}.spmark-pin.dist img{width:34px;height:34px;border-radius:8px}.spmark-pin.dist b{background:#7C3AED}
-.spmark-pin.promo{width:38px;height:38px;border-radius:50%;padding:3px;border:3px solid #FF4D6D}.spmark-pin.promo img{width:26px;height:26px;border-radius:50%}.spmark-pin.promo b{background:#FF4D6D;width:18px;height:18px;font-size:10px;line-height:18px}
-.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #7C3AED;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}.spmark-tip.promo{border-top-color:#FF4D6D;border-left-width:7px;border-right-width:7px;border-top-width:10px}
-.maplegend{display:flex;gap:16px;justify-content:center;font-size:13px;color:var(--mute);margin:-6px 0 12px}.maplegend span{display:inline-flex;align-items:center;gap:6px}.maplegend i{display:inline-block;width:14px;height:14px;background:#fff;border:3px solid #7C3AED;border-radius:4px}.maplegend i.p{border-color:#FF4D6D;border-radius:50%}.maplegend i.y{border:0;background:#7C3AED;border-radius:50%;width:12px;height:12px}
+.spm{background:none;border:0}
+.spm .hub{position:relative;width:44px;height:44px;margin:0 auto}.spm .hub .halo{position:absolute;inset:-8px;border-radius:50%;background:rgba(124,58,237,.18);animation:sphalo 2.2s ease-out infinite}@keyframes sphalo{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.spm .hub .core{position:absolute;inset:0;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#FF4D6D);border:3px solid #fff;box-shadow:0 8px 20px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center}.spm .hub .core svg{width:22px;height:22px}
+.spm .tag{margin:5px auto 0;width:max-content;max-width:150px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--b);box-shadow:0 4px 12px rgba(20,16,50,.12);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spm .pinwrap{height:38px;display:flex;align-items:flex-end;justify-content:center}.spm .pin{position:relative;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(135deg,#FF4D6D,#FF8A5B);border:3px solid #fff;box-shadow:0 6px 16px rgba(255,77,109,.4)}.spm .pin svg{position:absolute;inset:0;margin:auto;width:14px;height:14px;transform:rotate(45deg)}
+.spm .you{width:16px;height:16px;border-radius:50%;background:#1D9BF0;border:3px solid #fff;box-shadow:0 0 0 6px rgba(29,155,240,.2)}
+.maplegend{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:-4px 0 12px}.maplegend span{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 6px;font-size:12.5px;font-weight:700;color:var(--mute)}
+.maplegend .lg-d{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#7C3AED,#FF4D6D);border:2px solid #fff;box-shadow:0 2px 8px rgba(124,58,237,.35)}.maplegend .lg-p{width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(135deg,#FF4D6D,#FF8A5B);border:2px solid #fff;box-shadow:0 2px 8px rgba(255,77,109,.35);margin:0 4px 0 2px}.maplegend .lg-y{width:12px;height:12px;border-radius:50%;background:#1D9BF0;border:2px solid #fff;box-shadow:0 0 0 3px rgba(29,155,240,.25);margin:0 4px}
+#retMap .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 14px 34px rgba(20,16,50,.18)}#retMap .leaflet-popup-content{margin:12px 14px;font-family:inherit}
+.pp b{font-size:14px}.pp small{display:block;color:var(--mute);font-size:12px;margin:2px 0 8px}.pp a{display:inline-block;background:#25D366;color:#fff;font-weight:700;font-size:12px;padding:7px 12px;border-radius:999px;text-decoration:none}
 .note{text-align:center;font-size:13px;color:var(--mute);font-weight:600;margin-top:18px}
 /* faq */
 .faq{max-width:760px;margin:auto}
@@ -373,7 +377,7 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
   </div>
   <div id="nearSt" class="nearst"></div>
   <div id="retMap" style="height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:14px;display:none"></div>
-  <div class="maplegend" id="mapLegend" style="display:none"><span><i></i>Distributor</span><span><i class="p"></i>Promoter</span><span><i class="y"></i>You</span></div>
+  <div class="maplegend" id="mapLegend" style="display:none"><span><i class="lg-d"></i>Distributor</span><span><i class="lg-p"></i>Promoter</span><span><i class="lg-y"></i>You</span></div>
   <div id="retList" class="pr" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"><div class="note">Loading partners…</div></div>
   <div class="note" id="retNote" style="margin-top:14px"></div>
   <div class="cta" style="margin-top:18px"><a class="btn" href="studio.html">Open the studio →</a><a class="btn ghost" id="becomePartner" href="contact.html">Become a distributor or promoter</a></div>
@@ -474,10 +478,12 @@ fetch('api.php?action=slides').then(r=>r.json()).then(r=>{ if(!r.ok||!r.slides||
 }).catch(()=>{});
 /* ---------- partners ---------- */
 let RMAP=null; const WAMSG=encodeURIComponent('Hi ScanPlay! I need tokens.');
-function spIcon(role){ const dist=role==='distributor';
-  return dist
-    ? L.divIcon({className:'spmark',html:'<div class="spmark-pin dist"><img src="assets/brand/scanplay-logo.svg" alt=""><b>D</b></div><div class="spmark-tip dist"></div>',iconSize:[48,60],iconAnchor:[24,60],popupAnchor:[0,-56]})
-    : L.divIcon({className:'spmark',html:'<div class="spmark-pin promo"><img src="assets/brand/scanplay-logo.svg" alt=""><b>P</b></div><div class="spmark-tip promo"></div>',iconSize:[38,48],iconAnchor:[19,48],popupAnchor:[0,-44]}); }
+const SP_PLAY='<svg viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="#fff"/></svg>', SP_CAM='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>';
+function spIcon(role,name){ const e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  return role==='distributor'
+    ? L.divIcon({className:'spm',html:`<div class="hub"><div class="halo"></div><div class="core">${SP_PLAY}</div></div><div class="tag">${e(name)}</div>`,iconSize:[150,74],iconAnchor:[75,44],popupAnchor:[0,-44]})
+    : L.divIcon({className:'spm',html:`<div class="pinwrap"><div class="pin">${SP_CAM}</div></div>`,iconSize:[38,38],iconAnchor:[19,38],popupAnchor:[0,-34]}); }
+function spYou(){ return L.divIcon({className:'spm',html:'<div class="you"></div>',iconSize:[16,16],iconAnchor:[8,8],popupAnchor:[0,-10]}); }); }
 let PLACE='';
 function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
@@ -491,15 +497,15 @@ function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getE
     if(L_.length) el.innerHTML=opp+L_.map(x=>`<div class="p r"><span class="tag">${x.role==='distributor'?'Distributor':'Promoter'}${x.km!=null?' · '+x.km+' km':''}</span><h3>${e(x.business||x.name)}</h3><div style="color:var(--mute);font-size:14px;margin:6px 0 12px">${e(x.address||x.area||'')}</div><div class="row" style="gap:6px">${x.whatsapp?`<a class="btn sm" href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}${x.lat?`<a class="btn ghost sm" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Directions</a>`:''}</div></div>`).join('');
     const pts=L_.filter(x=>x.lat&&x.lng); if((!pts.length&&!lat)||!window.L) return;
     const m=document.getElementById('retMap'); m.style.display=''; document.getElementById('mapLegend').style.display='flex'; if(RMAP){ RMAP.remove(); }
-    RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(RMAP);
-    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon(x.role)}).bindPopup(`<b>${e(x.business||x.name)}</b><br>${e(x.address||x.area||'')}${x.whatsapp?`<br><a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank">WhatsApp</a>`:''}`))).addTo(RMAP);
+    RMAP=L.map(m,{attributionControl:false,scrollWheelZoom:false}); L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(RMAP);
+    const g=L.featureGroup(pts.map(x=>L.marker([+x.lat,+x.lng],{icon:spIcon(x.role,x.business||x.name)}).bindPopup(`<div class="pp"><b>${e(x.business||x.name)}</b><small>${x.role==='distributor'?'Distributor':'Promoter'}${x.address||x.area?' · '+e(x.address||x.area):''}${x.km!=null?' · '+x.km+' km':''}</small>${x.whatsapp?`<a href="https://wa.me/${e(x.whatsapp)}?text=${WAMSG}" target="_blank" rel="noopener">WhatsApp</a>`:''}</div>`))).addTo(RMAP);
     if(lat){
       // the map goes to the place that was searched; nearby partners (within 60 km) are framed with it
       const nearby=pts.filter(x=>x.km!=null&&x.km<=60), none=!near.length, adminWa=(r.admin&&r.admin.whatsapp)||'';
       const popHtml=none
         ? `<div class="oppop"><b>No ScanPlay partner in ${e(PLACE||'this area')} yet</b><p>Be the first — become a distributor or promoter here. Buy tokens at partner price, sell at your price.</p><a href="https://wa.me/${e(adminWa)}?text=${encodeURIComponent('Hi ScanPlay! I want to become a partner in '+(PLACE||'my area'))}" target="_blank" rel="noopener">Contact ScanPlay on WhatsApp</a></div>`
         : `<b>${e(PLACE||'Searched location')}</b><br>${near.length} partner${near.length>1?'s':''} within 30 km`;
-      const here=L.circleMarker([lat,lng],{radius:9,color:'#fff',weight:2,fillColor:'#7C3AED',fillOpacity:1}).bindPopup(popHtml,{maxWidth:260,autoPan:true}).addTo(RMAP);
+      const here=L.marker([lat,lng],{icon:spYou()}).bindPopup(popHtml,{maxWidth:260,autoPan:true}).addTo(RMAP);
       if(nearby.length){ const gb=L.featureGroup([here,...nearby.map(x=>L.marker([+x.lat,+x.lng]))]); RMAP.fitBounds(gb.getBounds().pad(0.35)); }
       else RMAP.setView([lat,lng],11);
       setTimeout(()=>here.openPopup(),250);
