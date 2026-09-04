@@ -719,7 +719,8 @@ switch ($action) {
     q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $su['id'], "Outreach — $company", now()]);
     $id = substr(bin2hex(random_bytes(5)),0,8); $dir = DATA_DIR."/$code/$id"; mkdir($dir, 0755, true);
     move_uploaded_file($_FILES['target']['tmp_name'], "$dir/target.jpg"); move_uploaded_file($_FILES['video']['tmp_name'], "$dir/video.mp4"); move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
-    q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,NULL)", [$id, $code, $company.' ad', (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), 'fit', now()]);
+    $fit = in_array($_POST['fit']??'', ['fit','cover','fill']) ? $_POST['fit'] : 'fit';
+    q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,NULL)", [$id, $code, $company.' ad', (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), $fit, now()]);
     compressVideo($dir);
     /* the email */
     $me = adminContact(); $first = $name !== '' ? explode(' ', $name)[0] : 'there';
