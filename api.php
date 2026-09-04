@@ -46,6 +46,7 @@ try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } 
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
+$db->exec("CREATE TABLE IF NOT EXISTS outreach (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, email TEXT, name TEXT, company TEXT, code TEXT, item TEXT, subject TEXT, sent INTEGER DEFAULT 0, error TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS slides (id INTEGER PRIMARY KEY AUTOINCREMENT, sort INTEGER DEFAULT 0, city TEXT, status TEXT, title TEXT, text TEXT, whatsapp TEXT, photo INTEGER DEFAULT 0, created INTEGER)");
 try { $db->exec("ALTER TABLE slides ADD COLUMN img_url TEXT"); } catch (Exception $e) {}
 if (!(int)$db->query("SELECT COUNT(*) FROM slides WHERE city='Visakhapatnam'")->fetchColumn())
@@ -680,6 +681,48 @@ switch ($action) {
     if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
     out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
   }
+  /* ---------- corporate outreach: their ad + their video become a live demo, and the pitch email goes out ---------- */
+  case 'admin_outreach_send': {
+    ownerAuth(); set_time_limit(600);
+    $email=strtolower(trim($_POST['email']??'')); $name=trim(strip_tags($_POST['name']??'')); $company=trim(strip_tags($_POST['company']??'')); $where=trim(strip_tags($_POST['where']??'')); $variant=($_POST['variant']??'a')==='b'?'b':'a';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) out(false, ['error'=>'Enter a valid email']);
+    if ($company==='') out(false, ['error'=>'Enter the company name']);
+    if (empty($_FILES['target']['tmp_name']) || empty($_FILES['video']['tmp_name']) || empty($_FILES['mind']['tmp_name'])) out(false, ['error'=>'Their ad photo and video are both required']);
+    /* system account that holds all outreach demos */
+    $su = row("SELECT * FROM users WHERE email='outreach@scanplay.in'");
+    if (!$su) { q("INSERT INTO users (email,pass,name,phone,plan,plan_until,created,verified,role,tokens) VALUES (?,?,?,?,?,?,?,1,'user',0)", ['outreach@scanplay.in', password_hash(bin2hex(random_bytes(16)),PASSWORD_DEFAULT), 'ScanPlay Outreach', '', 'free', 0, now()]); $su = row("SELECT * FROM users WHERE email='outreach@scanplay.in'"); }
+    $code = substr(bin2hex(random_bytes(5)),0,8); mkdir(DATA_DIR."/$code", 0755, true);
+    q("INSERT INTO accounts (code,user_id,name,created) VALUES (?,?,?,?)", [$code, $su['id'], "Outreach — $company", now()]);
+    $id = substr(bin2hex(random_bytes(5)),0,8); $dir = DATA_DIR."/$code/$id"; mkdir($dir, 0755, true);
+    move_uploaded_file($_FILES['target']['tmp_name'], "$dir/target.jpg"); move_uploaded_file($_FILES['video']['tmp_name'], "$dir/video.mp4"); move_uploaded_file($_FILES['mind']['tmp_name'], DATA_DIR."/$code/targets.mind");
+    q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,NULL)", [$id, $code, $company.' ad', (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), 'fit', now()]);
+    compressVideo($dir);
+    /* the email */
+    $me = adminContact(); $first = $name !== '' ? explode(' ', $name)[0] : 'there';
+    $view = baseUrl()."/view.html?c=$code"; $scan = baseUrl()."/scan.html";
+    $whereTxt = $where !== '' ? " (the one running in $where)" : '';
+    if ($variant==='a') { $subject = "Your newspaper ad can play your TV commercial"; $lead = "Dear ".htmlspecialchars($first).", your brand invests heavily in newspaper and print campaigns. Right now, every one of those pages is silent. <b>We have already made your current ad play video</b> &mdash; try it before you read further."; }
+    else { $subject = "What if your print ad could talk? Try it on your own ad"; $lead = "Dear ".htmlspecialchars($first).", a full-page ad reaches millions and is forgotten when the page turns &mdash; while the video you produced for the same campaign lives only on TV and YouTube. <b>We connected the two, on your own ad.</b> Try it before you read further."; }
+    $body = "<div style='background:#F6F3FF;border-radius:14px;padding:18px 20px;text-align:left;margin:18px 0'>
+      <div style='font:800 15px Arial;color:#141032;margin-bottom:8px'>Try it now &mdash; 30 seconds, no app</div>
+      <div style='font:15px/1.6 Arial;color:#3f3a5a'>1. Take any copy of your <b>".htmlspecialchars($company)." print ad</b>$whereTxt.<br>2. On your phone, open <a href='$scan' style='color:#7C3AED;font-weight:700'>scanplay.in</a> and tap <b>Play a photo</b>.<br>3. Point the camera at the ad. <b>Your video plays right on the page.</b></div>
+      <div style='font:13px Arial;color:#5B5670;margin-top:8px'>No printed copy nearby? Open <a href='$view' style='color:#7C3AED'>this link</a> and point the phone at the ad on any screen.</div></div>
+      <div style='font:15px/1.6 Arial;color:#3f3a5a;text-align:left'><b>What this means for your next campaign</b><br>
+      &bull; The same ad space now carries 30 seconds of video, not just a headline<br>
+      &bull; Every scan is counted &mdash; real engagement numbers from print, by city and by day<br>
+      &bull; Works on newspapers, magazines, hoardings, brochures, packaging and point-of-sale material<br>
+      &bull; Nothing changes in your media plan; a small &ldquo;ScanPlay me&rdquo; line is added to the artwork<br><br>
+      We can run a pilot on your next insertion at no risk to your schedule. May I show you a two-minute live demonstration this week &mdash; a printed page and a phone are all we need?<br><br>
+      Warm regards,<br><b>".htmlspecialchars($me['name'] ?: 'Someswara Rao Pyla')."</b><br>Founder, ".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
+    $html = mailTpl("Your ad, playing your video", $lead, $body, "Watch your ad play", $view);
+    $ok = false; $err = '';
+    try { $ok = sendMail($email, $subject, $html); if (!$ok) $err = 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
+    q("INSERT INTO outreach (ts,email,name,company,code,item,subject,sent,error) VALUES (?,?,?,?,?,?,?,?,?)", [now(), $email, $name, $company, $code, $id, $subject, $ok?1:0, $err]);
+    logAct($su['id'], 'outreach', "$company <$email> ".($ok?'sent':'FAILED '.$err), 'admin');
+    out($ok, ['code'=>$code, 'view'=>$view, 'error'=>$ok?null:('Demo created but email not sent: '.$err)]);
+  }
+  case 'admin_outreach_list': { ownerAuth(); out(true, ['list'=>rows("SELECT o.*, (SELECT COALESCE(SUM(n),0) FROM scans s WHERE s.code=o.code) scans, (SELECT COALESCE(SUM(n),0) FROM item_hits h WHERE h.item_id=o.item) plays FROM outreach o ORDER BY o.id DESC LIMIT 200")]); }
+  case 'admin_outreach_delete': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]); if($o){ q("DELETE FROM items WHERE code=?",[$o['code']]); q("DELETE FROM scans WHERE code=?",[$o['code']]); q("DELETE FROM accounts WHERE code=?",[$o['code']]); rrmdir(DATA_DIR."/{$o['code']}"); q("DELETE FROM outreach WHERE id=?",[$id]); } out(true); }
   /* ---------- homepage partner slides ---------- */
   case 'slides': { header('Cache-Control: no-store'); out(true, ['slides'=>array_map(fn($s)=>$s+['img'=>$s['photo']?"data/slides/{$s['id']}.jpg?v={$s['photo']}":($s['img_url']?:null)], rows("SELECT id,city,status,title,text,whatsapp,photo,img_url FROM slides ORDER BY sort, id")), 'admin'=>adminContact()]); }
   case 'admin_slides': { ownerAuth(); out(true, ['slides'=>rows("SELECT * FROM slides ORDER BY sort, id")]); }

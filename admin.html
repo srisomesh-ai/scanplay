@@ -35,6 +35,7 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 .agr-note{font-size:12px;color:#5B5670}.agr-sig{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}.agr-sig>div{font-size:13px}
 .agr-sigbox{height:80px;border-bottom:1.5px solid #141032;margin-bottom:6px;display:flex;align-items:flex-end}.agr-sigbox img{max-height:76px;max-width:100%}.agr-empty{color:#b5b0c8;font-size:12px;font-style:italic;align-self:center}
 @media print{.agr{font-size:12.5px}.agr h2{page-break-after:avoid}}</style><script src="agreement.js"></script>
+<script type="module">import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"; window.MindCompiler = Compiler;</script>
 </head><body>
 <header><h1><a href="/" style="text-decoration:none;color:inherit"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:6px">Scan<b>Play</b> <span style="color:var(--mute);font-weight:600;font-size:15px">Admin</span></a></h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
 
@@ -48,6 +49,13 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
     <textarea id="sa_pay" rows="3" style="width:100%;margin-top:8px;font:500 14px 'Plus Jakarta Sans';padding:10px;border:1.5px solid var(--line);border-radius:10px" placeholder="Payment details: UPI ID, bank account, price per token…"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn s" onclick="saveSettings()">Save</button><button class="btn g s" onclick="loadLedger()">Show full token ledger</button><span class="st" id="sast"></span></div>
     <div id="ledger" style="font-size:12px;max-height:280px;overflow:auto;margin-top:8px"></div></div>
+  <div class="card" style="margin-top:16px"><b>Corporate outreach</b>
+    <div class="st">Upload the company's own print ad and its video. ScanPlay makes that ad play the video, and the pitch email goes out from info@scanplay.in telling them to scan their ad.</div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px"><input id="orEmail" placeholder="Email address" style="flex:1;min-width:200px"><input id="orName" placeholder="Person's name (optional)" style="flex:1;min-width:160px"><input id="orCo" placeholder="Company" style="flex:1;min-width:160px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><input id="orWhere" placeholder="Where the ad is running, e.g. Eenadu, Sakshi (optional)" style="flex:1;min-width:220px"><select id="orVar"><option value="a">Email: short and direct</option><option value="b">Email: story-led</option></select></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center"><label class="st">Their ad (photo) <input type="file" id="orImg" accept="image/*"></label><label class="st">Their video <input type="file" id="orVid" accept="video/*"></label></div>
+    <div class="row" style="margin-top:10px;align-items:center;gap:10px"><button class="btn s" id="orGo" onclick="orSend()">Create demo &amp; send email</button><span class="st" id="orSt"></span></div>
+    <div id="orList" style="margin-top:10px;font-size:13px"></div></div>
   <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Homepage partner slides</b><button class="btn s" onclick="slideEdit(0)">＋ Add slide</button></div>
     <div class="st">Filled cities show the partner's photo; open cities show "Apply". Order by the sort number.</div>
     <div id="slideList" style="margin-top:8px;font-size:13px"></div></div>
@@ -267,7 +275,7 @@ const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
 async function load(){ if(!P) P=$('#p').value; const r=await api('admin_users'); if(!r.ok){ $('#lerr').textContent=r.error; P=''; return; } sessionStorage.setItem('sp_admin',P);
   DATA=r; $('#login').style.display='none'; $('#app').style.display=''; $('#out').style.display='';
   const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${DATA.users.filter(u=>u.role==='distributor').length} / ${DATA.users.filter(u=>u.role==='promoter').length}</b><span>Distributors / Promoters</span></div><div class="kpi"><b>${DATA.users.reduce((n,u)=>n+(+u.tokens||0),0)}</b><span>Tokens in circulation</span></div><div class="kpi"><b>${DATA.users.reduce((n,u)=>n+(+u.tokens_used||0),0)}</b><span>Tokens used</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div><div class="kpi"><b>${t.photos}</b><span>Photos stored</span></div><div class="kpi" style="${t.integrity==='ok'?'':'background:#FEE2E2'}"><b>${t.integrity==='ok'?'OK':'CHECK'}</b><span>Database integrity</span></div><div class="kpi"><b>${t.backups}</b><span>Daily backups kept<br>${t.lastBackup}</span></div>`;
-  DATA.users.forEach(u=>PN[u.id]=u.business||u.name||u.email); render(); loadActivity(); loadSettings(); loadAgreements(); loadSlides(); }
+  DATA.users.forEach(u=>PN[u.id]=u.business||u.name||u.email); render(); loadActivity(); loadSettings(); loadAgreements(); loadSlides(); loadOutreach(); }
 function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value;
   $('#tb').innerHTML=DATA.users.filter(u=>(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().includes(q))&&(!f||(u.role||'user')===f)).map(u=>`<tr class="u" onclick="openUser(${u.id})">
     <td><b>${u.name||''}</b><br><span style="color:var(--mute)">${e(u.email)}${u.phone?' · '+u.phone:''}</span>${u.verified?'':' <span class="tag x">unverified</span>'}${u.note?'<br><span style="font-size:11px;color:var(--b)">📝 '+u.note+'</span>':''}</td>
@@ -307,6 +315,24 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
   <h3>Projects &amp; photos</h3>${r.accounts.length?r.accounts.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${e(a.name)}</b> ${a.blocked?'<span class="tag x">BLOCKED</span>':''}${a.showcase?'<span class="tag" style="background:#FFB86C33;color:#B45309">HOMEPAGE</span>':''} <span style="color:var(--mute);font-size:12px">${e(a.code)} · ${a.scans} scans</span><br><a href="${a.qrUrl}" target="_blank" style="font-size:12px;color:var(--b)">${a.qrUrl}</a></div><span class="row"><button class="btn g s" onclick="act('admin_showcase',{code:'${e(a.code)}',showcase:${a.showcase?0:1}},false,${id})">${a.showcase?'★ On homepage':'☆ Show on homepage'}</button><button class="btn g s" onclick="act('admin_block',{code:'${e(a.code)}',blocked:${a.blocked?0:1}},false,${id})">${a.blocked?'Unblock':'Block'}</button><button class="btn d s" onclick="if(confirm('Delete project ${e(a.name)}?'))act('admin_account_delete',{code:'${e(a.code)}'},false,${id})">Delete project</button></span></div>
     ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${e(it.title)}</b> <span style="font-size:12px;font-weight:700;color:var(--b)">👁 ${it.hits||0}</span><div style="font-size:12px;color:var(--mute)">${e(it.id)} · fit: ${it.fit||'fit'} · <a href="data/${e(a.code)}/${e(it.id)}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${e(a.code)}',id:'${e(it.id)}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
   <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }catch(e){ $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><h2>Could not open user</h2><button class="btn g s" onclick="closeUser()">Close</button></div><p class="st err">${e.message}</p><p class="st">Redeploy from hPanel Git and hard-refresh; if it persists, send this message to support.</p>`; $('#m').classList.add('open'); } }
+/* ---------- corporate outreach ---------- */
+const orImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not read the photo')); i.src=src; });
+const orVidRatio=f=>new Promise(res=>{ const v=document.createElement('video'); v.preload='metadata'; v.onloadedmetadata=()=>res(v.videoWidth/v.videoHeight); v.onerror=()=>res(1); v.src=URL.createObjectURL(f); });
+async function orSend(){ const st=$('#orSt'), b=$('#orGo'); const email=$('#orEmail').value.trim(), co=$('#orCo').value.trim(), img=$('#orImg').files[0], vid=$('#orVid').files[0];
+  if(!email||!co||!img||!vid){ st.textContent='Email, company, ad photo and video are all needed'; return; }
+  b.disabled=true;
+  try{
+    st.textContent='Analysing the ad…'; if(!window.MindCompiler) throw new Error('Compiler still loading, try again in a moment');
+    const im=await orImgEl(URL.createObjectURL(img)); const comp=new window.MindCompiler(); await comp.compileImageTargets([im],p=>{ st.textContent='Analysing the ad… '+Math.round(p)+'%'; });
+    const mind=new File([await comp.exportData()],'targets.mind'); const vr=await orVidRatio(vid);
+    st.textContent='Uploading and sending…';
+    const fd=new FormData(); fd.append('email',email); fd.append('name',$('#orName').value); fd.append('company',co); fd.append('where',$('#orWhere').value); fd.append('variant',$('#orVar').value); fd.append('ratio',(im.naturalWidth/im.naturalHeight).toFixed(4)); fd.append('vratio',vr.toFixed(4)); fd.append('target',img,img.name); fd.append('video',vid,vid.name); fd.append('mind',mind,'targets.mind');
+    const r=await (await fetch('api.php?action=admin_outreach_send',{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();
+    st.textContent=r.ok?'Sent ✅ Demo: '+r.view:(r.error||'Failed'); if(r.ok){ $('#orEmail').value=''; $('#orName').value=''; $('#orCo').value=''; $('#orWhere').value=''; $('#orImg').value=''; $('#orVid').value=''; }
+  }catch(e){ st.textContent=e.message; }
+  b.disabled=false; loadOutreach(); }
+async function loadOutreach(){ const r=await api('admin_outreach_list'); if(!r.ok) return;
+  $('#orList').innerHTML=(r.list||[]).map(o=>`<div class="st" style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div><b>${e(o.company)}</b> · ${e(o.email)}${o.name?' · '+e(o.name):''}<br><span style="color:var(--mute)">${d(o.ts)} · ${o.sent?'<span class="tag a">sent</span>':'<span class="tag x">not sent</span> '+e(o.error||'')} · <b>${o.plays}</b> plays · ${o.scans} scans</span></div><div class="row" style="gap:4px"><a class="btn g s" href="view.html?c=${e(o.code)}" target="_blank">Demo</a><button class="btn d s" onclick="if(confirm('Delete this demo and record?'))api('admin_outreach_delete',{id:${o.id}}).then(loadOutreach)">✕</button></div></div>`).join('')||'<div class="st">No outreach yet.</div>'; }
 /* ---------- homepage slides ---------- */
 let SLIDES=[];
 async function loadSlides(){ const r=await api('admin_slides'); if(!r.ok) return; SLIDES=r.slides||[];
