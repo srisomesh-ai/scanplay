@@ -483,7 +483,7 @@ function spIcon(role,name){ const e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':
   return role==='distributor'
     ? L.divIcon({className:'spm',html:`<div class="hub"><div class="halo"></div><div class="core">${SP_PLAY}</div></div><div class="tag">${e(name)}</div>`,iconSize:[150,74],iconAnchor:[75,44],popupAnchor:[0,-44]})
     : L.divIcon({className:'spm',html:`<div class="pinwrap"><div class="pin">${SP_CAM}</div></div>`,iconSize:[38,38],iconAnchor:[19,38],popupAnchor:[0,-34]}); }
-function spYou(){ return L.divIcon({className:'spm',html:'<div class="you"></div>',iconSize:[16,16],iconAnchor:[8,8],popupAnchor:[0,-10]}); }); }
+function spYou(){ return L.divIcon({className:'spm',html:'<div class="you"></div>',iconSize:[16,16],iconAnchor:[8,8],popupAnchor:[0,-10]}); }
 let PLACE='';
 function loadPartners(lat,lng,place){ PLACE=place||PLACE; const el=document.getElementById('retList'), e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   fetch('api.php?action=retailers'+(lat?`&lat=${lat}&lng=${lng}`:'')).then(r=>r.json()).then(r=>{
