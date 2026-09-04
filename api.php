@@ -46,6 +46,13 @@ try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } 
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
+$db->exec("CREATE TABLE IF NOT EXISTS slides (id INTEGER PRIMARY KEY AUTOINCREMENT, sort INTEGER DEFAULT 0, city TEXT, status TEXT, title TEXT, text TEXT, whatsapp TEXT, photo INTEGER DEFAULT 0, created INTEGER)");
+if (!(int)$db->query("SELECT COUNT(*) FROM slides")->fetchColumn()) foreach ([
+  ['Hyderabad','open','Be the first in Hyderabad','No distributor yet. Buy tokens at partner price, appoint promoters, sell at your own price across the city.'],
+  ['Vijayawada','open','Be the first in Vijayawada','Wedding capital of Andhra — every invitation card is a ScanPlay card waiting to happen.'],
+  ['Rajahmundry','open','Be the first in the Godavari districts','Rajahmundry, Kakinada, Tanuku, Eluru — one distributor, four busy print markets.'],
+  ['Tirupati','open','Be the first in Tirupati','Temple tourism, hotels, and a steady stream of family functions.']] as $i=>$s)
+  $db->prepare("INSERT INTO slides (sort,city,status,title,text,created) VALUES (?,?,?,?,?,?)")->execute([$i+10,$s[0],$s[1],$s[2],$s[3],time()]);
 $db->exec("CREATE TABLE IF NOT EXISTS agreements (id TEXT PRIMARY KEY, user_id INTEGER, created INTEGER, status TEXT, terms TEXT, sign_name TEXT, signed_at INTEGER, sign_ip TEXT, sign_kind TEXT, admin_signed_at INTEGER)");
 /* one-time migration to the token model: nobody loses paid capacity */
 if (!$db->query("SELECT v FROM settings WHERE k='token_migrated'")->fetch()) {
@@ -670,6 +677,23 @@ switch ($action) {
     if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
     out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
   }
+  /* ---------- homepage partner slides ---------- */
+  case 'slides': { header('Cache-Control: no-store'); out(true, ['slides'=>array_map(fn($s)=>$s+['img'=>$s['photo']?"data/slides/{$s['id']}.jpg?v={$s['photo']}":null], rows("SELECT id,city,status,title,text,whatsapp,photo FROM slides ORDER BY sort, id")), 'admin'=>adminContact()]); }
+  case 'admin_slides': { ownerAuth(); out(true, ['slides'=>rows("SELECT * FROM slides ORDER BY sort, id")]); }
+  case 'admin_slide_save': {
+    ownerAuth(); $id=(int)($_POST['id']??0); $f=['city'=>trim(strip_tags($_POST['city']??'')),'status'=>($_POST['status']??'open')==='partner'?'partner':'open','title'=>trim(strip_tags($_POST['title']??'')),'text'=>trim(strip_tags($_POST['text']??'')),'whatsapp'=>preg_replace('/\D/','',$_POST['whatsapp']??''),'sort'=>(int)($_POST['sort']??0)];
+    if ($f['city']==='') out(false, ['error'=>'City is required']);
+    if ($id) q("UPDATE slides SET city=?,status=?,title=?,text=?,whatsapp=?,sort=? WHERE id=?", [$f['city'],$f['status'],$f['title'],$f['text'],$f['whatsapp'],$f['sort'],$id]);
+    else { q("INSERT INTO slides (sort,city,status,title,text,whatsapp,created) VALUES (?,?,?,?,?,?,?)", [$f['sort'],$f['city'],$f['status'],$f['title'],$f['text'],$f['whatsapp'],now()]); $id=(int)$db->lastInsertId(); }
+    if (!empty($_FILES['photo']['tmp_name'])) {
+      @mkdir(DATA_DIR.'/slides', 0755, true); $dst = DATA_DIR."/slides/$id.jpg"; $src=$_FILES['photo']['tmp_name'];
+      $ok=false; if (function_exists('imagecreatefromstring')) { $im=@imagecreatefromstring(file_get_contents($src)); if ($im) { $w=imagesx($im); $h=imagesy($im); $s=min(1,1200/max($w,$h)); $nw=(int)($w*$s); $nh=(int)($h*$s); $o=imagecreatetruecolor($nw,$nh); imagecopyresampled($o,$im,0,0,0,0,$nw,$nh,$w,$h); $ok=imagejpeg($o,$dst,82); imagedestroy($o); imagedestroy($im); } }
+      if (!$ok) move_uploaded_file($src,$dst);
+      q("UPDATE slides SET photo=? WHERE id=?", [now(), $id]);
+    }
+    out(true, ['id'=>$id]);
+  }
+  case 'admin_slide_delete': { ownerAuth(); $id=(int)($_POST['id']??0); q("DELETE FROM slides WHERE id=?", [$id]); @unlink(DATA_DIR."/slides/$id.jpg"); out(true); }
   /* ---------- distributor / promoter agreements ---------- */
   case 'admin_agreement_create': {
     ownerAuth(); $uid=(int)($_POST['user_id']??0); $u=row("SELECT * FROM users WHERE id=? AND deleted=0",[$uid]); if(!$u) out(false,['error'=>'No such user']);

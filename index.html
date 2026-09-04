@@ -224,6 +224,16 @@ section{padding:96px 0}
 .nearst{text-align:center;font-size:13px;color:var(--mute);min-height:18px;margin-bottom:12px}
 .nearst.err{color:#DC2626}
 .p.opp{border:2px dashed #F5B65E;background:#FFFDF8}
+.ps-track{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:6px 2px 14px;-webkit-overflow-scrolling:touch}.ps-track::-webkit-scrollbar{display:none}
+.ps{flex:0 0 min(86vw,420px);scroll-snap-align:center;border-radius:22px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:0 14px 34px rgba(20,16,50,.08);position:relative;display:flex;flex-direction:column;min-height:430px}
+.ps-city{position:absolute;left:14px;top:14px;z-index:2;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-radius:999px;padding:7px 12px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}.ps-city svg{width:14px;height:14px}
+.ps-role{position:absolute;right:14px;top:14px;z-index:2;border-radius:999px;padding:6px 11px;font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff;background:linear-gradient(135deg,var(--b),var(--a))}.ps-role.open{background:#fff;color:#B45309;border:1.5px dashed #F5B65E}
+.ps-pic{aspect-ratio:4/3;overflow:hidden;background:#EEE9FF}.ps-pic img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;display:block}
+.ps.open .ps-pic{display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#FFF6EA,#FFE9EE)}.ps-big{text-align:center;padding:24px}.ps-big span{display:block;font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,var(--b),var(--a));-webkit-background-clip:text;color:transparent}.ps-big small{display:block;margin-top:8px;color:var(--mute);font-size:13px;font-weight:600}
+.ps-cap{padding:16px 18px 18px;flex:1;display:flex;flex-direction:column;gap:6px}.ps-cap b{font-size:17px}.ps-cap p{margin:0;color:var(--mute);font-size:13.5px;line-height:1.45}
+.ps-wa{margin-top:auto;align-self:flex-start;background:#25D366;color:#fff;font-weight:700;font-size:13px;padding:9px 14px;border-radius:999px;text-decoration:none}.ps-wa.b{background:var(--ink)}
+.ps-dots{display:flex;gap:6px;justify-content:center;margin-top:4px}.ps-dots i{width:22px;height:4px;border-radius:2px;background:var(--line);overflow:hidden;position:relative;cursor:pointer}.ps-dots i.on::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--b),var(--a));animation:psfill 4s linear forwards}
+@keyframes psfill{from{transform:translateX(-100%)}to{transform:translateX(0)}}@media(prefers-reduced-motion:reduce){.ps-dots i.on::after{animation:none}}
 .oppop{font:500 13px 'Plus Jakarta Sans',sans-serif;line-height:1.45} .oppop b{font-size:14px} .oppop p{margin:6px 0 8px;color:#5b5670} .oppop a{display:inline-block;background:#25D366;color:#fff;font-weight:700;padding:8px 12px;border-radius:999px;text-decoration:none}
 .leaflet-popup-content-wrapper{border-radius:14px} .leaflet-popup-content{margin:12px 14px}
 .spmark{background:none;border:0}.spmark-pin{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(20,16,50,.35);padding:4px;box-sizing:border-box}.spmark-pin img{width:36px;height:36px;display:block;border-radius:10px}.spmark-tip{width:0;height:0;margin:-2px auto 0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff;filter:drop-shadow(0 3px 2px rgba(20,16,50,.25))}
@@ -346,6 +356,10 @@ html:not([lang=en]) .h h2,html:not([lang=en]) .pt h2,html:not([lang=en]) .fin h2
   </div>
 </div></section>
 
+<section id="partners" style="padding-top:0;display:none"><div class="w">
+  <div class="h r"><div class="k">Partners</div><h2>Our partners across Andhra — and the cities still open</h2><p>ScanPlay is sold through authorised distributors and promoters. Find yours, or claim an open city.</p></div>
+  <div class="ps-track" id="psTrack"></div><div class="ps-dots" id="psDots"></div>
+</div></section>
 <section id="retailers" style="padding-top:0"><div class="w">
   <div class="h r"><div class="k">Get started</div><h2>Buy tokens from a ScanPlay partner</h2><p>ScanPlay runs on tokens — <b>1 token = 1 photo + 1 video</b>. Tokens never expire. You buy them from an authorised promoter — a ScanPlay partner photographer, event manager or print shop near you, then create as many AR prints as you have tokens.</p></div>
   <div class="nearbar">
@@ -436,6 +450,22 @@ function showSlide(){
 /* Real customer work marked "Show on homepage" in admin; demo/stock slides only if none are marked */
 fetch('api.php?action=showcase').then(r=>r.json()).then(r=>{ if(r.ok&&r.items&&r.items.length){ SLIDES.length=0; r.items.forEach(x=>SLIDES.push(x)); } }).catch(()=>{}).finally(()=>{ buildSlides(); showSlide(); setInterval(showSlide,CYCLE*2); });
 
+
+/* ---------- partner slides ---------- */
+fetch('api.php?action=slides').then(r=>r.json()).then(r=>{ if(!r.ok||!r.slides||!r.slides.length) return; const e=t=>String(t||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); const wa=(r.admin&&r.admin.whatsapp)||'';
+  const pin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 22s7-7.1 7-12a7 7 0 1 0-14 0c0 4.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+  const track=document.getElementById('psTrack'), dots=document.getElementById('psDots');
+  track.innerHTML=r.slides.map(x=>x.status==='partner'
+    ?`<div class="ps"><div class="ps-city">${pin}${e(x.city)}</div><div class="ps-role">Distributor</div><div class="ps-pic">${x.img?`<img src="${x.img}" alt="${e(x.title)}" loading="lazy">`:''}</div><div class="ps-cap"><b>${e(x.title)}</b><p>${e(x.text)}</p>${x.whatsapp?`<a class="ps-wa" href="https://wa.me/${e(x.whatsapp)}?text=${encodeURIComponent('Hi ScanPlay! I need tokens.')}" target="_blank" rel="noopener">WhatsApp ${e(x.title)}</a>`:''}</div></div>`
+    :`<div class="ps open"><div class="ps-city">${pin}${e(x.city)}</div><div class="ps-role open">Open</div><div class="ps-pic"><div class="ps-big"><span>Open</span><small>Distributor for ${e(x.city)}</small></div></div><div class="ps-cap"><b>${e(x.title||'Be the first in '+x.city)}</b><p>${e(x.text)}</p><a class="ps-wa b" href="https://wa.me/${e(wa)}?text=${encodeURIComponent('Hi ScanPlay! I want to become the distributor for '+x.city)}" target="_blank" rel="noopener">Apply for ${e(x.city)}</a></div></div>`).join('');
+  document.getElementById('partners').style.display='';
+  const slides=[...track.children]; slides.forEach((s,i)=>{ const d=document.createElement('i'); d.onclick=()=>go(i); dots.appendChild(d); });
+  let cur=0, timer; function go(i){ cur=(i+slides.length)%slides.length; const s=slides[cur]; track.scrollTo({left:s.offsetLeft-(track.clientWidth-s.clientWidth)/2,behavior:'smooth'}); [...dots.children].forEach((d,j)=>d.classList.toggle('on',j===cur)); restart(); }
+  function restart(){ clearTimeout(timer); if(slides.length>1) timer=setTimeout(()=>go(cur+1),4000); }
+  let sc; track.addEventListener('scroll',()=>{ clearTimeout(sc); sc=setTimeout(()=>{ const c=track.scrollLeft+track.clientWidth/2; const i=slides.findIndex(s=>c>=s.offsetLeft&&c<s.offsetLeft+s.clientWidth); if(i>=0&&i!==cur){ cur=i; [...dots.children].forEach((d,j)=>d.classList.toggle('on',j===cur)); restart(); } },120); });
+  track.addEventListener('pointerdown',()=>clearTimeout(timer)); track.addEventListener('pointerup',restart);
+  [...dots.children].forEach((d,j)=>d.classList.toggle('on',j===0)); restart();
+}).catch(()=>{});
 /* ---------- partners ---------- */
 let RMAP=null; const WAMSG=encodeURIComponent('Hi ScanPlay! I need tokens.');
 function spIcon(){ return L.divIcon({className:'spmark',html:'<div class="spmark-pin"><img src="assets/brand/scanplay-logo.svg" alt=""></div><div class="spmark-tip"></div>',iconSize:[44,54],iconAnchor:[22,54],popupAnchor:[0,-50]}); }
