@@ -673,7 +673,7 @@ function renderItems(){
   $('#items').innerHTML = CUR.items.length ? CUR.items.map(it=>`
     <div class="item" id="item-${it.id}">
       <img src="${it.thumb}" alt="">
-      <div><div class="t">${esc(it.title)} <span style="font-weight:600;font-size:12px;color:var(--b)">· 👁 ${it.hits||0}</span></div><div class="u">photo ${sh(it.ratio)} · ${it.yt?'YouTube (floating player)':'video '+sh(it.vratio)}</div>
+      <div><div class="t">${esc(it.title)} <button class="tiny" onclick="renameItem('${it.id}')" title="Rename" style="color:var(--b);margin-left:2px">✏️</button> <span style="font-weight:600;font-size:12px;color:var(--b)">· 👁 ${it.hits||0}</span></div><div class="u">photo ${sh(it.ratio)} · ${it.yt?'YouTube (floating player)':'video '+sh(it.vratio)}</div>
         <div class="chips" style="margin:6px 0 0"><button class="chip ${(it.fit||'fit')==='fit'?'on':''}" onclick="setFit('${it.id}','fit')">Whole video</button><button class="chip ${it.fit==='fill'?'on':''}" onclick="setFit('${it.id}','fill')">Cover photo</button><button class="chip ${it.fit==='stretch'?'on':''}" onclick="setFit('${it.id}','stretch')">Stretch</button></div></div>
       <button class="btn danger sm" onclick="removeItem('${it.id}')">Remove</button>
     </div>`).join('') : '<div class="empty">No pictures yet. Add one above.</div>';
@@ -882,6 +882,7 @@ async function bulkGo(){
   delete go.dataset.busy; go.textContent='Close'; go.disabled=false; go.onclick=()=>{ go.onclick=bulkGo; closeBulk(); };
   toast(`✅ ${ok} AR photo${ok>1?'s':''} ready`);
 }
+async function renameItem(id){ const it=CUR.items.find(x=>x.id===id); if(!it) return; const t=await askName(it.title==='Untitled'?'':it.title); if(t===null||!t.trim()) return; const r=await post({action:'item_update',code:CUR.code,id,title:t.trim()}); if(r.ok){ it.title=t.trim(); renderItems(); toast('Renamed'); } else toast(r.error); }
 async function setFit(id,fit){ const r=await post({action:'item_update',code:CUR.code,id,fit}); if(r.ok){ const it=CUR.items.find(x=>x.id===id); if(it) it.fit=fit; renderItems(); } else toast(r.error); }
 async function removeItem(id){
   const it=CUR.items.find(x=>x.id===id); if(!await confirmDlg('Remove this photo?',`"${it?it.title:'This photo'}" and its video will be removed from this project.`,'Remove',true)) return;
