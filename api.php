@@ -47,6 +47,9 @@ try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); }
 $db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS slides (id INTEGER PRIMARY KEY AUTOINCREMENT, sort INTEGER DEFAULT 0, city TEXT, status TEXT, title TEXT, text TEXT, whatsapp TEXT, photo INTEGER DEFAULT 0, created INTEGER)");
+try { $db->exec("ALTER TABLE slides ADD COLUMN img_url TEXT"); } catch (Exception $e) {}
+if (!(int)$db->query("SELECT COUNT(*) FROM slides WHERE city='Visakhapatnam'")->fetchColumn())
+  $db->prepare("INSERT INTO slides (sort,city,status,title,text,whatsapp,img_url,created) VALUES (1,'Visakhapatnam','partner',?,?,?,?,?)")->execute(["Veerumama's Brand","Authorised distributor for Visakhapatnam district. Supplies tokens to promoters — photographers, event managers and print shops across the city.","919912999949","assets/partners/visakhapatnam.jpg",time()]);
 if (!(int)$db->query("SELECT COUNT(*) FROM slides")->fetchColumn()) foreach ([
   ['Hyderabad','open','Be the first in Hyderabad','No distributor yet. Buy tokens at partner price, appoint promoters, sell at your own price across the city.'],
   ['Vijayawada','open','Be the first in Vijayawada','Wedding capital of Andhra — every invitation card is a ScanPlay card waiting to happen.'],
@@ -678,7 +681,7 @@ switch ($action) {
     out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
   }
   /* ---------- homepage partner slides ---------- */
-  case 'slides': { header('Cache-Control: no-store'); out(true, ['slides'=>array_map(fn($s)=>$s+['img'=>$s['photo']?"data/slides/{$s['id']}.jpg?v={$s['photo']}":null], rows("SELECT id,city,status,title,text,whatsapp,photo FROM slides ORDER BY sort, id")), 'admin'=>adminContact()]); }
+  case 'slides': { header('Cache-Control: no-store'); out(true, ['slides'=>array_map(fn($s)=>$s+['img'=>$s['photo']?"data/slides/{$s['id']}.jpg?v={$s['photo']}":($s['img_url']?:null)], rows("SELECT id,city,status,title,text,whatsapp,photo,img_url FROM slides ORDER BY sort, id")), 'admin'=>adminContact()]); }
   case 'admin_slides': { ownerAuth(); out(true, ['slides'=>rows("SELECT * FROM slides ORDER BY sort, id")]); }
   case 'admin_slide_save': {
     ownerAuth(); $id=(int)($_POST['id']??0); $f=['city'=>trim(strip_tags($_POST['city']??'')),'status'=>($_POST['status']??'open')==='partner'?'partner':'open','title'=>trim(strip_tags($_POST['title']??'')),'text'=>trim(strip_tags($_POST['text']??'')),'whatsapp'=>preg_replace('/\D/','',$_POST['whatsapp']??''),'sort'=>(int)($_POST['sort']??0)];
