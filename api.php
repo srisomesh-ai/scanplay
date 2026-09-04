@@ -154,6 +154,7 @@ function mailConfigured() { return SMTP_PASS !== 'CHANGE_ME'; }
 $MAIL_ERR = '';
 function sendMail($to, $subject, $html, $attachments = []) {
   global $MAIL_ERR; $MAIL_ERR = '';
+  if (strtolower(trim($to)) === 'outreach@scanplay.in') return true;   // internal system account, no mailbox
   if (!mailConfigured()) { $MAIL_ERR = 'Email is not configured (smtp_pass in config.php)'; return false; }
   $fp = @stream_socket_client('ssl://'.SMTP_HOST.':'.SMTP_PORT, $errno, $errstr, 15); if (!$fp) { $MAIL_ERR = "Cannot reach ".SMTP_HOST.": $errstr"; return false; }
   $read = function() use ($fp) { $r=''; while ($l=fgets($fp,515)) { $r.=$l; if (substr($l,3,1)===' ') break; } return $r; };
