@@ -729,15 +729,15 @@ switch ($action) {
     else { $subject = "What if your print ad could talk? Try it on your own ad"; $lead = "Dear ".htmlspecialchars($first).", a full-page ad reaches millions and is forgotten when the page turns &mdash; while the video you produced for the same campaign lives only on TV and YouTube. <b>We connected the two, on your own ad.</b> Try it before you read further."; }
     $body = "<div style='background:#F6F3FF;border-radius:14px;padding:18px 20px;text-align:left;margin:18px 0'>
       <div style='font:800 15px Arial;color:#141032;margin-bottom:8px'>Try it now &mdash; 30 seconds, no app</div>
-      <div style='font:15px/1.6 Arial;color:#3f3a5a'>1. Take any copy of your <b>".htmlspecialchars($company)." print ad</b>$whereTxt.<br>2. On your phone, open <a href='$scan' style='color:#7C3AED;font-weight:700'>scanplay.in</a> and tap <b>Play a photo</b>.<br>3. Point the camera at the ad. <b>Your video plays right on the page.</b></div>
-      <div style='font:13px Arial;color:#5B5670;margin-top:8px'>No printed copy nearby? Open <a href='$view' style='color:#7C3AED'>this link</a> and point the phone at the ad on any screen.</div></div>
+      <div style='font:15px/1.6 Arial;color:#3f3a5a'>1. Your <b>".htmlspecialchars($company)." ad</b> is attached to this email$whereTxt &mdash; open it on a screen, or use any printed copy.<br>2. On another phone, open <a href='$scan' style='color:#7C3AED;font-weight:700'>scanplay.in</a> and tap <b>Play a photo</b>.<br>3. Point the camera at the ad. <b>Your video plays right on it.</b></div>
+      <div style='font:13px Arial;color:#5B5670;margin-top:8px'>Or open <a href='$view' style='color:#7C3AED'>this direct link</a> on your phone and point it at the ad.</div></div>
       <div style='font:15px/1.6 Arial;color:#3f3a5a;text-align:left'><b>What this means for your next campaign</b><br>
       &bull; The same ad space now carries 30 seconds of video, not just a headline<br>
       &bull; Every scan is counted &mdash; real engagement numbers from print, by city and by day<br>
       &bull; Works on newspapers, magazines, hoardings, brochures, packaging and point-of-sale material<br>
       &bull; Nothing changes in your media plan; a small &ldquo;ScanPlay me&rdquo; line is added to the artwork<br><br>
       We can run a pilot on your next insertion at no risk to your schedule. May I show you a two-minute live demonstration this week &mdash; a printed page and a phone are all we need?<br><br>
-      Warm regards,<br><b>".htmlspecialchars($me['name'] ?: 'Someswara Rao Pyla')."</b><br>Founder, ".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
+      Warm regards,<br><b>Team ScanPlay</b><br>".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
     $html = mailTpl("Your ad, playing your video", $lead, $body, "Watch your ad play", $view);
     $ok = false; $err = '';
     try { $ok = sendMail($email, $subject, $html, [['name'=>preg_replace('/[^A-Za-z0-9]+/','-',$company).'-ad.jpg','mime'=>'image/jpeg','data'=>file_get_contents("$dir/target.jpg")]]); if (!$ok) $err = $GLOBALS['MAIL_ERR'] ?: 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
