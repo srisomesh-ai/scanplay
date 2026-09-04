@@ -117,6 +117,30 @@ function agreementNotify($g) {   // emails the partner, copies admin, records de
     @sendMail($admin, "Copy: agreement $num sent to ".($g['business'] ?: $g['name']), mailTpl("Agreement sent", "Agreement <b>$num</b> (".$roleWord.", ".htmlspecialchars($t['territory'] ?? '').") was sent to <b>".htmlspecialchars($g['business'] ?: $g['name'])."</b> &lt;".htmlspecialchars($g['email'])."&gt;.", $ok ? "Partner email: delivered to the mail server." : "<b>Partner email FAILED:</b> ".htmlspecialchars($err), "Open agreement", baseUrl()."/agreement.html?id=".$g['id']));
   return $ok;
 }
+function outreachMail($email, $name, $company, $where, $variant, $code, $dir) {   // returns [ok, error, subject]; CC to admin
+    $me = adminContact(); $first = $name !== '' ? explode(' ', $name)[0] : 'there';
+    $view = baseUrl()."/view.html?c=$code"; $scan = baseUrl()."/scan.html";
+    $whereTxt = $where !== '' ? " (the one running in ".htmlspecialchars($where).")" : '';
+    if ($variant==='a') { $subject = "Your newspaper ad can play your TV commercial"; $lead = "Dear ".htmlspecialchars($first).", your brand invests heavily in newspaper and print campaigns. Right now, every one of those pages is silent. <b>We have already made your current ad play video</b> &mdash; try it before you read further."; }
+    else { $subject = "What if your print ad could talk? Try it on your own ad"; $lead = "Dear ".htmlspecialchars($first).", a full-page ad reaches millions and is forgotten when the page turns &mdash; while the video you produced for the same campaign lives only on TV and YouTube. <b>We connected the two, on your own ad.</b> Try it before you read further."; }
+    $body = "<div style='background:#F6F3FF;border-radius:14px;padding:18px 20px;text-align:left;margin:18px 0'>
+      <div style='font:800 15px Arial;color:#141032;margin-bottom:8px'>Try it now &mdash; 30 seconds, no app</div>
+      <div style='font:15px/1.6 Arial;color:#3f3a5a'>1. Your <b>".htmlspecialchars($company)." ad</b> is attached to this email$whereTxt &mdash; open it on a screen, or use any printed copy.<br>2. On another phone, open <a href='$scan' style='color:#7C3AED;font-weight:700'>scanplay.in</a> and tap <b>Play a photo</b>.<br>3. Point the camera at the ad. <b>Your video plays right on it.</b></div>
+      <div style='font:13px Arial;color:#5B5670;margin-top:8px'>Or open <a href='$view' style='color:#7C3AED'>this direct link</a> on your phone and point it at the ad.</div></div>
+      <div style='font:15px/1.6 Arial;color:#3f3a5a;text-align:left'><b>What this means for your next campaign</b><br>
+      &bull; The same ad space now carries 30 seconds of video, not just a headline<br>
+      &bull; Every scan is counted &mdash; real engagement numbers from print, by city and by day<br>
+      &bull; Works on newspapers, magazines, hoardings, brochures, packaging and point-of-sale material<br>
+      &bull; Nothing changes in your media plan; a small &ldquo;ScanPlay me&rdquo; line is added to the artwork<br><br>
+      We can run a pilot on your next insertion at no risk to your schedule. May I show you a two-minute live demonstration this week &mdash; a printed page and a phone are all we need?<br><br>
+      Warm regards,<br><b>Team ScanPlay</b><br>".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
+    $html = mailTpl("Your ad, playing your video", $lead, $body, "Watch your ad play", $view);
+    $att = file_exists("$dir/target.jpg") ? [['name'=>preg_replace('/[^A-Za-z0-9]+/','-',$company).'-ad.jpg','mime'=>'image/jpeg','data'=>file_get_contents("$dir/target.jpg")]] : [];
+    $cc = array_unique(array_filter([setting('admin_email','info@scanplay.in'), 'info@scanplay.in']));
+    $ok = false; $err = '';
+    try { $ok = sendMail($email, $subject, $html, $att, $cc); if (!$ok) $err = $GLOBALS['MAIL_ERR'] ?: 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
+    return [$ok, $err, $subject];
+}
 function agrId($s) { return preg_replace('/[^A-Za-z0-9\-]/', '', (string)$s); }
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
@@ -152,7 +176,7 @@ function now() { return time(); }
 function mailConfigured() { return SMTP_PASS !== 'CHANGE_ME'; }
 /* Minimal SMTP client (SSL) — no dependencies */
 $MAIL_ERR = '';
-function sendMail($to, $subject, $html, $attachments = []) {
+function sendMail($to, $subject, $html, $attachments = [], $cc = []) {
   global $MAIL_ERR; $MAIL_ERR = '';
   if (strtolower(trim($to)) === 'outreach@scanplay.in') return true;   // internal system account, no mailbox
   if (!mailConfigured()) { $MAIL_ERR = 'Email is not configured (smtp_pass in config.php)'; return false; }
@@ -163,12 +187,14 @@ function sendMail($to, $subject, $html, $attachments = []) {
   if (strpos($r,'235')!==0) { fclose($fp); $MAIL_ERR = 'Mailbox login failed for '.SMTP_USER.' — '.trim($r).' (check smtp_pass in config.php)'; return false; }
   $r=$cmd('MAIL FROM:<'.SMTP_USER.'>'); if (strpos($r,'250')!==0) { fclose($fp); $MAIL_ERR='MAIL FROM rejected: '.trim($r); return false; }
   $r=$cmd('RCPT TO:<'.$to.'>'); if (strpos($r,'250')!==0) { fclose($fp); $MAIL_ERR='Recipient rejected: '.trim($r); return false; }
+  $cc = array_values(array_filter(array_map('trim',(array)$cc), fn($c)=>$c!=='' && strtolower($c)!==strtolower($to) && filter_var($c,FILTER_VALIDATE_EMAIL)));
+  foreach ($cc as $c) $cmd('RCPT TO:<'.$c.'>');
   $r=$cmd('DATA'); if (strpos($r,'354')!==0) { fclose($fp); $MAIL_ERR='DATA rejected: '.trim($r); return false; }
   $logoPath = __DIR__.'/assets/brand/icon-192.png'; $bnd = 'sp'.bin2hex(random_bytes(8)); $mix = 'mx'.bin2hex(random_bytes(8));
   $related  = "--$bnd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html))."\r\n";
   if (file_exists($logoPath)) $related .= "--$bnd\r\nContent-Type: image/png; name=\"logo.png\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo>\r\nContent-Disposition: inline; filename=\"logo.png\"\r\n\r\n".chunk_split(base64_encode(file_get_contents($logoPath)))."\r\n";
   $related .= "--$bnd--\r\n";
-  $head = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\n";
+  $head = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\n".($cc ? "Cc: ".implode(', ', array_map(fn($c)=>"<$c>", $cc))."\r\n" : "")."Subject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\n";
   if ($attachments) {
     $msg = $head."Content-Type: multipart/mixed; boundary=\"$mix\"\r\n\r\n--$mix\r\nContent-Type: multipart/related; boundary=\"$bnd\"; type=\"text/html\"\r\n\r\n".$related;
     foreach ($attachments as $at) $msg .= "--$mix\r\nContent-Type: ".$at['mime']."; name=\"".$at['name']."\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"".$at['name']."\"\r\n\r\n".chunk_split(base64_encode($at['data']))."\r\n";
@@ -723,31 +749,16 @@ switch ($action) {
     $fit = in_array($_POST['fit']??'', ['fit','fill','stretch']) ? $_POST['fit'] : 'fit';
     q("INSERT INTO items (id,code,title,ratio,vratio,fit,created,yt) VALUES (?,?,?,?,?,?,?,NULL)", [$id, $code, $company.' ad', (float)($_POST['ratio']??1), (float)($_POST['vratio']??1), $fit, now()]);
     compressVideo($dir);
-    /* the email */
-    $me = adminContact(); $first = $name !== '' ? explode(' ', $name)[0] : 'there';
-    $view = baseUrl()."/view.html?c=$code"; $scan = baseUrl()."/scan.html";
-    $whereTxt = $where !== '' ? " (the one running in $where)" : '';
-    if ($variant==='a') { $subject = "Your newspaper ad can play your TV commercial"; $lead = "Dear ".htmlspecialchars($first).", your brand invests heavily in newspaper and print campaigns. Right now, every one of those pages is silent. <b>We have already made your current ad play video</b> &mdash; try it before you read further."; }
-    else { $subject = "What if your print ad could talk? Try it on your own ad"; $lead = "Dear ".htmlspecialchars($first).", a full-page ad reaches millions and is forgotten when the page turns &mdash; while the video you produced for the same campaign lives only on TV and YouTube. <b>We connected the two, on your own ad.</b> Try it before you read further."; }
-    $body = "<div style='background:#F6F3FF;border-radius:14px;padding:18px 20px;text-align:left;margin:18px 0'>
-      <div style='font:800 15px Arial;color:#141032;margin-bottom:8px'>Try it now &mdash; 30 seconds, no app</div>
-      <div style='font:15px/1.6 Arial;color:#3f3a5a'>1. Your <b>".htmlspecialchars($company)." ad</b> is attached to this email$whereTxt &mdash; open it on a screen, or use any printed copy.<br>2. On another phone, open <a href='$scan' style='color:#7C3AED;font-weight:700'>scanplay.in</a> and tap <b>Play a photo</b>.<br>3. Point the camera at the ad. <b>Your video plays right on it.</b></div>
-      <div style='font:13px Arial;color:#5B5670;margin-top:8px'>Or open <a href='$view' style='color:#7C3AED'>this direct link</a> on your phone and point it at the ad.</div></div>
-      <div style='font:15px/1.6 Arial;color:#3f3a5a;text-align:left'><b>What this means for your next campaign</b><br>
-      &bull; The same ad space now carries 30 seconds of video, not just a headline<br>
-      &bull; Every scan is counted &mdash; real engagement numbers from print, by city and by day<br>
-      &bull; Works on newspapers, magazines, hoardings, brochures, packaging and point-of-sale material<br>
-      &bull; Nothing changes in your media plan; a small &ldquo;ScanPlay me&rdquo; line is added to the artwork<br><br>
-      We can run a pilot on your next insertion at no risk to your schedule. May I show you a two-minute live demonstration this week &mdash; a printed page and a phone are all we need?<br><br>
-      Warm regards,<br><b>Team ScanPlay</b><br>".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
-    $html = mailTpl("Your ad, playing your video", $lead, $body, "Watch your ad play", $view);
-    $ok = false; $err = '';
-    try { $ok = sendMail($email, $subject, $html, [['name'=>preg_replace('/[^A-Za-z0-9]+/','-',$company).'-ad.jpg','mime'=>'image/jpeg','data'=>file_get_contents("$dir/target.jpg")]]); if (!$ok) $err = $GLOBALS['MAIL_ERR'] ?: 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
+    [$ok,$err,$subject] = outreachMail($email, $name, $company, $where, $variant, $code, $dir);
     q("INSERT INTO outreach (ts,email,name,company,code,item,subject,sent,error) VALUES (?,?,?,?,?,?,?,?,?)", [now(), $email, $name, $company, $code, $id, $subject, $ok?1:0, $err]);
     logAct($su['id'], 'outreach', "$company <$email> ".($ok?'sent':'FAILED '.$err), 'admin');
-    out($ok, ['code'=>$code, 'view'=>$view, 'error'=>$ok?null:('Demo created but email not sent: '.$err)]);
+    out($ok, ['code'=>$code, 'view'=>baseUrl()."/view.html?c=$code", 'error'=>$ok?null:('Demo created but email not sent: '.$err)]);
   }
   case 'admin_mail_test': { ownerAuth(); $to=strtolower(trim($_POST['to']??'')); if(!filter_var($to,FILTER_VALIDATE_EMAIL)) out(false,['error'=>'Enter an email']); $ok=sendMail($to,'ScanPlay test email',mailTpl('Test email','If you can read this, email from '.SMTP_USER.' is working.')); out($ok, ['error'=>$ok?null:$GLOBALS['MAIL_ERR'], 'from'=>SMTP_USER, 'host'=>SMTP_HOST]); }
+  case 'admin_outreach_resend': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]); if(!$o) out(false,['error'=>'Not found']);
+    $email = strtolower(trim($_POST['email'] ?? $o['email'])); if(!filter_var($email,FILTER_VALIDATE_EMAIL)) out(false,['error'=>'Enter a valid email']);
+    [$ok,$err] = outreachMail($email, $o['name'], $o['company'], '', 'a', $o['code'], DATA_DIR."/{$o['code']}/{$o['item']}");
+    q("UPDATE outreach SET email=?, sent=?, error=?, ts=? WHERE id=?", [$email, $ok?1:0, $err, now(), $id]); out($ok, ['error'=>$ok?null:$err]); }
   case 'admin_outreach_list': { ownerAuth(); out(true, ['list'=>rows("SELECT o.*, (SELECT COALESCE(SUM(n),0) FROM scans s WHERE s.code=o.code) scans, (SELECT COALESCE(SUM(n),0) FROM item_hits h WHERE h.item_id=o.item) plays FROM outreach o ORDER BY o.id DESC LIMIT 200")]); }
   case 'admin_outreach_delete': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]); if($o){ q("DELETE FROM items WHERE code=?",[$o['code']]); q("DELETE FROM scans WHERE code=?",[$o['code']]); q("DELETE FROM accounts WHERE code=?",[$o['code']]); rrmdir(DATA_DIR."/{$o['code']}"); q("DELETE FROM outreach WHERE id=?",[$id]); } out(true); }
   /* ---------- homepage partner slides ---------- */
