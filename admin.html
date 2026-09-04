@@ -27,7 +27,15 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 .item{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.item img{width:48px;height:48px;object-fit:cover;border-radius:8px}
 .st{font-size:12px;color:var(--mute);margin-top:6px;min-height:16px}.st.err{color:var(--red)}
 #login{max-width:360px;margin:80px auto;padding:20px}
-</style></head><body>
+</style>
+<style>.agr{font:500 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif;color:#141032;text-align:left}
+.agr-head{text-align:center;margin-bottom:18px}.agr-head img{width:150px;display:block;margin:0 auto 8px}.agr-head h1{font-size:22px;margin:0 0 2px;letter-spacing:.02em}
+.agr h2{font-size:14px;color:#7C3AED;margin:18px 0 6px}.agr p{margin:0 0 8px}.agr ul{margin:0 0 8px 20px;padding:0}.agr li{margin:0 0 5px}
+.agr-tbl{border-collapse:collapse;width:100%;margin:6px 0 8px;font-size:13px}.agr-tbl th,.agr-tbl td{border:1px solid #E8E4F4;padding:7px 10px;text-align:left}.agr-tbl th{background:#F3EEFF}
+.agr-note{font-size:12px;color:#5B5670}.agr-sig{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}.agr-sig>div{font-size:13px}
+.agr-sigbox{height:80px;border-bottom:1.5px solid #141032;margin-bottom:6px;display:flex;align-items:flex-end}.agr-sigbox img{max-height:76px;max-width:100%}.agr-empty{color:#b5b0c8;font-size:12px;font-style:italic;align-self:center}
+@media print{.agr{font-size:12.5px}.agr h2{page-break-after:avoid}}</style><script src="agreement.js"></script>
+</head><body>
 <header><h1><a href="/" style="text-decoration:none;color:inherit"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:6px">Scan<b>Play</b> <span style="color:var(--mute);font-weight:600;font-size:15px">Admin</span></a></h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
 
 <div id="login"><div class="card"><label class="field">Owner password</label><input type="password" id="p" style="width:100%" onkeydown="if(event.key==='Enter')load()"><button class="btn" style="width:100%;margin-top:12px" onclick="load()">Open admin</button><div class="st err" id="lerr"></div></div></div>
@@ -40,6 +48,9 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
     <textarea id="sa_pay" rows="3" style="width:100%;margin-top:8px;font:500 14px 'Plus Jakarta Sans';padding:10px;border:1.5px solid var(--line);border-radius:10px" placeholder="Payment details: UPI ID, bank account, price per token…"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn s" onclick="saveSettings()">Save</button><button class="btn g s" onclick="loadLedger()">Show full token ledger</button><span class="st" id="sast"></span></div>
     <div id="ledger" style="font-size:12px;max-height:280px;overflow:auto;margin-top:8px"></div></div>
+  <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Agreements</b><button class="btn s" onclick="agrNew()">＋ New agreement</button></div>
+    <div id="agrList" style="margin-top:8px;font-size:13px"></div></div>
+  <div class="modal" id="agrModal" onclick="if(event.target===this)agrClose()"><div class="box" style="max-width:760px"><div id="agrBody"></div></div></div>
   <div class="card" style="margin-top:16px"><b>Announcement / promotion email</b>
     <div class="row" style="margin-top:8px"><select id="btpl" style="flex:1;min-width:220px" onchange="applyTpl()"><option value="">📋 Choose a template…</option><option value="referral">🎁 Refer &amp; earn — how it works</option><option value="howto">📱 How to use ScanPlay</option><option value="promo_en">🚀 Promo — Photos Come Alive (English)</option><option value="promo_te">🚀 Promo — Photos Come Alive (Telugu)</option><option value="vcard">💼 Visiting Card (Telugu)</option><option value="realestate">🏠 Real Estate Brochure (Telugu)</option><option value="menu">🍽️ Restaurant Menu (Telugu)</option><option value="wedding">💒 Wedding Invitation (Telugu)</option></select></div>
     <div class="row" style="margin-top:8px"><select id="bseg"><option value="all">All users</option><option value="free">Free-trial users</option><option value="paid">Paying users</option><option value="expired">Expired users</option></select><input id="bsub" placeholder="Subject" style="flex:1;min-width:200px"></div>
@@ -253,7 +264,7 @@ const inr=n=>'₹'+Number(n).toLocaleString('en-IN');
 async function load(){ if(!P) P=$('#p').value; const r=await api('admin_users'); if(!r.ok){ $('#lerr').textContent=r.error; P=''; return; } sessionStorage.setItem('sp_admin',P);
   DATA=r; $('#login').style.display='none'; $('#app').style.display=''; $('#out').style.display='';
   const t=r.totals; $('#kpis').innerHTML=`<div class="kpi"><b>${t.users}</b><span>Users</span></div><div class="kpi"><b>${DATA.users.filter(u=>u.role==='distributor').length} / ${DATA.users.filter(u=>u.role==='promoter').length}</b><span>Distributors / Promoters</span></div><div class="kpi"><b>${DATA.users.reduce((n,u)=>n+(+u.tokens||0),0)}</b><span>Tokens in circulation</span></div><div class="kpi"><b>${DATA.users.reduce((n,u)=>n+(+u.tokens_used||0),0)}</b><span>Tokens used</span></div><div class="kpi"><b>${t.scans30}</b><span>Scans, 30 days</span></div><div class="kpi"><b>${t.photos}</b><span>Photos stored</span></div><div class="kpi" style="${t.integrity==='ok'?'':'background:#FEE2E2'}"><b>${t.integrity==='ok'?'OK':'CHECK'}</b><span>Database integrity</span></div><div class="kpi"><b>${t.backups}</b><span>Daily backups kept<br>${t.lastBackup}</span></div>`;
-  DATA.users.forEach(u=>PN[u.id]=u.business||u.name||u.email); render(); loadActivity(); loadSettings(); }
+  DATA.users.forEach(u=>PN[u.id]=u.business||u.name||u.email); render(); loadActivity(); loadSettings(); loadAgreements(); }
 function render(){ const q=$('#q').value.toLowerCase(), f=$('#f').value;
   $('#tb').innerHTML=DATA.users.filter(u=>(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().includes(q))&&(!f||(u.role||'user')===f)).map(u=>`<tr class="u" onclick="openUser(${u.id})">
     <td><b>${u.name||''}</b><br><span style="color:var(--mute)">${e(u.email)}${u.phone?' · '+u.phone:''}</span>${u.verified?'':' <span class="tag x">unverified</span>'}${u.note?'<br><span style="font-size:11px;color:var(--b)">📝 '+u.note+'</span>':''}</td>
@@ -293,6 +304,51 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
   <h3>Projects &amp; photos</h3>${r.accounts.length?r.accounts.map(a=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${e(a.name)}</b> ${a.blocked?'<span class="tag x">BLOCKED</span>':''}${a.showcase?'<span class="tag" style="background:#FFB86C33;color:#B45309">HOMEPAGE</span>':''} <span style="color:var(--mute);font-size:12px">${e(a.code)} · ${a.scans} scans</span><br><a href="${a.qrUrl}" target="_blank" style="font-size:12px;color:var(--b)">${a.qrUrl}</a></div><span class="row"><button class="btn g s" onclick="act('admin_showcase',{code:'${e(a.code)}',showcase:${a.showcase?0:1}},false,${id})">${a.showcase?'★ On homepage':'☆ Show on homepage'}</button><button class="btn g s" onclick="act('admin_block',{code:'${e(a.code)}',blocked:${a.blocked?0:1}},false,${id})">${a.blocked?'Unblock':'Block'}</button><button class="btn d s" onclick="if(confirm('Delete project ${e(a.name)}?'))act('admin_account_delete',{code:'${e(a.code)}'},false,${id})">Delete project</button></span></div>
     ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${e(it.title)}</b> <span style="font-size:12px;font-weight:700;color:var(--b)">👁 ${it.hits||0}</span><div style="font-size:12px;color:var(--mute)">${e(it.id)} · fit: ${it.fit||'fit'} · <a href="data/${e(a.code)}/${e(it.id)}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${e(a.code)}',id:'${e(it.id)}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
   <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }catch(e){ $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><h2>Could not open user</h2><button class="btn g s" onclick="closeUser()">Close</button></div><p class="st err">${e.message}</p><p class="st">Redeploy from hPanel Git and hard-refresh; if it persists, send this message to support.</p>`; $('#m').classList.add('open'); } }
+/* ---------- agreements ---------- */
+let AGR_SIG=null;
+async function loadAgreements(){ const r=await api('admin_agreements'); if(!r.ok) return; const L=r.agreements||[];
+  $('#agrList').innerHTML=L.length?L.map(g=>`<div class="st" style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div><b>${e(g.business||g.name)}</b> <span class="tag p">${e(g.role)}</span> · ${e(g.id)} · ${d(g.created)}<br><span class="tag ${g.status==='signed'?'a':'g'}">${g.status==='signed'?'signed '+d(g.signed_at)+' ('+e(g.sign_kind)+')':'awaiting signature'}</span>${g.admin_signed_at?' <span class="tag a">ScanPlay signed</span>':' <span class="tag g">ScanPlay not signed</span>'}</div>
+    <div class="row" style="gap:4px"><button class="btn g s" onclick="agrView('${e(g.id)}')">View</button><a class="btn g s" href="agreement.html?id=${e(g.id)}" target="_blank">PDF</a>${g.status!=='signed'?`<button class="btn d s" onclick="if(confirm('Delete this agreement?'))api('admin_agreement_delete',{id:'${e(g.id)}'}).then(loadAgreements)">✕</button>`:''}</div></div>`).join('')
+  :'<div class="st">No agreements yet.</div>'; }
+function agrNew(){ const users=DATA.users.filter(u=>['distributor','promoter'].includes(u.role)); const D=AGR_DEFAULTS;
+  $('#agrBody').innerHTML=`<h3 style="margin:0 0 10px">New agreement</h3>
+    <div class="row" style="flex-wrap:wrap;gap:8px"><select id="agU" style="flex:1;min-width:200px"><option value="">Choose partner…</option>${users.map(u=>`<option value="${u.id}" data-role="${e(u.role)}" data-area="${e(u.area||u.address||'')}">${e(u.business||u.name)} — ${e(u.role)} (${e(u.email)})</option>`).join('')}</select>
+    <input id="agT" placeholder="Territory / area, e.g. Visakhapatnam District, Andhra Pradesh" style="flex:2;min-width:220px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+      <label class="st">Promo price ₹ <input id="agPP" type="number" value="${D.promoPrice}" style="width:70px"></label>
+      <label class="st">for first <input id="agPQ" type="number" value="${D.promoQty}" style="width:80px"> tokens</label>
+      <label class="st">Standard price ₹ <input id="agSP" type="number" value="${D.stdPrice}" style="width:70px"></label>
+      <label class="st">Min first order <input id="agMF" type="number" value="${D.minFirst}" style="width:80px"></label>
+      <label class="st">Min reorder <input id="agMR" type="number" value="${D.minReorder}" style="width:80px"></label></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+      <label class="st">Monthly circulation — M1 <input id="agM1" type="number" value="${D.m1}" style="width:80px"></label>
+      <label class="st">M2 <input id="agM2" type="number" value="${D.m2}" style="width:80px"></label>
+      <label class="st">M3+ <input id="agM3" type="number" value="${D.m3}" style="width:80px"></label>
+      <label class="st" id="agPromRow">Active promoters <input id="agPN" type="number" value="${D.promoters}" style="width:60px"> within <input id="agPD" type="number" value="${D.promoterDays}" style="width:60px"> days</label></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+      <label class="st">Recommended promoter price ₹ <input id="agRP" value="${D.recPromoterPrice}" style="width:70px"></label>
+      <label class="st">Max promoter price ₹ <input id="agXP" type="number" value="${D.maxPromoterPrice}" style="width:70px"></label>
+      <label class="st">Term <input id="agTM" type="number" value="${D.termMonths}" style="width:55px"> months</label>
+      <label class="st">Notice <input id="agND" type="number" value="${D.noticeDays}" style="width:55px"> days</label></div>
+    <textarea id="agN" rows="2" placeholder="Additional terms (optional)" style="width:100%;margin-top:8px;font:500 13px 'Plus Jakarta Sans';padding:8px;border:1.5px solid var(--line);border-radius:10px"></textarea>
+    <div class="st" style="margin-top:10px"><b>ScanPlay signature</b> (draw with finger/mouse — optional now, can sign later)</div>
+    <canvas id="agSig" style="width:100%;height:110px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
+    <div class="row" style="justify-content:space-between;margin-top:8px"><button class="btn g s" onclick="AGR_SIG.clear()">Clear signature</button><div class="row"><button class="btn g s" onclick="agrPreview()">Preview</button><button class="btn s" onclick="agrSend()">Send to partner</button></div></div>
+    <div id="agPrev" style="margin-top:12px;max-height:50vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:14px;display:none"></div>`;
+  $('#agU').onchange=function(){ const o=this.selectedOptions[0]; if(!o) return; if(!$('#agT').value) $('#agT').value=o.dataset.area||''; $('#agPromRow').style.display=o.dataset.role==='promoter'?'none':''; };
+  $('#agrModal').classList.add('open'); setTimeout(()=>{ AGR_SIG=sigPad($('#agSig')); },60); }
+function agrTerms(){ const o=$('#agU').selectedOptions[0]; return {role:o?o.dataset.role:'distributor',territory:$('#agT').value,promoPrice:+$('#agPP').value,promoQty:+$('#agPQ').value,stdPrice:+$('#agSP').value,minFirst:+$('#agMF').value,minReorder:+$('#agMR').value,m1:+$('#agM1').value,m2:+$('#agM2').value,m3:+$('#agM3').value,promoters:+$('#agPN').value,promoterDays:+$('#agPD').value,recPromoterPrice:$('#agRP').value,maxPromoterPrice:+$('#agXP').value,termMonths:+$('#agTM').value,noticeDays:+$('#agND').value,retentionMonths:12,notes:$('#agN').value}; }
+function agrPreview(){ const o=$('#agU').selectedOptions[0]; if(!o||!o.value){ alert('Choose a partner'); return; } const u=DATA.users.find(x=>x.id==o.value); const t=agrTerms(); t.number='(preview)'; t.date=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}); t.party={name:u.business||u.name,person:u.name,address:u.address||u.area,email:u.email,phone:u.phone,role:u.role}; t.scanplay={name:$('#sa_name').value,business:$('#sa_biz').value};
+  const p=$('#agPrev'); p.style.display=''; p.innerHTML=agreementHtml({terms:t,status:'sent',admin_img:AGR_SIG&&!AGR_SIG.isEmpty()?AGR_SIG.data():null}); }
+async function agrSend(){ const o=$('#agU').selectedOptions[0]; if(!o||!o.value){ alert('Choose a partner'); return; } if(!$('#agT').value.trim()){ alert('Enter the territory / area'); return; }
+  const r=await api('admin_agreement_create',{user_id:o.value,terms:JSON.stringify(agrTerms()),admin_sign:AGR_SIG&&!AGR_SIG.isEmpty()?AGR_SIG.data():''}); if(!r.ok){ alert(r.error); return; } agrClose(); loadAgreements(); alert('Agreement sent. The partner will see it in their Partner panel and by email.'); }
+async function agrView(id){ const r=await api('agreement_get',{id}); if(!r.ok){ alert(r.error); return; } const g=r.agreement;
+  $('#agrBody').innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:8px"><h3 style="margin:0">Agreement ${e(g.id)}</h3><div class="row" style="gap:6px"><a class="btn g s" href="agreement.html?id=${e(g.id)}" target="_blank">Open / PDF</a><button class="btn g s" onclick="agrClose()">Close</button></div></div>
+    <div style="max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:14px">${agreementHtml(g)}</div>
+    ${g.admin_signed_at?'':`<div class="st" style="margin-top:10px"><b>Sign for ScanPlay</b></div><canvas id="agSig2" style="width:100%;height:110px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas><div class="row" style="justify-content:space-between;margin-top:8px"><button class="btn g s" onclick="AGR_SIG.clear()">Clear</button><button class="btn s" onclick="agrAdminSign('${e(g.id)}')">Save ScanPlay signature</button></div>`}`;
+  $('#agrModal').classList.add('open'); if(!g.admin_signed_at) setTimeout(()=>{ AGR_SIG=sigPad($('#agSig2')); },60); }
+async function agrAdminSign(id){ if(!AGR_SIG||AGR_SIG.isEmpty()){ alert('Draw the signature first'); return; } const r=await api('admin_agreement_sign',{id,sign:AGR_SIG.data()}); if(!r.ok){ alert(r.error); return; } loadAgreements(); agrView(id); }
+function agrClose(){ $('#agrModal').classList.remove('open'); }
 function tokAct(id,sign){ const u=DATA.users.find(x=>x.id==id)||{}; const n=Math.abs(parseInt($('#tk').value,10)||0); if(!n){ alert('Enter how many tokens'); return; }
   const msg=sign>0?`Add ${n} tokens to ${e(u.name||u.email)}? They will be notified by email.`:`Remove ${n} tokens from ${e(u.name||u.email)}? They currently have ${u.tokens||0}.`;
   if(confirm(msg)) act('admin_tokens',{id:id,delta:sign*n,note:$('#tkn').value}); }

@@ -59,3 +59,5 @@ RedirectMatch 404 ^/backups/
 <FilesMatch "\.(db|sqlite|log)$">
   Require all denied
 </FilesMatch>
+# signed agreements and signatures are served only through the API
+RedirectMatch 404 ^/data/agreements/

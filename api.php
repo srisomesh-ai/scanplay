@@ -46,6 +46,7 @@ try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } 
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
 $db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
+$db->exec("CREATE TABLE IF NOT EXISTS agreements (id TEXT PRIMARY KEY, user_id INTEGER, created INTEGER, status TEXT, terms TEXT, sign_name TEXT, signed_at INTEGER, sign_ip TEXT, sign_kind TEXT, admin_signed_at INTEGER)");
 /* one-time migration to the token model: nobody loses paid capacity */
 if (!$db->query("SELECT v FROM settings WHERE k='token_migrated'")->fetch()) {
   $db->exec("INSERT INTO settings (k,v) VALUES ('token_migrated','1')");
@@ -92,6 +93,7 @@ function compressVideo($dir) {
        ." > ".escapeshellarg($log)." 2>&1 && [ -s ".escapeshellarg($tmp)." ] && [ $(stat -c%s ".escapeshellarg($tmp).") -lt $(stat -c%s ".escapeshellarg($src).") ] && mv -f ".escapeshellarg($tmp)." ".escapeshellarg($src)." ; rm -f ".escapeshellarg($tmp);
   shell_exec("nohup sh -c ".escapeshellarg($cmd)." > /dev/null 2>&1 &");
 }
+function agrId($s) { return preg_replace('/[^A-Za-z0-9\-]/', '', (string)$s); }
 function ledger($from, $to, $qty, $kind, $note='') { q("INSERT INTO ledger (ts,from_id,to_id,qty,kind,note) VALUES (?,?,?,?,?,?)", [now(), $from, $to, $qty, $kind, mb_substr((string)$note,0,120)]); }
 try { $db->exec("ALTER TABLE accounts ADD COLUMN public INTEGER DEFAULT 1"); } catch (Exception $e) {}
 try { $db->exec("UPDATE accounts SET public=1 WHERE public=0 OR public IS NULL"); } catch (Exception $e) {}
@@ -667,6 +669,53 @@ switch ($action) {
     $lat=(float)($_REQUEST['lat']??0); $lng=(float)($_REQUEST['lng']??0);
     if ($lat && $lng) { foreach ($list as &$x) $x['km'] = ($x['lat']&&$x['lng']) ? round(kmBetween($lat,$lng,(float)$x['lat'],(float)$x['lng']),1) : null; unset($x); usort($list, fn($p,$q)=>($p['km']??9e9) <=> ($q['km']??9e9)); }
     out(true, ['retailers'=>$list, 'admin'=>adminContact(), 'near'=>(bool)($lat&&$lng)]);
+  }
+  /* ---------- distributor / promoter agreements ---------- */
+  case 'admin_agreement_create': {
+    ownerAuth(); $uid=(int)($_POST['user_id']??0); $u=row("SELECT * FROM users WHERE id=? AND deleted=0",[$uid]); if(!$u) out(false,['error'=>'No such user']);
+    $t = json_decode($_POST['terms'] ?? '{}', true); if (!is_array($t)) out(false, ['error'=>'Bad terms']);
+    $t = array_map(fn($v)=>is_string($v)?trim(strip_tags($v)):$v, $t);
+    $id = date('Ymd').'-'.strtoupper(substr(bin2hex(random_bytes(3)),0,5));
+    $t['number'] = 'SP-AGR-'.$id; $t['date'] = date('d F Y');
+    $t['party'] = ['name'=>$u['business'] ?: $u['name'], 'person'=>$u['name'], 'address'=>$u['address'] ?: $u['area'], 'email'=>$u['email'], 'phone'=>$u['phone'], 'role'=>$u['role']];
+    $t['scanplay'] = adminContact();
+    q("INSERT INTO agreements (id,user_id,created,status,terms) VALUES (?,?,?,?,?)", [$id, $uid, now(), 'sent', json_encode($t, JSON_UNESCAPED_UNICODE)]);
+    @mkdir(DATA_DIR."/agreements/$id", 0755, true);
+    if (!empty($_POST['admin_sign'])) { $png = base64_decode(preg_replace('/^data:image\/\w+;base64,/','',$_POST['admin_sign'])); if ($png) { file_put_contents(DATA_DIR."/agreements/$id/admin.png", $png); q("UPDATE agreements SET admin_signed_at=? WHERE id=?", [now(), $id]); } }
+    logAct($uid,'agreement_sent',$id,'admin');
+    @sendMail($u['email'], "Your ScanPlay agreement is ready to sign", mailTpl("Agreement ready &#128203;", "Hi ".htmlspecialchars($u['name']).", your ".($u['role']==='distributor'?'Distributor':'Promoter')." Agreement (".$t['number'].") is ready. Open the Studio &rarr; Partner panel to review and sign it.", "", "Open Studio", baseUrl()."/studio.html"));
+    out(true, ['id'=>$id]);
+  }
+  case 'admin_agreements': { ownerAuth(); out(true, ['agreements'=>rows("SELECT g.id,g.user_id,g.created,g.status,g.sign_name,g.signed_at,g.sign_kind,g.admin_signed_at,u.name,u.email,u.business,u.role FROM agreements g JOIN users u ON u.id=g.user_id ORDER BY g.created DESC")]); }
+  case 'admin_agreement_delete': { ownerAuth(); $id=agrId($_POST['id']??''); $g=row("SELECT * FROM agreements WHERE id=?",[$id]); if(!$g) out(false,['error'=>'Not found']); if($g['status']==='signed'&&empty($_POST['force'])) out(false,['error'=>'Signed agreements cannot be deleted']); q("DELETE FROM agreements WHERE id=?",[$id]); @array_map('unlink', glob(DATA_DIR."/agreements/$id/*")); @rmdir(DATA_DIR."/agreements/$id"); out(true); }
+  case 'admin_agreement_sign': {
+    ownerAuth(); $id=agrId($_POST['id']??''); if(!row("SELECT id FROM agreements WHERE id=?",[$id])) out(false,['error'=>'Not found']);
+    $png = base64_decode(preg_replace('/^data:image\/\w+;base64,/','',$_POST['sign']??'')); if(!$png) out(false,['error'=>'No signature']);
+    file_put_contents(DATA_DIR."/agreements/$id/admin.png", $png); q("UPDATE agreements SET admin_signed_at=? WHERE id=?", [now(), $id]); out(true);
+  }
+  case 'agreement_get': {   // the party (own agreement) or admin (any)
+    $id = agrId($_REQUEST['id'] ?? ''); $g = row("SELECT * FROM agreements WHERE id=?", [$id]); if (!$g) out(false, ['error'=>'Agreement not found']);
+    $isAdmin = false; $hp = $_SERVER['HTTP_X_ADMIN_PASS'] ?? '';
+    if ($hp !== '' && OWNER_PASS !== '' && hash_equals(OWNER_PASS, $hp)) $isAdmin = true;
+    if (!$isAdmin) { $u = auth(); if ((int)$u['id'] !== (int)$g['user_id']) out(false, ['error'=>'Not your agreement']); }
+    $dir = DATA_DIR."/agreements/$id"; $f = fn($n)=>file_exists("$dir/$n") ? 'data:'.(str_ends_with($n,'.pdf')?'application/pdf':'image/png').';base64,'.base64_encode(file_get_contents("$dir/$n")) : null;
+    $scan = null; foreach (glob("$dir/scan.*") ?: [] as $p) { $scan = 'data:'.mime_content_type($p).';base64,'.base64_encode(file_get_contents($p)); }
+    out(true, ['agreement'=>['id'=>$g['id'],'status'=>$g['status'],'created'=>(int)$g['created'],'terms'=>json_decode($g['terms'],true),'sign_name'=>$g['sign_name'],'signed_at'=>(int)$g['signed_at'],'sign_kind'=>$g['sign_kind'],'admin_signed_at'=>(int)$g['admin_signed_at'],'sign_img'=>$f('sign.png'),'admin_img'=>$f('admin.png'),'scan'=>$scan]]);
+  }
+  case 'my_agreements': { $u=auth(); out(true, ['agreements'=>rows("SELECT id,status,created,signed_at FROM agreements WHERE user_id=? ORDER BY created DESC", [$u['id']])]); }
+  case 'agreement_sign': {
+    $u = auth(); $id = agrId($_POST['id'] ?? ''); $g = row("SELECT * FROM agreements WHERE id=? AND user_id=?", [$id, $u['id']]); if (!$g) out(false, ['error'=>'Agreement not found']);
+    if ($g['status']==='signed') out(false, ['error'=>'Already signed']);
+    if (empty($_POST['agree'])) out(false, ['error'=>'Please tick "I have read and agree"']);
+    $name = trim(strip_tags($_POST['sign_name'] ?? '')); if ($name==='') out(false, ['error'=>'Type your full name']);
+    $dir = DATA_DIR."/agreements/$id"; @mkdir($dir, 0755, true); $kind = '';
+    if (!empty($_POST['sign'])) { $png = base64_decode(preg_replace('/^data:image\/\w+;base64,/','',$_POST['sign'])); if (strlen($png) < 500) out(false, ['error'=>'Please draw your signature']); file_put_contents("$dir/sign.png", $png); $kind = 'drawn'; }
+    elseif (!empty($_FILES['scan']['tmp_name'])) { $mime = mime_content_type($_FILES['scan']['tmp_name']); $ext = ['image/jpeg'=>'jpg','image/png'=>'png','application/pdf'=>'pdf'][$mime] ?? null; if (!$ext) out(false, ['error'=>'Upload a JPG, PNG or PDF']); if ($_FILES['scan']['size'] > 15*1048576) out(false, ['error'=>'File too large (max 15 MB)']); move_uploaded_file($_FILES['scan']['tmp_name'], "$dir/scan.$ext"); $kind = 'scan'; }
+    else out(false, ['error'=>'Draw your signature or upload the signed copy']);
+    q("UPDATE agreements SET status='signed', sign_name=?, signed_at=?, sign_ip=?, sign_kind=? WHERE id=?", [$name, now(), ip(), $kind, $id]);
+    logAct($u['id'],'agreement_signed',$id);
+    @sendMail(setting('admin_email','info@scanplay.in'), "Agreement signed: ".($u['business']?:$u['name']), mailTpl("Agreement signed &#9989;", htmlspecialchars($u['business']?:$u['name'])." signed agreement ".$id." (".$kind.").", "", "Open admin", baseUrl()."/admin.html"));
+    out(true);
   }
   /* ---------- admin: token control ---------- */
   case 'admin_tokens': {   // delta may be negative: only admin can remove tokens

@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="agreement.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -323,6 +324,12 @@
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="nameCancel()">Cancel</button><button class="btn" onclick="nameOk()">Create</button></div>
   </div>
 </div>
+<div class="modal" id="agrModal" onclick="if(event.target===this)closeAgr()">
+  <div class="box" style="max-width:640px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
+    <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Agreement</h3><button class="btn ghost sm" onclick="closeAgr()">Close</button></div>
+    <div id="agrBody"></div>
+  </div>
+</div>
 <div class="modal" id="ptModal" onclick="if(event.target===this)closePartner()">
   <div class="box" style="max-width:520px;text-align:left;max-height:calc(100dvh - 24px);overflow:auto">
     <div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Partner panel</h3><button class="btn ghost sm" onclick="closePartner()">Close</button></div>
@@ -430,7 +437,7 @@ async function initGoogle(){
 }
 async function logout(){ await post({action:'logout'}).catch(()=>{}); localStorage.removeItem('sp_token'); location.reload(); }
 if(/ScanPlayApp/.test(navigator.userAgent)||sessionStorage.getItem('sp_inapp')){ const ah=document.getElementById('appHint'); if(ah) ah.style.display='none'; }
-function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts().then(()=>{ $('#app').style.display='grid'; if(!CUR&&ACCOUNTS.length) openAcc(ACCOUNTS[0].code); }); }
+function boot(){ $('#login').style.display='none'; const ah=$('#appHint'); if(ah) ah.style.display='none'; $('#logoutBtn').style.display=''; $('#setBtn').style.display=''; $('#planbar').style.display=''; loadAccounts().then(()=>{ $('#app').style.display='grid'; if(!CUR&&ACCOUNTS.length) openAcc(ACCOUNTS[0].code); checkAgreements(); }); }
 let _cfRes=null;
 function confirmDlg(title,msg,okLabel='Yes',danger=false){ return new Promise(res=>{ _cfRes=res; $('#cfTitle').textContent=title; if(msg&&msg.startsWith('<div')) $('#cfMsg').innerHTML=msg; else $('#cfMsg').textContent=msg; const b=$('#cfOk'); b.textContent=okLabel; b.className='btn'+(danger?' danger':''); $('#confirmModal').classList.add('open'); }); }
 function cfDone(v){ $('#confirmModal').classList.remove('open'); const r=_cfRes; _cfRes=null; r&&r(v); }
@@ -452,7 +459,7 @@ function renderPlan(){
   el.className='in '+(low?'bad':warn?'warn':'');
   el.innerHTML=`<div><b>${u.tokens} token${u.tokens===1?'':'s'}</b> <span>· ${u.tokensUsed} used · 1 token = 1 photo + 1 video</span></div>
     <div><span>${u.role==='distributor'?'Distributor':u.role==='promoter'?'Promoter':'Account'}${u.isPartner?` · ${u.children} under you`:''}</span></div>
-    ${u.isPartner?'<button class="btn sm" onclick="openPartner()">Partner panel</button>':''}<button class="btn sm ghost" onclick="openBuy()">Buy tokens</button>`;
+    ${u.isPartner?'<button class="btn sm" onclick="openPartner()">Partner panel</button>':''}${AGR_PENDING?'<button class="btn sm" style="background:#B45309" onclick="openAgr(AGR_PENDING)">📄 Sign agreement</button>':''}<button class="btn sm ghost" onclick="openBuy()">Buy tokens</button>`;
 }
 /* buy tokens = contact your parent (retailer / distributor / ScanPlay). No online payment. */
 function openBuy(){ const p=USER.parent, who=p.business||p.name;
@@ -473,6 +480,7 @@ async function openPartner(){
     </div>`+ (c.subs||[]).map(x=>person(x,lvl+1)).join('');
   const hist=r.ledger.slice(0,15).map(l=>`<div class="pp-h"><span>${new Date(l.ts*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span><span>${l.kind==='spent'?'Used on a photo':l.kind==='grant'?'From ScanPlay':l.kind==='remove'?'Removed by ScanPlay':(l.from_id==u.id?'To '+esc(l.tname||'—'):'From '+esc(l.fname||'—'))}</span><b class="${l.to_id==u.id?'in':''}">${l.to_id==u.id?'+':'−'}${l.qty}</b></div>`).join('')||'<div class="tiny" style="padding:8px 0">Nothing yet</div>';
   $('#ptBody').innerHTML=`
+    <div id="agrBanner"></div>
     <div class="pp-wallet"><div><div class="pp-big">${u.tokens}</div><div class="tiny">tokens available · ${u.tokensUsed} used</div></div><button class="btn sm ghost" onclick="openBuy()">Buy more</button></div>
 
     <div class="pp-sec"><div class="pp-title">Invite</div>
@@ -502,7 +510,7 @@ async function openPartner(){
     </div>
 
     <div class="pp-sec"><div class="pp-title">History</div>${hist}</div>`;
-  $('#ptModal').classList.add('open'); if($('#pLocMap')) setTimeout(()=>initLocMap('p','pLocMap'),80);
+  $('#ptModal').classList.add('open'); if($('#pLocMap')) setTimeout(()=>initLocMap('p','pLocMap'),80); loadAgrBanner();
 }
 function closePartner(){ $('#ptModal').classList.remove('open'); renderPlan(); }
 async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter how many tokens'); return; }
@@ -511,6 +519,32 @@ async function giveTokens(id){ const q=+$('#q'+id).value; if(!q){ toast('Enter h
   const r=await post({action:'partner_transfer',to:id,qty:q}); if(!r.ok){ toast(r.error); return; } toast(`Gave ${q} token${q>1?'s':''} to ${who}`); openPartner(); }
 async function linkAcc(){ const e=$('#linkEmail').value.trim(); if(!e) return; const r=await post({action:'partner_link',email:e}); if(!r.ok){ toast(r.error); return; } toast('Added'); openPartner(); }
 async function savePartner(){ const r=await post({action:'partner_profile',business:$('#pBiz').value,whatsapp:$('#pWa').value,pay_details:$('#pPay').value,area:$('#pArea').value,listed:$('#pListed').checked?1:0,lat:$('#pLat').value,lng:$('#pLng').value,address:$('#pAddr').value}); if(!r.ok){ toast(r.error); return; } USER=r.user; toast('Saved'); }
+/* ---------- agreements ---------- */
+let AGR_PENDING=null, SIG=null;
+async function checkAgreements(){ if(!USER||!USER.isPartner) return; const r=await post({action:'my_agreements'}).catch(()=>null); if(!r||!r.ok) return; const p=(r.agreements||[]).find(g=>g.status!=='signed'); const had=AGR_PENDING; AGR_PENDING=p?p.id:null; if(AGR_PENDING!==had) renderPlan(); return r.agreements||[]; }
+async function loadAgrBanner(){ const L=await checkAgreements()||[]; const el=$('#agrBanner'); if(!el) return;
+  el.innerHTML=L.length?`<div class="pp-sec" style="border-top:0;padding-top:0;margin-top:6px"><div class="pp-title">Agreements</div>${L.map(g=>`<div class="pp-h" style="align-items:center"><span>${new Date(g.created*1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</span><span>${esc(g.id)} · ${g.status==='signed'?'<b style="color:#059669">Signed</b>':'<b style="color:#B45309">Awaiting your signature</b>'}</span><button class="btn sm ${g.status==='signed'?'ghost':''}" onclick="openAgr('${esc(g.id)}')">${g.status==='signed'?'View':'Review & sign'}</button></div>`).join('')}</div>`:''; }
+async function openAgr(id){ const r=await post({action:'agreement_get',id}); if(!r.ok){ toast(r.error); return; } const g=r.agreement; if(!document.getElementById('agrCss')){ const st=document.createElement('style'); st.id='agrCss'; st.textContent=AGR_CSS; document.head.appendChild(st); }
+  $('#agrBody').innerHTML=`<div style="max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:14px;margin:8px 0">${agreementHtml(g)}</div>
+    <div class="row" style="gap:6px;margin-bottom:8px"><a class="btn ghost sm" href="agreement.html?id=${esc(g.id)}" target="_blank">Open full page / download PDF</a></div>
+    ${g.status==='signed'?`<div class="pcard">✅ Signed on ${new Date(g.signed_at*1000).toLocaleString('en-IN')}.</div>`:`
+    <div class="pp-sec"><div class="pp-title">Sign</div>
+      <label class="field">Your full name</label><input type="text" id="agName" value="${esc(USER.name||'')}">
+      <div class="row" style="gap:6px;margin:10px 0 6px"><button class="chip on" id="agTabDraw" onclick="agTab('draw')">✍️ Sign digitally</button><button class="chip" id="agTabUp" onclick="agTab('up')">📎 Upload signed copy</button></div>
+      <div id="agDraw"><div class="tiny" style="margin-bottom:4px">Draw your signature with your finger</div><canvas id="agCanvas" style="width:100%;height:130px;border:1.5px dashed var(--line);border-radius:12px;background:#fff;touch-action:none"></canvas><div style="margin-top:6px"><button class="btn ghost sm" onclick="SIG.clear()">Clear</button></div></div>
+      <div id="agUp" style="display:none"><div class="tiny" style="margin-bottom:4px">Download the PDF, print, sign, then upload a photo or scan (JPG, PNG or PDF, max 15 MB)</div><input type="file" id="agFile" accept="image/*,application/pdf"></div>
+      <label class="pp-check" style="margin-top:12px"><input type="checkbox" id="agAgree"> I have read and agree to this Agreement</label>
+      <button class="btn" style="width:100%;margin-top:12px" onclick="signAgr('${esc(g.id)}')">Submit signed agreement</button>
+    </div>`}`;
+  $('#agrModal').classList.add('open'); if(g.status!=='signed') setTimeout(()=>{ SIG=sigPad($('#agCanvas')); },80); }
+function agTab(m){ $('#agTabDraw').classList.toggle('on',m==='draw'); $('#agTabUp').classList.toggle('on',m==='up'); $('#agDraw').style.display=m==='draw'?'':'none'; $('#agUp').style.display=m==='up'?'':'none'; if(m==='draw'&&SIG) setTimeout(()=>{ SIG=sigPad($('#agCanvas')); },50); }
+async function signAgr(id){ const name=$('#agName').value.trim(); if(!name){ toast('Type your full name'); return; } if(!$('#agAgree').checked){ toast('Please tick "I have read and agree"'); return; }
+  const up=$('#agUp').style.display!=='none'; const f=up?$('#agFile').files[0]:null;
+  if(up&&!f){ toast('Choose the signed file'); return; } if(!up&&(!SIG||SIG.isEmpty())){ toast('Draw your signature'); return; }
+  if(!await confirmDlg('Submit signature?','This will sign the agreement as '+name+'. It cannot be undone.','Sign')) return;
+  const r=await post({action:'agreement_sign',id,sign_name:name,agree:1,sign:up?'':SIG.data()},up?{scan:f}:null); if(!r.ok){ toast(r.error); return; }
+  toast('Agreement signed ✅'); closeAgr(); AGR_PENDING=null; renderPlan(); if($('#ptModal').classList.contains('open')) loadAgrBanner(); }
+function closeAgr(){ $('#agrModal').classList.remove('open'); }
 function countAll(l){ return l.reduce((n,c)=>n+1+countAll(c.subs||[]),0); }
 
 
