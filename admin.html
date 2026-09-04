@@ -28,13 +28,16 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
 .st{font-size:12px;color:var(--mute);margin-top:6px;min-height:16px}.st.err{color:var(--red)}
 #login{max-width:360px;margin:80px auto;padding:20px}
 </style>
-<style>.agr{font:500 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif;color:#141032;text-align:left}
+<style>
+.cropper-point{width:26px!important;height:26px!important;opacity:1!important;background:#7C3AED!important;border:3px solid #fff;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,.45);touch-action:none;z-index:5}.cropper-point.point-ne{top:-13px!important;right:-13px!important}.cropper-point.point-nw{top:-13px!important;left:-13px!important}.cropper-point.point-se{bottom:-13px!important;right:-13px!important}.cropper-point.point-sw{bottom:-13px!important;left:-13px!important}.cropper-point.point-n,.cropper-point.point-s{margin-left:-13px!important}.cropper-point.point-e,.cropper-point.point-w{margin-top:-13px!important}.cropper-line{background:transparent!important;touch-action:none;z-index:4}.cropper-line.line-e,.cropper-line.line-w{width:30px!important}.cropper-line.line-e{right:-15px!important}.cropper-line.line-w{left:-15px!important}.cropper-line.line-n,.cropper-line.line-s{height:30px!important}.cropper-line.line-n{top:-15px!important}.cropper-line.line-s{bottom:-15px!important}.cropper-view-box{outline:2px solid #7C3AED!important}.cropper-face{touch-action:none}#orCrop,#orCrop .box{touch-action:none;overscroll-behavior:none}
+.agr{font:500 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif;color:#141032;text-align:left}
 .agr-head{text-align:center;margin-bottom:18px}.agr-head img{width:150px;display:block;margin:0 auto 8px}.agr-head h1{font-size:22px;margin:0 0 2px;letter-spacing:.02em}
 .agr h2{font-size:14px;color:#7C3AED;margin:18px 0 6px}.agr p{margin:0 0 8px}.agr ul{margin:0 0 8px 20px;padding:0}.agr li{margin:0 0 5px}
 .agr-tbl{border-collapse:collapse;width:100%;margin:6px 0 8px;font-size:13px}.agr-tbl th,.agr-tbl td{border:1px solid #E8E4F4;padding:7px 10px;text-align:left}.agr-tbl th{background:#F3EEFF}
 .agr-note{font-size:12px;color:#5B5670}.agr-sig{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}.agr-sig>div{font-size:13px}
 .agr-sigbox{height:80px;border-bottom:1.5px solid #141032;margin-bottom:6px;display:flex;align-items:flex-end}.agr-sigbox img{max-height:76px;max-width:100%}.agr-empty{color:#b5b0c8;font-size:12px;font-style:italic;align-self:center}
-@media print{.agr{font-size:12.5px}.agr h2{page-break-after:avoid}}</style><script src="agreement.js"></script>
+@media print{.agr{font-size:12.5px}.agr h2{page-break-after:avoid}}</style><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="agreement.js"></script>
 <script type="module">import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"; window.MindCompiler = Compiler;</script>
 </head><body>
 <header><h1><a href="/" style="text-decoration:none;color:inherit"><img src="/assets/brand/scanplay-logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:6px">Scan<b>Play</b> <span style="color:var(--mute);font-weight:600;font-size:15px">Admin</span></a></h1><button class="btn g s" id="out" style="display:none" onclick="sessionStorage.removeItem('sp_admin');location.reload()">Sign out</button></header>
@@ -53,15 +56,18 @@ tr.u{cursor:pointer}tr.u:hover{background:var(--paper)}
     <div class="st">Upload the company's own print ad and its video. ScanPlay makes that ad play the video, and the pitch email goes out from info@scanplay.in telling them to scan their ad.</div>
     <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px"><input id="orEmail" placeholder="Email address" style="flex:1;min-width:200px"><input id="orName" placeholder="Person's name (optional)" style="flex:1;min-width:160px"><input id="orCo" placeholder="Company" style="flex:1;min-width:160px"></div>
     <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px"><input id="orWhere" placeholder="Where the ad is running, e.g. Eenadu, Sakshi (optional)" style="flex:1;min-width:220px"><select id="orVar"><option value="a">Email: short and direct</option><option value="b">Email: story-led</option></select></div>
-    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center"><label class="st">Their ad (photo) <input type="file" id="orImg" accept="image/*"></label><label class="st">Their video <input type="file" id="orVid" accept="video/*"></label></div>
-    <div class="row" style="margin-top:10px;align-items:center;gap:10px"><button class="btn s" id="orGo" onclick="orSend()">Create demo &amp; send email</button><span class="st" id="orSt"></span></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center"><label class="st">Their ad (photo) <input type="file" id="orImg" accept="image/*" onchange="orCropOpen(this)"></label><img id="orThumb" style="display:none;height:48px;border-radius:6px;border:1px solid var(--line)"><label class="st">Their video <input type="file" id="orVid" accept="video/*"></label></div>
+    <div class="row" style="margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap"><button class="btn s" id="orGo" onclick="orSend()">Create demo &amp; send email</button><button class="btn g s" onclick="orMailTest()">Send a test email to me</button><span class="st" id="orSt"></span></div>
     <div id="orList" style="margin-top:10px;font-size:13px"></div></div>
   <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Homepage partner slides</b><button class="btn s" onclick="slideEdit(0)">＋ Add slide</button></div>
     <div class="st">Filled cities show the partner's photo; open cities show "Apply". Order by the sort number.</div>
     <div id="slideList" style="margin-top:8px;font-size:13px"></div></div>
   <div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><b>Agreements</b><button class="btn s" onclick="agrNew()">＋ New agreement</button></div>
     <div id="agrList" style="margin-top:8px;font-size:13px"></div></div>
-  <div class="modal" id="agrModal" onclick="if(event.target===this)agrClose()"><div class="box" style="max-width:760px"><div id="agrBody"></div></div></div>
+  <div class="modal" id="orCrop"><div class="box" style="max-width:560px"><h3 style="margin:0 0 4px">Crop the ad</h3><div class="st" style="margin-bottom:8px">Crop to exactly the printed ad — remove page edges, other ads and background. Keep it straight.</div>
+  <div id="orCropWrap" style="height:52vh;background:#111;border-radius:10px;overflow:hidden;touch-action:none;padding:16px;box-sizing:border-box"><div id="orCropIn" style="width:100%;height:100%;position:relative"><img id="orCropImg" alt="" style="max-width:100%;display:block"></div></div>
+  <div class="row" style="justify-content:space-between;margin-top:10px"><button class="btn g s" onclick="orCropper&&orCropper.rotate(90)">Rotate</button><div class="row" style="gap:6px"><button class="btn g s" onclick="orCropCancel()">Cancel</button><button class="btn s" onclick="orCropUse()">Use crop</button></div></div></div></div>
+<div class="modal" id="agrModal" onclick="if(event.target===this)agrClose()"><div class="box" style="max-width:760px"><div id="agrBody"></div></div></div>
   <div class="card" style="margin-top:16px"><b>Announcement / promotion email</b>
     <div class="row" style="margin-top:8px"><select id="btpl" style="flex:1;min-width:220px" onchange="applyTpl()"><option value="">📋 Choose a template…</option><option value="referral">🎁 Refer &amp; earn — how it works</option><option value="howto">📱 How to use ScanPlay</option><option value="promo_en">🚀 Promo — Photos Come Alive (English)</option><option value="promo_te">🚀 Promo — Photos Come Alive (Telugu)</option><option value="vcard">💼 Visiting Card (Telugu)</option><option value="realestate">🏠 Real Estate Brochure (Telugu)</option><option value="menu">🍽️ Restaurant Menu (Telugu)</option><option value="wedding">💒 Wedding Invitation (Telugu)</option></select></div>
     <div class="row" style="margin-top:8px"><select id="bseg"><option value="all">All users</option><option value="free">Free-trial users</option><option value="paid">Paying users</option><option value="expired">Expired users</option></select><input id="bsub" placeholder="Subject" style="flex:1;min-width:200px"></div>
@@ -316,10 +322,18 @@ async function openUser(id){ try{ const r=await api('admin_user',{id}); if(!r.ok
     ${a.items.map(it=>`<div class="item"><img src="${it.thumb}"><div><b>${e(it.title)}</b> <span style="font-size:12px;font-weight:700;color:var(--b)">👁 ${it.hits||0}</span><div style="font-size:12px;color:var(--mute)">${e(it.id)} · fit: ${it.fit||'fit'} · <a href="data/${e(a.code)}/${e(it.id)}/video.mp4" target="_blank" style="color:var(--b)">video</a></div></div><button class="btn d s" onclick="if(confirm('Remove this photo?'))act('admin_item_delete',{code:'${e(a.code)}',id:'${e(it.id)}'},false,${id})">Remove</button></div>`).join('')||'<div class="st">No photos</div>'}</div>`).join(''):'<div class="st">No projects</div>'}
   <div class="st" id="mst"></div>`; $('#m').classList.add('open'); }catch(e){ $('#mb').innerHTML=`<div class="row" style="justify-content:space-between"><h2>Could not open user</h2><button class="btn g s" onclick="closeUser()">Close</button></div><p class="st err">${e.message}</p><p class="st">Redeploy from hPanel Git and hard-refresh; if it persists, send this message to support.</p>`; $('#m').classList.add('open'); } }
 /* ---------- corporate outreach ---------- */
+let orCropper=null, orBlob=null;
+function orCropOpen(inp){ const f=inp.files[0]; if(!f) return; orBlob=null; $('#orThumb').style.display='none'; const im=$('#orCropImg'); if(orCropper){ orCropper.destroy(); orCropper=null; }
+  im.onload=()=>{ orCropper=new Cropper(im,{viewMode:1,dragMode:'none',movable:false,zoomable:false,autoCropArea:0.9,background:false,responsive:true,cropBoxMovable:true,cropBoxResizable:true,toggleDragModeOnDblclick:false,minCropBoxWidth:40,minCropBoxHeight:40,aspectRatio:NaN}); };
+  im.src=URL.createObjectURL(f); $('#orCrop').classList.add('open'); document.body.style.overflow='hidden'; }
+function orCropCancel(){ $('#orCrop').classList.remove('open'); document.body.style.overflow=''; $('#orImg').value=''; }
+function orCropUse(){ if(!orCropper) return; const c=orCropper.getCroppedCanvas({maxWidth:2000,maxHeight:2000,imageSmoothingQuality:'high'}); c.toBlob(b=>{ orBlob=new File([b],'ad.jpg',{type:'image/jpeg'}); $('#orThumb').src=URL.createObjectURL(b); $('#orThumb').style.display=''; $('#orCrop').classList.remove('open'); document.body.style.overflow=''; },'image/jpeg',0.92); }
+async function orMailTest(){ const st=$('#orSt'); const to=prompt('Send a test email to:', $('#sa_email').value||''); if(!to) return; st.textContent='Sending test…'; const r=await api('admin_mail_test',{to}); st.textContent=r.ok?'Test email sent from '+r.from+' ✅ check the inbox':'Email failed: '+r.error; }
+
 const orImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not read the photo')); i.src=src; });
 const orVidRatio=f=>new Promise(res=>{ const v=document.createElement('video'); v.preload='metadata'; v.onloadedmetadata=()=>res(v.videoWidth/v.videoHeight); v.onerror=()=>res(1); v.src=URL.createObjectURL(f); });
-async function orSend(){ const st=$('#orSt'), b=$('#orGo'); const email=$('#orEmail').value.trim(), co=$('#orCo').value.trim(), img=$('#orImg').files[0], vid=$('#orVid').files[0];
-  if(!email||!co||!img||!vid){ st.textContent='Email, company, ad photo and video are all needed'; return; }
+async function orSend(){ const st=$('#orSt'), b=$('#orGo'); const email=$('#orEmail').value.trim(), co=$('#orCo').value.trim(), img=orBlob, vid=$('#orVid').files[0];
+  if(!email||!co||!img||!vid){ st.textContent=!img&&$('#orImg').files[0]?'Crop the ad photo first (choose it again)':'Email, company, ad photo and video are all needed'; return; }
   b.disabled=true;
   try{
     st.textContent='Analysing the ad…'; if(!window.MindCompiler) throw new Error('Compiler still loading, try again in a moment');
@@ -328,7 +342,7 @@ async function orSend(){ const st=$('#orSt'), b=$('#orGo'); const email=$('#orEm
     st.textContent='Uploading and sending…';
     const fd=new FormData(); fd.append('email',email); fd.append('name',$('#orName').value); fd.append('company',co); fd.append('where',$('#orWhere').value); fd.append('variant',$('#orVar').value); fd.append('ratio',(im.naturalWidth/im.naturalHeight).toFixed(4)); fd.append('vratio',vr.toFixed(4)); fd.append('target',img,img.name); fd.append('video',vid,vid.name); fd.append('mind',mind,'targets.mind');
     const r=await (await fetch('api.php?action=admin_outreach_send',{method:'POST',body:fd,headers:{'X-Admin-Pass':P}})).json();
-    st.textContent=r.ok?'Sent ✅ Demo: '+r.view:(r.error||'Failed'); if(r.ok){ $('#orEmail').value=''; $('#orName').value=''; $('#orCo').value=''; $('#orWhere').value=''; $('#orImg').value=''; $('#orVid').value=''; }
+    st.textContent=r.ok?'Sent ✅ Demo: '+r.view:(r.error||'Failed'); if(r.ok){ $('#orEmail').value=''; $('#orName').value=''; $('#orCo').value=''; $('#orWhere').value=''; $('#orImg').value=''; $('#orVid').value=''; orBlob=null; $('#orThumb').style.display='none'; }
   }catch(e){ st.textContent=e.message; }
   b.disabled=false; loadOutreach(); }
 async function loadOutreach(){ const r=await api('admin_outreach_list'); if(!r.ok) return;

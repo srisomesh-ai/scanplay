@@ -138,20 +138,31 @@ function rows($sql, $p = []) { return q($sql,$p)->fetchAll(PDO::FETCH_ASSOC); }
 function now() { return time(); }
 function mailConfigured() { return SMTP_PASS !== 'CHANGE_ME'; }
 /* Minimal SMTP client (SSL) — no dependencies */
-function sendMail($to, $subject, $html) {
-  if (!mailConfigured()) return false;
-  $fp = @stream_socket_client('ssl://'.SMTP_HOST.':'.SMTP_PORT, $errno, $errstr, 15); if (!$fp) return false;
+$MAIL_ERR = '';
+function sendMail($to, $subject, $html, $attachments = []) {
+  global $MAIL_ERR; $MAIL_ERR = '';
+  if (!mailConfigured()) { $MAIL_ERR = 'Email is not configured (smtp_pass in config.php)'; return false; }
+  $fp = @stream_socket_client('ssl://'.SMTP_HOST.':'.SMTP_PORT, $errno, $errstr, 15); if (!$fp) { $MAIL_ERR = "Cannot reach ".SMTP_HOST.": $errstr"; return false; }
   $read = function() use ($fp) { $r=''; while ($l=fgets($fp,515)) { $r.=$l; if (substr($l,3,1)===' ') break; } return $r; };
   $cmd  = function($c) use ($fp,$read) { fwrite($fp, $c."\r\n"); return $read(); };
   $read(); $cmd('EHLO scanplay.in'); $cmd('AUTH LOGIN'); $cmd(base64_encode(SMTP_USER)); $r=$cmd(base64_encode(SMTP_PASS));
-  if (strpos($r,'235')!==0) { fclose($fp); return false; }
-  $cmd('MAIL FROM:<'.SMTP_USER.'>'); $cmd('RCPT TO:<'.$to.'>'); $cmd('DATA');
-  $logoPath = __DIR__.'/assets/brand/icon-192.png'; $bnd = 'sp'.bin2hex(random_bytes(8));
-  $msg = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\"$bnd\"; type=\"text/html\"\r\n\r\n";
-  $msg .= "--$bnd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html))."\r\n";
-  if (file_exists($logoPath)) $msg .= "--$bnd\r\nContent-Type: image/png; name=\"logo.png\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo>\r\nContent-Disposition: inline; filename=\"logo.png\"\r\n\r\n".chunk_split(base64_encode(file_get_contents($logoPath)))."\r\n";
-  $msg .= "--$bnd--";
-  $r=$cmd($msg."\r\n."); $cmd('QUIT'); fclose($fp); return strpos($r,'250')===0;
+  if (strpos($r,'235')!==0) { fclose($fp); $MAIL_ERR = 'Mailbox login failed for '.SMTP_USER.' — '.trim($r).' (check smtp_pass in config.php)'; return false; }
+  $r=$cmd('MAIL FROM:<'.SMTP_USER.'>'); if (strpos($r,'250')!==0) { fclose($fp); $MAIL_ERR='MAIL FROM rejected: '.trim($r); return false; }
+  $r=$cmd('RCPT TO:<'.$to.'>'); if (strpos($r,'250')!==0) { fclose($fp); $MAIL_ERR='Recipient rejected: '.trim($r); return false; }
+  $r=$cmd('DATA'); if (strpos($r,'354')!==0) { fclose($fp); $MAIL_ERR='DATA rejected: '.trim($r); return false; }
+  $logoPath = __DIR__.'/assets/brand/icon-192.png'; $bnd = 'sp'.bin2hex(random_bytes(8)); $mix = 'mx'.bin2hex(random_bytes(8));
+  $related  = "--$bnd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n".chunk_split(base64_encode($html))."\r\n";
+  if (file_exists($logoPath)) $related .= "--$bnd\r\nContent-Type: image/png; name=\"logo.png\"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo>\r\nContent-Disposition: inline; filename=\"logo.png\"\r\n\r\n".chunk_split(base64_encode(file_get_contents($logoPath)))."\r\n";
+  $related .= "--$bnd--\r\n";
+  $head = "From: ".MAIL_FROM_NAME." <".SMTP_USER.">\r\nTo: <$to>\r\nSubject: =?UTF-8?B?".base64_encode($subject)."?=\r\nMIME-Version: 1.0\r\n";
+  if ($attachments) {
+    $msg = $head."Content-Type: multipart/mixed; boundary=\"$mix\"\r\n\r\n--$mix\r\nContent-Type: multipart/related; boundary=\"$bnd\"; type=\"text/html\"\r\n\r\n".$related;
+    foreach ($attachments as $at) $msg .= "--$mix\r\nContent-Type: ".$at['mime']."; name=\"".$at['name']."\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"".$at['name']."\"\r\n\r\n".chunk_split(base64_encode($at['data']))."\r\n";
+    $msg .= "--$mix--";
+  } else $msg = $head."Content-Type: multipart/related; boundary=\"$bnd\"; type=\"text/html\"\r\n\r\n".$related;
+  $r=$cmd($msg."\r\n."); $cmd('QUIT'); fclose($fp);
+  if (strpos($r,'250')!==0) { $MAIL_ERR = 'Message rejected: '.trim($r); return false; }
+  return true;
 }
 /* Branded email shell (style A): logo top, centred content, footer with support details */
 function mailTpl($title, $lead, $body='', $ctaText=null, $ctaUrl=null, $code=null) {
@@ -716,11 +727,12 @@ switch ($action) {
       Warm regards,<br><b>".htmlspecialchars($me['name'] ?: 'Someswara Rao Pyla')."</b><br>Founder, ".htmlspecialchars($me['business'] ?: 'ScanPlay LLP')." &middot; Visakhapatnam<br>".($me['phone']?htmlspecialchars($me['phone']).' &middot; ':'').htmlspecialchars($me['email'] ?: 'info@scanplay.in')." &middot; scanplay.in</div>";
     $html = mailTpl("Your ad, playing your video", $lead, $body, "Watch your ad play", $view);
     $ok = false; $err = '';
-    try { $ok = sendMail($email, $subject, $html); if (!$ok) $err = 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
+    try { $ok = sendMail($email, $subject, $html, [['name'=>preg_replace('/[^A-Za-z0-9]+/','-',$company).'-ad.jpg','mime'=>'image/jpeg','data'=>file_get_contents("$dir/target.jpg")]]); if (!$ok) $err = $GLOBALS['MAIL_ERR'] ?: 'Mail server refused the message'; } catch (Throwable $t) { $err = $t->getMessage(); }
     q("INSERT INTO outreach (ts,email,name,company,code,item,subject,sent,error) VALUES (?,?,?,?,?,?,?,?,?)", [now(), $email, $name, $company, $code, $id, $subject, $ok?1:0, $err]);
     logAct($su['id'], 'outreach', "$company <$email> ".($ok?'sent':'FAILED '.$err), 'admin');
     out($ok, ['code'=>$code, 'view'=>$view, 'error'=>$ok?null:('Demo created but email not sent: '.$err)]);
   }
+  case 'admin_mail_test': { ownerAuth(); $to=strtolower(trim($_POST['to']??'')); if(!filter_var($to,FILTER_VALIDATE_EMAIL)) out(false,['error'=>'Enter an email']); $ok=sendMail($to,'ScanPlay test email',mailTpl('Test email','If you can read this, email from '.SMTP_USER.' is working.')); out($ok, ['error'=>$ok?null:$GLOBALS['MAIL_ERR'], 'from'=>SMTP_USER, 'host'=>SMTP_HOST]); }
   case 'admin_outreach_list': { ownerAuth(); out(true, ['list'=>rows("SELECT o.*, (SELECT COALESCE(SUM(n),0) FROM scans s WHERE s.code=o.code) scans, (SELECT COALESCE(SUM(n),0) FROM item_hits h WHERE h.item_id=o.item) plays FROM outreach o ORDER BY o.id DESC LIMIT 200")]); }
   case 'admin_outreach_delete': { ownerAuth(); $id=(int)($_POST['id']??0); $o=row("SELECT * FROM outreach WHERE id=?",[$id]); if($o){ q("DELETE FROM items WHERE code=?",[$o['code']]); q("DELETE FROM scans WHERE code=?",[$o['code']]); q("DELETE FROM accounts WHERE code=?",[$o['code']]); rrmdir(DATA_DIR."/{$o['code']}"); q("DELETE FROM outreach WHERE id=?",[$id]); } out(true); }
   /* ---------- homepage partner slides ---------- */
