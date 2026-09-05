@@ -4,6 +4,4 @@ Disallow: /studio.html
 Disallow: /admin.html
 Disallow: /api.php
 Disallow: /data/
-Allow: /data/*/*/target.jpg
 Sitemap: https://scanplay.in/sitemap.xml
-Sitemap: https://scanplay.in/sitemap-photos.xml

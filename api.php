@@ -44,7 +44,6 @@ foreach (['verified INTEGER DEFAULT 0','code TEXT','code_exp INTEGER','google_id
 $db->exec("CREATE TABLE IF NOT EXISTS accounts (code TEXT PRIMARY KEY, user_id INTEGER, name TEXT, created INTEGER)");
 try { $db->exec("ALTER TABLE accounts ADD COLUMN blocked INTEGER DEFAULT 0"); } catch (Exception $e) {}
 try { $db->exec("ALTER TABLE accounts ADD COLUMN showcase INTEGER DEFAULT 0"); } catch (Exception $e) {}
-try { $db->exec("ALTER TABLE accounts ADD COLUMN discover INTEGER DEFAULT 0"); } catch (Exception $e) {}   // let Google (Lens) index this project's photos
 $db->exec("CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, from_id INTEGER, to_id INTEGER, qty INTEGER, kind TEXT, note TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)");
 $db->exec("CREATE TABLE IF NOT EXISTS outreach (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, email TEXT, name TEXT, company TEXT, code TEXT, item TEXT, subject TEXT, sent INTEGER DEFAULT 0, error TEXT)");
@@ -324,7 +323,7 @@ function pubAccount($a) {
   foreach ($items as &$it) { $it['thumb'] = "data/{$a['code']}/{$it['id']}/target.jpg"; $it['hits'] = (int)(row("SELECT SUM(n) s FROM item_hits WHERE item_id=?", [$it['id']])['s'] ?? 0); }
   $scans = (int)(row("SELECT SUM(n) s FROM scans WHERE code=?", [$a['code']])['s'] ?? 0);
   $scans30 = (int)(row("SELECT SUM(n) s FROM scans WHERE code=? AND day>=?", [$a['code'], date('Y-m-d', now()-30*86400)])['s'] ?? 0);
-  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'showcase'=>(int)($a['showcase']??0),'discover'=>(int)($a['discover']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
+  return ['code'=>$a['code'],'name'=>$a['name'],'blocked'=>(int)($a['blocked']??0),'showcase'=>(int)($a['showcase']??0),'public'=>(int)($a['public']??1),'created'=>(int)$a['created'],'items'=>$items,'qrUrl'=>baseUrl().'/view.html?c='.$a['code'],'scans'=>$scans,'scans30'=>$scans30];
 }
 
 $action = $_REQUEST['action'] ?? '';
@@ -903,8 +902,6 @@ switch ($action) {
     if (!row("SELECT id FROM items WHERE code=?", [$code])) @unlink(DATA_DIR."/$code/targets.mind");
     out(true, ['note'=>'Removed. The owner must open the studio once so remaining photos are recompiled.']);
   }
-  case 'account_discover': { $u=auth(); $code=clean($_POST['code']??''); if(!row("SELECT code FROM accounts WHERE code=? AND user_id=?",[$code,$u['id']])) out(false,['error'=>'Account not found']); q("UPDATE accounts SET discover=? WHERE code=?",[(int)!!($_POST['on']??0),$code]); logAct($u['id'],'discover',$code.' '.((int)!!($_POST['on']??0)?'on':'off')); out(true); }
-  case 'admin_discover': { ownerAuth(); $code=clean($_POST['code']??''); q("UPDATE accounts SET discover=? WHERE code=?",[(int)!!($_POST['on']??0),$code]); out(true); }
   case 'admin_showcase': { ownerAuth(); $code=clean($_POST['code']??''); q("UPDATE accounts SET showcase=? WHERE code=?", [(int)!!($_POST['showcase']??0), $code]); out(true); }
   case 'admin_block': { ownerAuth(); logAct(0,'admin_block',json_encode($_POST),'admin'); $code=clean($_POST['code']??''); q("UPDATE accounts SET blocked=? WHERE code=?", [(int)!!($_POST['blocked']??0), $code]); out(true); }
   case 'admin_account_delete': {

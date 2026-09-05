@@ -61,9 +61,3 @@ RedirectMatch 404 ^/backups/
 </FilesMatch>
 # signed agreements and signatures are served only through the API
 RedirectMatch 404 ^/data/agreements/
-
-# dynamic image sitemap under an .xml address (Search Console friendly)
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteRule ^sitemap-photos\.xml$ sitemap-photos.php [L]
-</IfModule>
