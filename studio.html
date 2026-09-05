@@ -282,6 +282,7 @@
   <div id="items"></div>
   <div class="stepc" id="st3" style="margin-top:18px"><div class="sh"><i><span>3</span></i><b>QR code (optional)</b><small>viewers can also just open the Scanner</small></div>
     <button class="btn qrbig" id="qrBtn" onclick="showQr()">Generate my QR</button>
+    <label class="chip" id="discRow" style="display:none;margin-top:10px;align-items:center;gap:8px"><input type="checkbox" id="discChk" onchange="setDiscover(this.checked)"> 🔎 Let Google Lens find these photos <span class="tiny" style="font-weight:500">(makes them public on the web)</span></label>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost sm" onclick="window.open(CUR.qrUrl)">Test on this phone</button><button class="btn ghost sm" onclick="openShare()">Share</button></div>
   </div>
   
@@ -621,7 +622,9 @@ function updSteps(){ fitPreview(); updSave();
   $('#st1').classList.toggle('ok',!!imgFile); $('#st2').classList.toggle('ok',!!(vidFile||(urlMode&&vidUrl)));
   $('#st3').classList.toggle('off',!has); $('#st3').classList.toggle('ok',has);
   $('#qrBtn').textContent=has?'Show my QR':'QR (add your photo first)';
+  const dr=$('#discRow'); if(dr){ dr.style.display=has?'flex':'none'; $('#discChk').checked=!!(CUR&&CUR.discover); }
 }
+async function setDiscover(on){ if(on&&!await confirmDlg('Make these photos public?','Google will be able to find the photos in this project and link people to the player. Use this for business prints (cards, menus, ads). For private photos, leave it off.','Yes, make public')){ $('#discChk').checked=false; return; } const r=await post({action:'account_discover',code:CUR.code,on:on?1:0}); if(r.ok){ CUR.discover=on?1:0; toast(on?'Google can now find these photos':'Photos hidden from Google'); } else { toast(r.error); $('#discChk').checked=!on; } }
 const loadImgEl=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
 async function buildShareCard(mode='photo',onlyId=null){
   const W=1080, pad=56; const photos=mode==='qr'?[]:(onlyId?CUR.items.filter(it=>it.id===onlyId):CUR.items.slice(0,1));
